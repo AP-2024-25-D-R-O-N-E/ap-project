@@ -1,26 +1,22 @@
 //import modules
+mod client;
+mod edge_node;
+mod fragmentation;
 mod initializer;
+mod server;
 
 use std::{
-    collections::HashMap,
-    fs,
-    thread::{self, sleep},
+    thread::sleep,
     time::{Duration, Instant},
 };
 
-// use 'use' for easier naming
-use initializer::{
-    config_parsing::InitConfig,
-    network_initializer::{self, NetworkInitializer},
-};
+use initializer::network_initializer::NetworkInitializer;
 use wg_2024::{
     network::SourceRoutingHeader,
     packet::{Ack, Packet, PacketType},
 };
 
-struct SimulationControllerCommand {
-    //temporary
-}
+// use 'use' for easier naming
 
 fn main() {
     let mut network_initializer = NetworkInitializer::new("src/config.toml".to_string());
