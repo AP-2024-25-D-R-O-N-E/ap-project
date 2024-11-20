@@ -199,14 +199,14 @@ dependencies = [
 
 [[package]]
 name = "unicode-ident"
-version = "1.0.13"
+version = "1.0.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e91b56cd4cadaeb79bbf1a5645f6b4f8dc5bde8834ad5894a8db35fda9efa1fe"
+checksum = "adb9e6ca4f869e1180728b7950e35922a7fc6397f7b641499e8f3ef06e50dc83"
 
 [[package]]
 name = "wg_2024"
 version = "0.1.0"
-source = "git+https://github.com/WGL-2024/WGL_repo_2024.git#726282cb70fc3f9c080312daa2166c4f592bab42"
+source = "git+https://github.com/WGL-2024/WGL_repo_2024.git#377011178fb158b9b1c240a2ea3b92b3c8bc1fa4"
 dependencies = [
  "wg_internal",
 ]
@@ -214,7 +214,7 @@ dependencies = [
 [[package]]
 name = "wg_config"
 version = "0.1.0"
-source = "git+https://github.com/WGL-2024/WGL_repo_2024.git#726282cb70fc3f9c080312daa2166c4f592bab42"
+source = "git+https://github.com/WGL-2024/WGL_repo_2024.git#377011178fb158b9b1c240a2ea3b92b3c8bc1fa4"
 dependencies = [
  "serde",
 ]
@@ -222,7 +222,7 @@ dependencies = [
 [[package]]
 name = "wg_controller"
 version = "0.1.0"
-source = "git+https://github.com/WGL-2024/WGL_repo_2024.git#726282cb70fc3f9c080312daa2166c4f592bab42"
+source = "git+https://github.com/WGL-2024/WGL_repo_2024.git#377011178fb158b9b1c240a2ea3b92b3c8bc1fa4"
 dependencies = [
  "crossbeam-channel",
  "wg_network",
@@ -232,7 +232,7 @@ dependencies = [
 [[package]]
 name = "wg_drone"
 version = "0.1.0"
-source = "git+https://github.com/WGL-2024/WGL_repo_2024.git#726282cb70fc3f9c080312daa2166c4f592bab42"
+source = "git+https://github.com/WGL-2024/WGL_repo_2024.git#377011178fb158b9b1c240a2ea3b92b3c8bc1fa4"
 dependencies = [
  "crossbeam-channel",
  "wg_controller",
@@ -243,7 +243,7 @@ dependencies = [
 [[package]]
 name = "wg_internal"
 version = "0.1.0"
-source = "git+https://github.com/WGL-2024/WGL_repo_2024.git#726282cb70fc3f9c080312daa2166c4f592bab42"
+source = "git+https://github.com/WGL-2024/WGL_repo_2024.git#377011178fb158b9b1c240a2ea3b92b3c8bc1fa4"
 dependencies = [
  "wg_config",
  "wg_controller",
@@ -255,12 +255,12 @@ dependencies = [
 [[package]]
 name = "wg_network"
 version = "0.1.0"
-source = "git+https://github.com/WGL-2024/WGL_repo_2024.git#726282cb70fc3f9c080312daa2166c4f592bab42"
+source = "git+https://github.com/WGL-2024/WGL_repo_2024.git#377011178fb158b9b1c240a2ea3b92b3c8bc1fa4"
 
 [[package]]
 name = "wg_packet"
 version = "0.1.0"
-source = "git+https://github.com/WGL-2024/WGL_repo_2024.git#726282cb70fc3f9c080312daa2166c4f592bab42"
+source = "git+https://github.com/WGL-2024/WGL_repo_2024.git#377011178fb158b9b1c240a2ea3b92b3c8bc1fa4"
 dependencies = [
  "wg_network",
 ]

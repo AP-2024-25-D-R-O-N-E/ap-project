@@ -1,7 +1,7 @@
 use std::{collections::HashMap, thread};
 
 use crossbeam::channel::{unbounded, Receiver, Sender};
-use wg_2024::{controller::Command, drone::{Drone, DroneOptions}, network::NodeId, packet::Packet};
+use wg_2024::{controller::Command, drone::Drone, network::NodeId, packet::Packet};
 
 use d_r_o_n_e_drone::MyDrone;
 
@@ -62,7 +62,6 @@ impl NetworkInitializer {
             let pdr = drone.pdr as f32;
 
             thread::spawn(move || {
-
                 //template for droneoptions, do not uncomment since it will take ownership of the values
 
                 // let _option = DroneOptions {
