@@ -7,8 +7,9 @@ name = "ap-project"
 version = "0.1.0"
 dependencies = [
  "crossbeam",
- "serde",
+ "d-r-o-n-e_drone",
  "toml",
+ "wg_2024",
 ]
 
 [[package]]
@@ -66,6 +67,15 @@ name = "crossbeam-utils"
 version = "0.8.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "22ec99545bb0ed0ea7bb9b8e1e9122ea386ff8a48c0922e43f36d45ab09e0e80"
+
+[[package]]
+name = "d-r-o-n-e_drone"
+version = "0.1.0"
+source = "git+https://github.com/AP-2024-25-D-R-O-N-E/drone.git#82a1af0f6f18ae6ea1a99ff26733486847cc4684"
+dependencies = [
+ "crossbeam",
+ "wg_2024",
+]
 
 [[package]]
 name = "equivalent"
@@ -192,6 +202,68 @@ name = "unicode-ident"
 version = "1.0.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e91b56cd4cadaeb79bbf1a5645f6b4f8dc5bde8834ad5894a8db35fda9efa1fe"
+
+[[package]]
+name = "wg_2024"
+version = "0.1.0"
+source = "git+https://github.com/WGL-2024/WGL_repo_2024.git#726282cb70fc3f9c080312daa2166c4f592bab42"
+dependencies = [
+ "wg_internal",
+]
+
+[[package]]
+name = "wg_config"
+version = "0.1.0"
+source = "git+https://github.com/WGL-2024/WGL_repo_2024.git#726282cb70fc3f9c080312daa2166c4f592bab42"
+dependencies = [
+ "serde",
+]
+
+[[package]]
+name = "wg_controller"
+version = "0.1.0"
+source = "git+https://github.com/WGL-2024/WGL_repo_2024.git#726282cb70fc3f9c080312daa2166c4f592bab42"
+dependencies = [
+ "crossbeam-channel",
+ "wg_network",
+ "wg_packet",
+]
+
+[[package]]
+name = "wg_drone"
+version = "0.1.0"
+source = "git+https://github.com/WGL-2024/WGL_repo_2024.git#726282cb70fc3f9c080312daa2166c4f592bab42"
+dependencies = [
+ "crossbeam-channel",
+ "wg_controller",
+ "wg_network",
+ "wg_packet",
+]
+
+[[package]]
+name = "wg_internal"
+version = "0.1.0"
+source = "git+https://github.com/WGL-2024/WGL_repo_2024.git#726282cb70fc3f9c080312daa2166c4f592bab42"
+dependencies = [
+ "wg_config",
+ "wg_controller",
+ "wg_drone",
+ "wg_network",
+ "wg_packet",
+]
+
+[[package]]
+name = "wg_network"
+version = "0.1.0"
+source = "git+https://github.com/WGL-2024/WGL_repo_2024.git#726282cb70fc3f9c080312daa2166c4f592bab42"
+
+[[package]]
+name = "wg_packet"
+version = "0.1.0"
+source = "git+https://github.com/WGL-2024/WGL_repo_2024.git#726282cb70fc3f9c080312daa2166c4f592bab42"
+dependencies = [
+ "wg_network",
+]
 
 [[package]]
 name = "winnow"
