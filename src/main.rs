@@ -13,7 +13,7 @@ use std::{
 use initializer::network_initializer::NetworkInitializer;
 use wg_2024::{
     network::SourceRoutingHeader,
-    packet::{Ack, Packet, PacketType},
+    packet::{Ack, Fragment, Packet, PacketType},
 };
 
 // use 'use' for easier naming
@@ -26,7 +26,6 @@ fn main() {
     //* just some testing */
     let ack = Ack {
         fragment_index: 0,
-        time_received: Instant::now(),
     };
 
     let packet = Packet {
@@ -42,4 +41,26 @@ fn main() {
     sleep(Duration::from_secs(4));
 
     // was simply testing
+
+    let msg = Fragment {
+        fragment_index: 0,
+        total_n_fragments: 1,
+        
+        length: 1,
+        data: [1;80]
+        
+    };
+
+    let packet = Packet {
+        pack_type: PacketType::MsgFragment(msg),
+        routing_header: SourceRoutingHeader {
+            hops: vec![0, 1, 2],
+            hop_index: 0,
+        },
+        session_id: 1,
+    };
+
+    let _ = network_initializer.get_send_channel(0).send(packet);
+    sleep(Duration::from_secs(4));
+
 }

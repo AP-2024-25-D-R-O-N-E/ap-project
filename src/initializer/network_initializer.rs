@@ -36,7 +36,7 @@ impl NetworkInitializer {
             //clones all the sender channels for the connected drones
             let mut sender_channels: HashMap<NodeId, Sender<Packet>> = HashMap::new();
 
-            for connected_drone in drone.connected_drone_ids.iter() {
+            for connected_drone in drone.connected_node_ids.iter() {
                 sender_channels.insert(
                     *connected_drone as u8,
                     self.packet_channels
