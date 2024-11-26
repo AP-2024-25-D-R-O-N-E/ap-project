@@ -16,5 +16,5 @@ pub struct EdgeNodeOptions {
 pub trait EdgeNode: Fragmenter {
     fn new(options: EdgeNodeOptions) -> Self;
 
-    fn run();
+    fn run(&self);
 }

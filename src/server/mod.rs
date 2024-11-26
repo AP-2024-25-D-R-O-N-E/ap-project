@@ -19,7 +19,7 @@ impl EdgeNode for Server {
         todo!()
     }
 
-    fn run() {
+    fn run(&self) {
         todo!()
     }
 }
