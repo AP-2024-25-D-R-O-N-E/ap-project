@@ -4,6 +4,7 @@ mod edge_node;
 mod fragmentation;
 mod initializer;
 mod server;
+mod simulation_controller;
 
 use std::{
     thread::sleep,
@@ -42,25 +43,25 @@ fn main() {
 
     // was simply testing
 
-    let msg = Fragment {
-        fragment_index: 0,
-        total_n_fragments: 1,
+    // let msg = Fragment {
+    //     fragment_index: 0,
+    //     total_n_fragments: 1,
         
-        length: 1,
-        data: [1;80]
+    //     length: 1,
+    //     data: [1;80]
         
-    };
+    // };
 
-    let packet = Packet {
-        pack_type: PacketType::MsgFragment(msg),
-        routing_header: SourceRoutingHeader {
-            hops: vec![0, 1, 2],
-            hop_index: 0,
-        },
-        session_id: 1,
-    };
+    // let packet = Packet {
+    //     pack_type: PacketType::MsgFragment(msg),
+    //     routing_header: SourceRoutingHeader {
+    //         hops: vec![0, 1, 2],
+    //         hop_index: 0,
+    //     },
+    //     session_id: 1,
+    // };
 
-    let _ = network_initializer.get_send_channel(0).send(packet);
-    sleep(Duration::from_secs(4));
+    // let _ = network_initializer.get_send_channel(0).send(packet);
+    // sleep(Duration::from_secs(4));
 
 }
