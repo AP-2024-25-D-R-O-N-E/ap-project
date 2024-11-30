@@ -83,7 +83,7 @@ checksum = "22ec99545bb0ed0ea7bb9b8e1e9122ea386ff8a48c0922e43f36d45ab09e0e80"
 [[package]]
 name = "d-r-o-n-e_drone"
 version = "0.1.0"
-source = "git+https://github.com/AP-2024-25-D-R-O-N-E/drone.git?branch=Nack-creation-and-adding-comments#839ab171e2b11da3337611996634d06f877f27cf"
+source = "git+https://github.com/AP-2024-25-D-R-O-N-E/drone.git#4f668dee3e72d5a3171759eda8ceeeb35b7e29e5"
 dependencies = [
  "crossbeam",
  "rand",

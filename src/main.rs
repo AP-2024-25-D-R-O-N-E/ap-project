@@ -1,6 +1,5 @@
 //import modules
 mod client;
-mod edge_node;
 mod fragmentation;
 mod initializer;
 mod server;
@@ -25,14 +24,12 @@ fn main() {
     network_initializer.init_network();
 
     //* just some testing */
-    let ack = Ack {
-        fragment_index: 0,
-    };
+    let ack = Ack { fragment_index: 0 };
 
     let packet = Packet {
         pack_type: PacketType::Ack(ack),
         routing_header: SourceRoutingHeader {
-            hops: vec![0, 1, 2],
+            hops: vec![0, 1, 3],
             hop_index: 0,
         },
         session_id: 0,
@@ -46,10 +43,10 @@ fn main() {
     // let msg = Fragment {
     //     fragment_index: 0,
     //     total_n_fragments: 1,
-        
+
     //     length: 1,
     //     data: [1;80]
-        
+
     // };
 
     // let packet = Packet {
@@ -63,5 +60,4 @@ fn main() {
 
     // let _ = network_initializer.get_send_channel(0).send(packet);
     // sleep(Duration::from_secs(4));
-
 }
