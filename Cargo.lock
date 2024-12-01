@@ -83,7 +83,7 @@ checksum = "22ec99545bb0ed0ea7bb9b8e1e9122ea386ff8a48c0922e43f36d45ab09e0e80"
 [[package]]
 name = "d-r-o-n-e_drone"
 version = "0.1.0"
-source = "git+file:///Users/mattia/Desktop/drone/drone/#aad8b85c6d15d1826720c7a8af6ccdb5a5c263cf"
+source = "git+file:///Users/mattia/Desktop/drone/drone/#f721803d8acf2ee50c52d8b09287b04a026c0bdb"
 dependencies = [
  "crossbeam",
  "rand",
