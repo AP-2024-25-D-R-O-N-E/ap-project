@@ -1,7 +1,7 @@
 use std::{collections::HashMap, thread};
 
 use crossbeam::channel::{unbounded, Receiver, Sender};
-use wg_2024::{controller::Command, drone::Drone, network::NodeId, packet::Packet};
+use wg_2024::{controller::DroneCommand, drone::Drone, network::NodeId, packet::Packet};
 
 use d_r_o_n_e_drone::MyDrone;
 
@@ -10,7 +10,7 @@ use super::config_parsing::{parse_config, InitConfig};
 pub struct NetworkInitializer {
     config: InitConfig,
     packet_channels: HashMap<NodeId, (Sender<Packet>, Receiver<Packet>)>,
-    sc_channels: HashMap<NodeId, (Sender<Command>, Receiver<Command>)>,
+    sc_channels: HashMap<NodeId, (Sender<DroneCommand>, Receiver<DroneCommand>)>,
 }
 
 impl NetworkInitializer {
@@ -29,7 +29,7 @@ impl NetworkInitializer {
             self.packet_channels
                 .insert(drone.id as u8, unbounded::<Packet>());
             self.sc_channels
-                .insert(drone.id as u8, unbounded::<Command>());
+                .insert(drone.id as u8, unbounded::<DroneCommand>());
         }
 
         for drone in self.config.drone.iter() {

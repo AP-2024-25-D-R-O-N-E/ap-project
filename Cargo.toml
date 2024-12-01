@@ -7,4 +7,4 @@ edition = "2021"
 wg_2024 = { git = "https://github.com/WGL-2024/WGL_repo_2024.git", features = ["serialize"] }
 toml = "0.8.19"
 crossbeam = "0.8.4"
-d-r-o-n-e_drone = { git = "https://github.com/AP-2024-25-D-R-O-N-E/drone.git" }
+d-r-o-n-e_drone = { git = "file:///Users/mattia/Desktop/drone/drone/" }
