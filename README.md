@@ -1,19 +1,21 @@
 General list of stuff needed for the project.
-- [ ] Config file from .toml
+- [x] Config file from .toml
 - [ ] Initializing network:
-    - [ ] initialize drones
+    - [x] initialize drones
     - [ ] initialize clients
     - [ ] initialize servers
 - [ ] Define a good way to structure the project in modules
 - [ ] assembler and disassembler algorithm (the implementation is for the individuals who'll code the client and the server)
 - [ ] Drone behaviour:
     - [ ] handling packets
-        - [ ] handling messages, with PDR. Send errors and dropped if needed
-        - [ ] handling NACKs and ACKs (basically just forwarding the packet)
+        - [x] handling messages, with PDR. Send errors and dropped if needed
+        - [x] handling NACKs and ACKs (basically just forwarding the packet)
         - [ ] handling Query for the flooding algorithm
         - [ ] handling QueryResult (just forwarding the packet)
     - [ ] handling simulation controller commands
-        - [ ] we're waiting for the WG to determine which commands drones need to listen to
+        - [ ] add new channel
+        - [ ] set PDR
+        - [ ] crash (to be defined)
 - [ ] Client/Server behaviour:
     - [ ] implementing the assembler
     - [ ] implementing the disassembler
