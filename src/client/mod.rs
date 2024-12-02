@@ -60,7 +60,6 @@ impl Client {
                 }
 
                 recv(self.pr) -> packet_res => {
-                    println!{"receiving something.."};
                     match packet_res {
                         //remember to remove the underscores when you actually start using the variable ig
                         Ok(packet) => { match &packet.pack_type {
