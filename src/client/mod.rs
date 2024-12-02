@@ -1,6 +1,22 @@
-use crate::{edge_node::EdgeNode, fragmentation::Fragmenter};
+use std::collections::HashMap;
+
+use crossbeam::channel::{Receiver, Sender};
+use wg_2024::{network::NodeId, packet::Packet};
+
+use crate::{
+    fragmentation::Fragmenter,
+    simulation_controller::structs::{ClientCommand, ClientEvent},
+};
 
 struct Client;
+
+struct ClientOptions {
+    pub id: NodeId,
+    pub sim_contr_send: Sender<ClientEvent>,
+    pub sim_contr_recv: Receiver<ClientCommand>,
+    pub packet_recv: Receiver<Packet>,
+    pub packet_send: HashMap<NodeId, Sender<Packet>>,
+}
 
 impl Fragmenter for Client {
     fn disassemble(
@@ -14,12 +30,12 @@ impl Fragmenter for Client {
     }
 }
 
-impl EdgeNode for Client {
-    fn new(options: crate::edge_node::EdgeNodeOptions) -> Self {
-        todo!()
+impl Client {
+    pub fn new(options: ClientOptions) -> Self {
+        todo!();
     }
 
-    fn run() {
-        todo!()
+    pub fn run() {
+        todo!();
     }
 }

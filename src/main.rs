@@ -1,10 +1,10 @@
 //import modules
 #[allow(unused, dead_code)]
 mod client;
-mod edge_node;
 mod fragmentation;
 mod initializer;
 mod server;
+mod simulation_controller;
 
 #[cfg(test)]
 mod tests;
