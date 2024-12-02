@@ -18,7 +18,7 @@ pub struct Client {
     pub ps: HashMap<NodeId, Sender<Packet>>
 }
 
-struct ClientOptions {
+pub struct ClientOptions {
     pub id: NodeId,
     pub sim_contr_send: Sender<ClientEvent>,
     pub sim_contr_recv: Receiver<ClientCommand>,
@@ -39,7 +39,7 @@ impl Fragmenter for Client {
 }
 
 impl Client {
-    fn new(options: ClientOptions) -> Self {
+    pub fn new(options: ClientOptions) -> Self {
         Client { 
             id: options.id,
             scs: options.sim_contr_send,
@@ -50,7 +50,7 @@ impl Client {
     }
 
     
-    fn run(&self) {
+    pub fn run(&self) {
         loop {
             select_biased! {
                 recv(self.scr) -> command_res => {
@@ -60,10 +60,10 @@ impl Client {
                 }
 
                 recv(self.pr) -> packet_res => {
-                    if let Ok(packet) = packet_res {
-
+                    println!{"receiving something.."};
+                    match packet_res {
                         //remember to remove the underscores when you actually start using the variable ig
-                        match &packet.pack_type {
+                        Ok(packet) => { match &packet.pack_type {
                             PacketType::Nack(nack)=>self.manage_nack(nack),
                             PacketType::Ack(ack)=>self.manage_ack(ack),
                             PacketType::MsgFragment(fragment)=>self.manage_msg_fragment(fragment),
@@ -71,9 +71,10 @@ impl Client {
                             PacketType::FloodRequest(flood_request) => self.manage_flood_request(flood_request), 
                             PacketType::FloodResponse(flood_response) => self.manage_flood_response(flood_response),
                         }
-
-                        
+                        },
+                        Err(error) => println!("{}", error),
                     }
+                
                 },
                 
             }

@@ -57,11 +57,6 @@ impl NetworkInitializer {
         for client in self.config.client.iter() {
             self.packet_channels
                 .insert(client.id, unbounded::<Packet>());
-            //change this is a similar way to drones
-            self.client_event_channels
-                .insert(client.id, unbounded::<ClientEvent>());
-            self.client_command_channels
-                .insert(client.id, unbounded::<ClientCommand>());
         }
 
         for server in self.config.server.iter() {
@@ -127,7 +122,54 @@ impl NetworkInitializer {
 
         // TODO create client threads
 
-        for client in self.config.client.iter() {}
+        for client in self.config.client.iter() {
+            //create the channels used for simulation controller communication
+            let client_event_send = unbounded::<ClientEvent>();
+            let client_command_rec = unbounded::<ClientCommand>();
+
+            // clone them to give them to the drone
+            let command_receiver = client_command_rec.1.clone();
+            let command_send = client_event_send.0.clone();
+            
+            // insert them inside the network initializer variable to later give them to the simulation controller
+            self.client_event_channels.insert(client.id, client_event_send);
+            self.client_command_channels
+                .insert(client.id, client_command_rec);
+
+            // create a hashmap of all the needed packet channels
+            let packet_send = client
+                .connected_drone_ids
+                .iter()
+                .map(|id| (*id, self.packet_channels[&id].0.clone()))
+                .collect();
+
+            // clone the packet receiver channel
+            let packet_recv = self.packet_channels[&client.id].1.clone();
+
+            // since the thread::spawn function will take ownership of the values, we need to copy or clone them to not have problems with the Vec
+            let client_id: NodeId = client.id.try_into().unwrap();
+
+
+            self.handles.insert(
+                client_id,
+                thread::spawn(move || {
+                    let options = client::ClientOptions {
+                        id: client_id,
+                        sim_contr_send: command_send,
+                        sim_contr_recv: command_receiver,
+                        packet_recv,
+                        packet_send
+                    };
+                    let client = client::Client::new(options);
+
+                    println!("my thread's client: {:?}", client);
+                    println!("{:?}", client.pr);
+                    // run function is where the logic of the drone runs.
+                    client.run();
+                }),
+            );
+
+        }
 
         // TODO create server threads
         for server in self.config.server.iter() {}
