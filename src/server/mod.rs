@@ -35,7 +35,7 @@ impl Server {
         todo!();
     }
 
-    pub fn run() {
-        todo!();
+    fn run(&self) {
+        todo!()
     }
 }
