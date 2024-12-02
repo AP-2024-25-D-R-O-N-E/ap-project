@@ -15,8 +15,7 @@ use wg_2024::{
 use d_r_o_n_e_drone::MyDrone;
 
 use crate::{
-    client,
-    server,
+    client, server,
     simulation_controller::structs::{ClientCommand, ClientEvent, ServerCommand, ServerEvent},
 };
 
@@ -133,8 +132,9 @@ impl NetworkInitializer {
 
             let command_receiver = client_command_rec.1.clone();
             let command_send = client_event_send.0.clone();
-            
-            self.client_event_channels.insert(client.id, client_event_send);
+
+            self.client_event_channels
+                .insert(client.id, client_event_send);
             self.client_command_channels
                 .insert(client.id, client_command_rec);
 
@@ -148,33 +148,39 @@ impl NetworkInitializer {
 
             let client_id: NodeId = client.id.try_into().unwrap();
 
-
             self.handles.insert(
                 client_id,
                 thread::spawn(move || {
-                    let client = client::Client::new(client_id, command_send, command_receiver, packet_recv, packet_send);
+                    let client = client::Client::new(
+                        client_id,
+                        command_send,
+                        command_receiver,
+                        packet_recv,
+                        packet_send,
+                    );
 
-                    println!("my thread's client: {:?}", client);
+                    log::info!(
+                        "{}, {:?}",
+                        format!("Initialized client {}", client.id).bold().purple(),
+                        client,
+                    );
                     client.run();
                 }),
             );
-
         }
 
         for server in self.config.server.iter() {
-            
             let server_event_send = unbounded::<ServerEvent>();
             let server_command_rec = unbounded::<ServerCommand>();
 
-            
             let command_receiver = server_command_rec.1.clone();
             let command_send = server_event_send.0.clone();
-            
-            self.server_event_channels.insert(server.id, server_event_send);
+
+            self.server_event_channels
+                .insert(server.id, server_event_send);
             self.server_command_channels
                 .insert(server.id, server_command_rec);
 
-            
             let packet_send = server
                 .connected_drone_ids
                 .iter()
@@ -188,9 +194,19 @@ impl NetworkInitializer {
             self.handles.insert(
                 server_id,
                 thread::spawn(move || {
-                    let server = server::Server::new(server_id, command_send, command_receiver, packet_recv, packet_send);
+                    let server = server::Server::new(
+                        server_id,
+                        command_send,
+                        command_receiver,
+                        packet_recv,
+                        packet_send,
+                    );
 
-                    println!("my thread's server: {:?}", server);
+                    log::info!(
+                        "{}, {:?}",
+                        format!("Initialized server {}", server.id).bold().purple(),
+                        server,
+                    );
                     server.run();
                 }),
             );
