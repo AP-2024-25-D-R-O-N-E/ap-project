@@ -1,7 +1,6 @@
 use colored::Colorize;
 use std::{
-    collections::HashMap,
-    thread::{self, JoinHandle},
+    collections::HashMap, sync::{Arc, Barrier}, thread::{self, sleep, JoinHandle}, time::Duration
 };
 
 use crossbeam::channel::{unbounded, Receiver, Sender};
@@ -15,8 +14,7 @@ use wg_2024::{
 use d_r_o_n_e_drone::MyDrone;
 
 use crate::{
-    client,
-    server,
+    client, server,
     simulation_controller::structs::{ClientCommand, ClientEvent, ServerCommand, ServerEvent},
 };
 
@@ -65,14 +63,13 @@ impl NetworkInitializer {
         for server in self.config.server.iter() {
             self.packet_channels
                 .insert(server.id, unbounded::<Packet>());
-            //change this is a similar way to drones
-            self.server_event_channels
-                .insert(server.id, unbounded::<ServerEvent>());
-            self.server_command_channels
-                .insert(server.id, unbounded::<ServerCommand>());
         }
 
+        sleep(Duration::from_secs(1));
+
         // thread creations
+        
+        let drone_barrier = Arc::new(Barrier::new(self.config.drone.len() + 1));
 
         for drone in self.config.drone.iter() {
             //create the channels used for simulation controller communication
@@ -99,9 +96,11 @@ impl NetworkInitializer {
             let packet_recv = self.packet_channels[&drone.id].1.clone();
 
             // since the thread::spawn function will take ownership of the values, we need to copy or clone them to not have problems with the Vec
-            let drone_id: NodeId = drone.id.try_into().unwrap();
+            let drone_id: NodeId = drone.id;
 
             let pdr = drone.pdr as f32;
+            
+            let barrier_clone = Arc::clone(&drone_barrier);
 
             self.handles.insert(
                 drone_id,
@@ -121,11 +120,19 @@ impl NetworkInitializer {
                         format!("Initialized drone {}", drone_id).bold().purple(),
                         drone,
                     );
+
+                    barrier_clone.wait();
                     // run function is where the logic of the drone runs.
                     drone.run();
                 }),
             );
         }
+        
+        drone_barrier.wait();
+        log::info!("{}", "Drones initialized successfully!".bold().green());
+
+        // client initialization
+        let client_barrier = Arc::new(Barrier::new(self.config.client.len() + 1));
 
         for client in self.config.client.iter() {
             let client_event_send = unbounded::<ClientEvent>();
@@ -133,8 +140,9 @@ impl NetworkInitializer {
 
             let command_receiver = client_command_rec.1.clone();
             let command_send = client_event_send.0.clone();
-            
-            self.client_event_channels.insert(client.id, client_event_send);
+
+            self.client_event_channels
+                .insert(client.id, client_event_send);
             self.client_command_channels
                 .insert(client.id, client_command_rec);
 
@@ -146,35 +154,52 @@ impl NetworkInitializer {
 
             let packet_recv = self.packet_channels[&client.id].1.clone();
 
-            let client_id: NodeId = client.id.try_into().unwrap();
+            let client_id: NodeId = client.id;
 
+            let barrier_clone = Arc::clone(&client_barrier);
 
             self.handles.insert(
                 client_id,
                 thread::spawn(move || {
-                    let client = client::Client::new(client_id, command_send, command_receiver, packet_recv, packet_send);
+                    let mut client = client::Client::new(
+                        client_id,
+                        command_send,
+                        command_receiver,
+                        packet_recv,
+                        packet_send,
+                    );
+                    log::info!(
+                        "{}, {:?}",
+                        format!("Initialized client {}", client_id).bold().purple(),
+                        client,
+                    );
 
-                    println!("my thread's client: {:?}", client);
+                    barrier_clone.wait();
+
                     client.run();
                 }),
             );
-
         }
 
+        client_barrier.wait();
+        log::info!("{}", "Clients initialized successfully!".bold().green());
+
+        //server initialization
+
+        let server_barrier = Arc::new(Barrier::new(self.config.server.len() + 1));
+
         for server in self.config.server.iter() {
-            
             let server_event_send = unbounded::<ServerEvent>();
             let server_command_rec = unbounded::<ServerCommand>();
 
-            
             let command_receiver = server_command_rec.1.clone();
             let command_send = server_event_send.0.clone();
-            
-            self.server_event_channels.insert(server.id, server_event_send);
+
+            self.server_event_channels
+                .insert(server.id, server_event_send);
             self.server_command_channels
                 .insert(server.id, server_command_rec);
 
-            
             let packet_send = server
                 .connected_drone_ids
                 .iter()
@@ -183,18 +208,34 @@ impl NetworkInitializer {
 
             let packet_recv = self.packet_channels[&server.id].1.clone();
 
-            let server_id: NodeId = server.id.try_into().unwrap();
+            let server_id: NodeId = server.id;
+
+            let barrier_clone = Arc::clone(&server_barrier);
 
             self.handles.insert(
                 server_id,
                 thread::spawn(move || {
-                    let server = server::Server::new(server_id, command_send, command_receiver, packet_recv, packet_send);
+                    let mut server = server::Server::new(
+                        server_id,
+                        command_send,
+                        command_receiver,
+                        packet_recv,
+                        packet_send,
+                    );
+                    log::info!(
+                        "{}, {:?}",
+                        format!("Initialized server {}", server_id).bold().purple(),
+                        server,
+                    );
 
-                    println!("my thread's server: {:?}", server);
+                    barrier_clone.wait();
+
                     server.run();
                 }),
             );
         }
+        server_barrier.wait();
+        log::info!("{}", "Servers initialized successfully!".bold().green());
 
         // create simulation controller and give all the join handles to it + the channels
     }

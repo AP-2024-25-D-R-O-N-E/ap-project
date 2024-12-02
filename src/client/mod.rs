@@ -1,13 +1,16 @@
 use std::collections::HashMap;
 
+use colored::Colorize;
 use crossbeam::channel::{select_biased, Receiver, Sender};
-use wg_2024::{ network::NodeId, packet::{Ack, FloodRequest, FloodResponse, Fragment, Nack, Packet, PacketType}};
+use wg_2024::{
+    network::NodeId,
+    packet::{Ack, FloodRequest, FloodResponse, Fragment, Nack, Packet, PacketType},
+};
 
 use crate::{
     fragmentation::Fragmenter,
-    simulation_controller::structs::{ClientCommand, ClientEvent}
+    simulation_controller::structs::{ClientCommand, ClientEvent},
 };
-
 
 #[derive(Debug)]
 pub struct Client {
@@ -15,7 +18,7 @@ pub struct Client {
     pub scs: Sender<ClientEvent>,
     pub scr: Receiver<ClientCommand>,
     pub pr: Receiver<Packet>,
-    pub ps: HashMap<NodeId, Sender<Packet>>
+    pub ps: HashMap<NodeId, Sender<Packet>>,
 }
 
 impl Fragmenter for Client {
@@ -32,22 +35,21 @@ impl Fragmenter for Client {
 
 impl Client {
     pub fn new(
-            id: NodeId,
-            sim_contr_send: Sender<ClientEvent>,
-            sim_contr_recv: Receiver<ClientCommand>,
-            packet_recv: Receiver<Packet>,
-            packet_send: HashMap<NodeId, Sender<Packet>>
-        ) -> Self {
-        Client { 
+        id: NodeId,
+        sim_contr_send: Sender<ClientEvent>,
+        sim_contr_recv: Receiver<ClientCommand>,
+        packet_recv: Receiver<Packet>,
+        packet_send: HashMap<NodeId, Sender<Packet>>,
+    ) -> Self {
+        Client {
             id: id,
             scs: sim_contr_send,
             scr: sim_contr_recv,
             pr: packet_recv,
-            ps: packet_send 
+            ps: packet_send,
         }
     }
 
-    
     pub fn run(&self) {
         loop {
             select_biased! {
@@ -55,55 +57,59 @@ impl Client {
                     if let Ok(command) = command_res {
                         //here goes the handling fo the sim controller
                     }
-                }
-
+                },
                 recv(self.pr) -> packet_res => {
+
                     match packet_res {
                         //remember to remove the underscores when you actually start using the variable ig
-                        Ok(packet) => { match &packet.pack_type {
-                            PacketType::Nack(nack)=>self.manage_nack(nack),
-                            PacketType::Ack(ack)=>self.manage_ack(ack),
-                            PacketType::MsgFragment(fragment)=>self.manage_msg_fragment(fragment),
-                            //  ...these two are jet to be defined...
-                            PacketType::FloodRequest(flood_request) => self.manage_flood_request(flood_request), 
-                            PacketType::FloodResponse(flood_response) => self.manage_flood_response(flood_response),
-                        }
+                        Ok(packet) => {
+                            log::debug!("{} at {} - packet: {:?}, {:?}", " <- packet received".green(), self.id, packet.session_id, packet.routing_header);
+                            
+                            match &packet.pack_type {
+                                PacketType::Nack(nack)=>self.manage_nack(nack),
+                                PacketType::Ack(ack)=>self.manage_ack(ack),
+                                PacketType::MsgFragment(fragment)=>self.manage_msg_fragment(fragment),
+                                //  ...these two are jet to be defined...
+                                PacketType::FloodRequest(flood_request) => self.manage_flood_request(flood_request),
+                                PacketType::FloodResponse(flood_response) => self.manage_flood_response(flood_response),
+                            }
                         },
-                        Err(error) => println!("{}", error),
+                        Err(error) => {
+                            log::info!("Necessary error at program end: {}", error);
+                            return;
+                        },
                     }
-                
+
                 },
-                
+
             }
         }
     }
 
     // these are all sample function to handle messages
 
-    fn manage_nack(&self, nack: &Nack){
+    fn manage_nack(&self, nack: &Nack) {
         //resend the packet
-        println!("client {} received a nack: {:?}", self.id, nack);
+        log::debug!("client {} received a nack: {:?}", self.id, nack);
     }
 
-    fn manage_ack(&self, ack: &Ack){
+    fn manage_ack(&self, ack: &Ack) {
         //free memory of message vector
-        println!("client {} received an ack: {:?}", self.id, ack);
+        log::debug!("client {} received an ack: {:?}", self.id, ack);
     }
 
-    fn manage_msg_fragment(&self, msg: &Fragment){
+    fn manage_msg_fragment(&self, msg: &Fragment) {
         //call to the assembler
-        println!("client {} received an fragment: {:?}", self.id, msg);
+        log::debug!("client {} received a fragment: {:?}", self.id, msg);
     }
 
-    fn manage_flood_request(&self, fr: &FloodRequest){
+    fn manage_flood_request(&self, fr: &FloodRequest) {
         //call to the assembler
-        println!("client {} received a flood request: {:?}", self.id, fr);
+        log::debug!("client {} received a flood request: {:?}", self.id, fr);
     }
 
-    fn manage_flood_response(&self, fr: &FloodResponse){
+    fn manage_flood_response(&self, fr: &FloodResponse) {
         //call to the assembler
-        println!("client {} received a flood response: {:?}", self.id, fr);
+        log::debug!("client {} received a flood response: {:?}", self.id, fr);
     }
-
-
 }

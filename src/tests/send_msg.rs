@@ -9,26 +9,10 @@ use wg_2024::{
 #[test]
 pub fn send_msg() {
     super::initialize();
-    let mut network_initializer = NetworkInitializer::new("src/config.toml".to_string());
+    let mut network_initializer =
+        NetworkInitializer::new("src/topology_configs/config.toml".to_string());
 
     network_initializer.init_network();
-
-    //* just some testing */
-    let ack = Ack { fragment_index: 0 };
-
-    let packet = Packet {
-        pack_type: PacketType::Ack(ack),
-        routing_header: SourceRoutingHeader {
-            hops: vec![0, 1, 2],
-            hop_index: 0,
-        },
-        session_id: 0,
-    };
-
-    let _ = network_initializer.get_send_channel(0).send(packet);
-    sleep(Duration::from_secs(4));
-
-    // was simply testing
 
     let msg = Fragment {
         fragment_index: 0,
@@ -41,8 +25,8 @@ pub fn send_msg() {
     let packet = Packet {
         pack_type: PacketType::MsgFragment(msg),
         routing_header: SourceRoutingHeader {
-            hops: vec![0, 1, 2],
-            hop_index: 0,
+            hops: vec![6, 0, 2, 4, 5, 7],
+            hop_index: 1,
         },
         session_id: 1,
     };
