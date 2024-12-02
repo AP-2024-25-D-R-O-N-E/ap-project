@@ -1,0 +1,5 @@
+[alias]
+testout = "test -- --nocapture"
+
+[env]
+RUST_LOG = "Trace"
