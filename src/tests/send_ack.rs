@@ -23,12 +23,12 @@ fn main() {
     let packet = Packet {
         pack_type: PacketType::Ack(ack),
         routing_header: SourceRoutingHeader {
-            hops: vec![6, 0, 2, 4, 5, 7],
+            hops: vec![0, 1, 2, 3],
             hop_index: 1,
         },
         session_id: 0,
     };
 
-    let _ = network_initializer.get_send_channel(0).send(packet);
+    let _ = network_initializer.get_send_channel(1).send(packet);
     sleep(Duration::from_secs(4));
 }

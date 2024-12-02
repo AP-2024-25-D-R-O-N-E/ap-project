@@ -25,12 +25,12 @@ pub fn send_msg() {
     let packet = Packet {
         pack_type: PacketType::MsgFragment(msg),
         routing_header: SourceRoutingHeader {
-            hops: vec![6, 0, 2, 4, 5, 7],
+            hops: vec![7, 6, 4, 2, 1, 0],
             hop_index: 1,
         },
         session_id: 1,
     };
 
-    let _ = network_initializer.get_send_channel(0).send(packet);
+    let _ = network_initializer.get_send_channel(6).send(packet);
     sleep(Duration::from_secs(4));
 }
