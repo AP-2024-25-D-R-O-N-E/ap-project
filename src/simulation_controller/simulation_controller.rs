@@ -1,5 +1,5 @@
 use colored::Colorize;
-use std::io;
+use std::{io, thread::sleep, time::Duration};
 use wg_2024::{
     network::SourceRoutingHeader,
     packet::{NackType, PacketType},
@@ -139,17 +139,47 @@ impl SimulationController {
 
     // launches a text user interface to launch functions in real time
     pub fn run_tui(&self) {
-        println!("{}", "Please enter a number: ".italic());
+        let send_default_msg_fragment = || {
+            println!("{}", "Please enter a node id: ".italic());
+            loop {
+                let mut buffer = String::new();
+                let input = io::stdin().read_line(&mut buffer);
+                match (input, buffer.trim().parse::<NodeId>()) {
+                    (Ok(_), Ok(node_id)) => {
+                        println!("");
+                        self.send_default_msg_fragment(node_id);
+                        sleep(Duration::from_millis(100));
+                        println!("");
+                        break;
+                    }
+                    _ => println!("{}", "Insert a valid number".italic().yellow()),
+                }
+            }
+        };
+
+
+
         loop {
+            println!(" {}) {}", "1".italic(), "Send fragment".blue());
+            println!(" {}) {}", "2".italic(), "Send ack".blue());
+            println!(" {}) {}", "3".italic(), "Send nack".blue());
+            println!(" {}) {}", "4".italic(), "Send flood request".blue());
+
+            println!("{}) {}", "-1".italic(), "Quit".blue());
+            println!("{}", "Please enter a number: ".italic());
+
             let mut buffer = String::new();
             let input = io::stdin().read_line(&mut buffer);
             match &input {
                 Ok(input) => {
                     match buffer.trim().parse::<i32>() {
                         Ok(action_number) => match action_number {
-                            1 => println!("prova"),
+                            1 => send_default_msg_fragment(),
+                            2 => (),
+                            3 => (),
+                            4 => (),
                             -1 => break,
-                            _ => (),
+                            _ => println!("{}", "Insert a valid number".italic().yellow()),
                         },
                         Err(err) => log::error!("Please insert a valid number"),
                     };
