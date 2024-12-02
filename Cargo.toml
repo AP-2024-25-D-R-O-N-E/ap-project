@@ -4,10 +4,10 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-wg_2024 = { git = "https://github.com/WGL-2024/WGL_repo_2024.git", features = ["serialize"] }
+wg_2024 = { git = "https://github.com/WGL-2024/WGL_repo_2024.git", features = ["serialize"], rev="89d4c9dfebb05be246459b03d81b61064d0a15b2" }
 toml = "0.8.19"
 crossbeam = "0.8.4"
-d-r-o-n-e_drone = { git = "file:///Users/mattia/Desktop/drone/drone/", branch = "logging-system" }
+d-r-o-n-e_drone = { git = "file:///Users/mattia/Desktop/drone/drone/", branch = "query-flooding" }
 simple_logger = "5.0.0"
 log = "0.4.22"
 colored = "2.1.0"
