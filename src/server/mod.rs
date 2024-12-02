@@ -18,14 +18,6 @@ pub struct Server{
     pub ps: HashMap<NodeId, Sender<Packet>>,
 }
 
-pub struct ServerOptions {
-    pub id: NodeId,
-    pub sim_contr_send: Sender<ServerEvent>,
-    pub sim_contr_recv: Receiver<ServerCommand>,
-    pub packet_recv: Receiver<Packet>,
-    pub packet_send: HashMap<NodeId, Sender<Packet>>,
-}
-
 impl Fragmenter for Server {
     fn disassemble(
         msg: wg_2024::packet::Message,
@@ -39,15 +31,21 @@ impl Fragmenter for Server {
 }
 
 impl Server {
-    pub fn new(options: ServerOptions) -> Self {
-        Server { 
-            id: options.id,
-            scs: options.sim_contr_send,
-            scr: options.sim_contr_recv,
-            pr: options.packet_recv,
-            ps: options.packet_send 
-        }
+    pub fn new(
+        id: NodeId,
+        sim_contr_send: Sender<ServerEvent>,
+        sim_contr_recv: Receiver<ServerCommand>,
+        packet_recv: Receiver<Packet>,
+        packet_send: HashMap<NodeId, Sender<Packet>>
+    ) -> Self {
+    Server { 
+        id: id,
+        scs: sim_contr_send,
+        scr: sim_contr_recv,
+        pr: packet_recv,
+        ps: packet_send 
     }
+}
 
     pub fn run(&self) {
         loop {

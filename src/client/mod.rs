@@ -18,14 +18,6 @@ pub struct Client {
     pub ps: HashMap<NodeId, Sender<Packet>>
 }
 
-pub struct ClientOptions {
-    pub id: NodeId,
-    pub sim_contr_send: Sender<ClientEvent>,
-    pub sim_contr_recv: Receiver<ClientCommand>,
-    pub packet_recv: Receiver<Packet>,
-    pub packet_send: HashMap<NodeId, Sender<Packet>>,
-}
-
 impl Fragmenter for Client {
     fn disassemble(
         msg: wg_2024::packet::Message,
@@ -39,13 +31,19 @@ impl Fragmenter for Client {
 }
 
 impl Client {
-    pub fn new(options: ClientOptions) -> Self {
+    pub fn new(
+            id: NodeId,
+            sim_contr_send: Sender<ClientEvent>,
+            sim_contr_recv: Receiver<ClientCommand>,
+            packet_recv: Receiver<Packet>,
+            packet_send: HashMap<NodeId, Sender<Packet>>
+        ) -> Self {
         Client { 
-            id: options.id,
-            scs: options.sim_contr_send,
-            scr: options.sim_contr_recv,
-            pr: options.packet_recv,
-            ps: options.packet_send 
+            id: id,
+            scs: sim_contr_send,
+            scr: sim_contr_recv,
+            pr: packet_recv,
+            ps: packet_send 
         }
     }
 
