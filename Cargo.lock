@@ -96,9 +96,11 @@ checksum = "22ec99545bb0ed0ea7bb9b8e1e9122ea386ff8a48c0922e43f36d45ab09e0e80"
 [[package]]
 name = "d-r-o-n-e_drone"
 version = "0.1.0"
-source = "git+file:///Users/mattia/Desktop/drone/drone/?branch=query-flooding#751ce5856739e392317c47f194feac24c693b101"
+source = "git+https://github.com/AP-2024-25-D-R-O-N-E/drone.git#7219d0fa8a366b294c71dc18296af266bfe3b01b"
 dependencies = [
+ "colored",
  "crossbeam",
+ "log",
  "rand",
  "wg_2024",
 ]
