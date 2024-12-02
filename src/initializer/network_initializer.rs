@@ -1,3 +1,4 @@
+use colored::Colorize;
 use std::{
     collections::HashMap,
     thread::{self, JoinHandle},
@@ -52,7 +53,8 @@ impl NetworkInitializer {
         //create 3 different version since we might want the simulation controller channels to depend on node type
         for drone in self.config.drone.iter() {
             //create unbounded channel for drones
-            self.packet_channels.insert(drone.id, unbounded::<Packet>());
+            self.packet_channels
+                .insert(drone.id as u8, unbounded::<Packet>());
         }
 
         for client in self.config.client.iter() {
@@ -114,7 +116,11 @@ impl NetworkInitializer {
                     };
                     let mut drone = MyDrone::new(options);
 
-                    println!("my thread's drone: {:?}", drone);
+                    log::info!(
+                        "{}, {:?}",
+                        format!("Initialized drone {}", drone_id).bold().purple(),
+                        drone,
+                    );
                     // run function is where the logic of the drone runs.
                     drone.run();
                 }),
