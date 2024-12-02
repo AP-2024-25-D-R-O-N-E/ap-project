@@ -1,5 +1,6 @@
-//import modules
-#[allow(unused, dead_code)]
+#![allow(unused, dead_code)]
+// use 'use' for easier naming
+
 mod client;
 mod fragmentation;
 mod initializer;
@@ -8,7 +9,5 @@ mod simulation_controller;
 
 #[cfg(test)]
 mod tests;
-
-// use 'use' for easier naming
 
 fn main() {}

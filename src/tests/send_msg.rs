@@ -7,7 +7,7 @@ use wg_2024::{
 };
 
 #[test]
-fn send_msg() {
+pub fn send_msg() {
     let mut network_initializer = NetworkInitializer::new("src/config.toml".to_string());
 
     network_initializer.init_network();
