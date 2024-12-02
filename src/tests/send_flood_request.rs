@@ -5,6 +5,7 @@ use wg_2024::{network::SourceRoutingHeader, packet::*};
 
 #[test]
 fn send_flood_request() {
+    super::initialize();
     let mut network_initializer = NetworkInitializer::new("src/config.toml".to_string());
 
     network_initializer.init_network();

@@ -1,3 +1,4 @@
+use colored::Colorize;
 use std::{
     collections::HashMap,
     thread::{self, JoinHandle},
@@ -119,7 +120,11 @@ impl NetworkInitializer {
                     };
                     let mut drone = MyDrone::new(options);
 
-                    println!("my thread's drone: {:?}", drone);
+                    log::info!(
+                        "{}, {:?}",
+                        format!("Initialized drone {}", drone_id).bold().purple(),
+                        drone,
+                    );
                     // run function is where the logic of the drone runs.
                     drone.run();
                 }),
