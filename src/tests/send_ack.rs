@@ -1,3 +1,14 @@
+use std::{
+    thread::sleep,
+    time::{Duration, Instant},
+};
+
+use crate::initializer::network_initializer::NetworkInitializer;
+use wg_2024::{
+    network::SourceRoutingHeader,
+    packet::{Ack, Fragment, Packet, PacketType},
+};
+
 #[test]
 fn main() {
     let mut network_initializer = NetworkInitializer::new("src/config.toml".to_string());
