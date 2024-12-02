@@ -6,5 +6,5 @@ fn simulation() {
     let mut network_initializer = NetworkInitializer::new("src/config.toml".to_string());
 
     let simulation_controller = network_initializer.init_network().unwrap();
-
+    simulation_controller.run_tui()
 }

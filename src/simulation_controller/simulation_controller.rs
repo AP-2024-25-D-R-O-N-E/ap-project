@@ -1,5 +1,9 @@
 use colored::Colorize;
 use std::io;
+use wg_2024::{
+    network::SourceRoutingHeader,
+    packet::{NackType, PacketType},
+};
 
 use std::{collections::HashMap, thread::JoinHandle};
 
@@ -70,10 +74,50 @@ impl SimulationController {
                 .iter()
                 .map(|(node_id, channel)| (*node_id, channel.0.clone()))
                 .collect(),
-            default_msg_fragment: todo!(),
-            default_ack: todo!(),
-            default_nack: todo!(),
-            default_flood: todo!(),
+            default_msg_fragment: Packet {
+                pack_type: PacketType::MsgFragment(Fragment {
+                    fragment_index: 0,
+                    total_n_fragments: 1,
+                    length: 1,
+                    data: [1; 80],
+                }),
+                routing_header: SourceRoutingHeader {
+                    hop_index: 1,
+                    hops: vec![0, 1],
+                },
+                session_id: 0,
+            },
+            default_ack: Packet {
+                pack_type: PacketType::Ack(Ack { fragment_index: 0 }),
+                routing_header: SourceRoutingHeader {
+                    hop_index: 1,
+                    hops: vec![0, 1],
+                },
+                session_id: 0,
+            },
+            default_nack: Packet {
+                pack_type: PacketType::Nack(Nack {
+                    fragment_index: 0,
+                    nack_type: NackType::Dropped,
+                }),
+                routing_header: SourceRoutingHeader {
+                    hop_index: 1,
+                    hops: vec![0, 1],
+                },
+                session_id: 0,
+            },
+            default_flood: Packet {
+                pack_type: PacketType::FloodRequest(FloodRequest {
+                    flood_id: 0,
+                    initiator_id: 0,
+                    path_trace: vec![],
+                }),
+                routing_header: SourceRoutingHeader {
+                    hop_index: 1,
+                    hops: vec![0, 1],
+                },
+                session_id: 0,
+            },
         }
     }
 
@@ -94,15 +138,14 @@ impl SimulationController {
     }
 
     // launches a text user interface to launch functions in real time
-    pub fn run_tui() {
-        let mut buffer = String::new();
-        let input = io::stdin().read_line(&mut buffer);
-
+    pub fn run_tui(&self) {
         println!("{}", "Please enter a number: ".italic());
         loop {
+            let mut buffer = String::new();
+            let input = io::stdin().read_line(&mut buffer);
             match &input {
                 Ok(input) => {
-                    match buffer.parse::<i32>() {
+                    match buffer.trim().parse::<i32>() {
                         Ok(action_number) => match action_number {
                             1 => println!("prova"),
                             -1 => break,
