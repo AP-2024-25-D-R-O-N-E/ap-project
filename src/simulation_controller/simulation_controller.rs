@@ -127,10 +127,36 @@ impl SimulationController {
 
     pub fn send_msg_fragment(&self, packet: Packet, node_id: NodeId) {
         match &self.packet_channels.get(&node_id) {
-            Some(channel) => {
-                channel.0.send(packet);
-                log::info!("Sending to node {}", node_id)
+            Some(channel) => match &packet.pack_type {
+                PacketType::MsgFragment(flood_request) => {
+                    channel.0.send(packet);
+                    log::info!("Sending to node {}", node_id)
+                }
+                _ => {
+                    log::error!("Provided package is not a msg fragment")
+                }
+            },
+            None => {
+                log::error!("Specified node does not exist")
             }
+        }
+    }
+
+    pub fn send_default_flood_request(&self, node_id: NodeId) {
+        self.send_flood_request(self.default_flood.clone(), node_id);
+    }
+
+    pub fn send_flood_request(&self, packet: Packet, node_id: NodeId) {
+        match &self.packet_channels.get(&node_id) {
+            Some(channel) => match &packet.pack_type {
+                PacketType::FloodRequest(flood_request) => {
+                    channel.0.send(packet);
+                    log::info!("Sending to node {}", node_id)
+                }
+                _ => {
+                    log::error!("Provided package is not a flood request")
+                }
+            },
             None => {
                 log::error!("Specified node does not exist")
             }
@@ -157,7 +183,23 @@ impl SimulationController {
             }
         };
 
-
+        let send_default_flood_request = || {
+            println!("{}", "Please enter a node id: ".italic());
+            loop {
+                let mut buffer = String::new();
+                let input = io::stdin().read_line(&mut buffer);
+                match (input, buffer.trim().parse::<NodeId>()) {
+                    (Ok(_), Ok(node_id)) => {
+                        println!("");
+                        self.send_default_flood_request(node_id);
+                        sleep(Duration::from_millis(100));
+                        println!("");
+                        break;
+                    }
+                    _ => println!("{}", "Insert a valid number".italic().yellow()),
+                }
+            }
+        };
 
         loop {
             println!(" {}) {}", "1".italic(), "Send fragment".blue());
@@ -177,7 +219,7 @@ impl SimulationController {
                             1 => send_default_msg_fragment(),
                             2 => (),
                             3 => (),
-                            4 => (),
+                            4 => send_default_flood_request(),
                             -1 => break,
                             _ => println!("{}", "Insert a valid number".italic().yellow()),
                         },
