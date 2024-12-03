@@ -112,13 +112,13 @@ impl SCGui {
         g
     }
 
-    fn update_simulation(&mut self) {
-        if self.simulation_stopped {
-            return;
-        }
-
-        // self.force.apply(&mut self.sim);
-    }
+    // fn update_simulation(&mut self) {
+    //     if self.simulation_stopped {
+    //         return;
+    //     }
+    //
+    //     // self.force.apply(&mut self.sim);
+    // }
 
     //sync locations computed by the simulation with egui_graphs::Graph nodes.
     // fn sync(&mut self) {
@@ -164,166 +164,166 @@ impl SCGui {
         });
     }
 
-    fn random_node_idx(&self) -> Option<NodeIndex> {
-        let nodes_cnt = self.g.node_count();
-        if nodes_cnt == 0 {
-            return None;
-        }
-
-        let random_n_idx = rand::thread_rng().gen_range(0..nodes_cnt);
-        self.g.g.node_indices().nth(random_n_idx)
-    }
-
-    fn random_edge_idx(&self) -> Option<EdgeIndex> {
-        let edges_cnt = self.g.edge_count();
-        if edges_cnt == 0 {
-            return None;
-        }
-
-        let random_e_idx = rand::thread_rng().gen_range(0..edges_cnt);
-        self.g.g.edge_indices().nth(random_e_idx)
-    }
-
-    fn remove_random_node(&mut self) {
-        let idx = self.random_node_idx().unwrap();
-        self.remove_node(idx);
-    }
-
-    fn add_random_node(&mut self) {
-        let random_n_idx = self.random_node_idx();
-        if random_n_idx.is_none() {
-            return;
-        }
-
-        let random_n = self.g.node(random_n_idx.unwrap()).unwrap();
-
-        // location of new node is in in the closest surrounding of random existing node
-        let mut rng = rand::thread_rng();
-        let location = Pos2::new(
-            random_n.location().x + 10. + rng.gen_range(0. ..50.),
-            random_n.location().y + 10. + rng.gen_range(0. ..50.),
-        );
-
-        let g_idx = self.g.add_node_with_location((), location);
-
-        // let sim_node = egui_graphs::Node::new(());
-        let sim_node_loc = fdg::nalgebra::Point2::new(location.x, location.y);
-
-        // let sim_idx = self.sim.add_node((sim_node, sim_node_loc));
-
-        // assert_eq!(g_idx, sim_idx);
-    }
-
-    fn remove_node(&mut self, idx: NodeIndex) {
-        self.g.remove_node(idx);
-
-        // self.sim.remove_node(idx).unwrap();
-
-        // update edges count
-        self.settings_graph.count_edge = self.g.edge_count();
-    }
-
-    fn add_random_edge(&mut self) {
-        let random_start = self.random_node_idx().unwrap();
-        let random_end = self.random_node_idx().unwrap();
-
-        self.add_edge(random_start, random_end);
-    }
-
-    fn add_edge(&mut self, start: NodeIndex, end: NodeIndex) {
-        self.g.add_edge(start, end, ());
-
-        // self.sim.add_edge(start, end, egui_graphs::Edge::new(()));
-    }
-
-    fn remove_random_edge(&mut self) {
-        let random_e_idx = self.random_edge_idx();
-        if random_e_idx.is_none() {
-            return;
-        }
-        let endpoints = self.g.edge_endpoints(random_e_idx.unwrap()).unwrap();
-
-        self.remove_edge(endpoints.0, endpoints.1);
-    }
-
-    fn remove_edge(&mut self, start: NodeIndex, end: NodeIndex) {
-        let (g_idx, _) = self.g.edges_connecting(start, end).next().unwrap();
-        self.g.remove_edge(g_idx);
-
-        // let sim_idx = self.sim.find_edge(start, end).unwrap();
-        // self.sim.remove_edge(sim_idx).unwrap();
-    }
-
-    fn draw_section_simulation(&mut self, ui: &mut Ui) {
-        ui.horizontal_wrapped(|ui| {
-            ui.style_mut().spacing.item_spacing = Vec2::new(0., 0.);
-            ui.label("Force-Directed Simulation is done with ");
-            ui.hyperlink_to("fdg project", "https://github.com/grantshandy/fdg");
-        });
-
-        ui.separator();
-
-        drawers::draw_start_reset_buttons(
-            ui,
-            drawers::ValuesConfigButtonsStartReset {
-                simulation_stopped: self.simulation_stopped,
-            },
-            |simulation_stopped: bool, reset_pressed: bool| {
-                self.simulation_stopped = simulation_stopped;
-                if reset_pressed {
-                    self.reset()
-                };
-            },
-        );
-
-        ui.add_space(10.);
-
-        drawers::draw_simulation_config_sliders(
-            ui,
-            drawers::ValuesConfigSlidersSimulation {
-                dt: self.settings_simulation.dt,
-                cooloff_factor: self.settings_simulation.cooloff_factor,
-                scale: self.settings_simulation.scale,
-            },
-            |delta_dt: f32, delta_cooloff_factor: f32, delta_scale: f32| {
-                self.settings_simulation.dt += delta_dt;
-                self.settings_simulation.cooloff_factor += delta_cooloff_factor;
-                self.settings_simulation.scale += delta_scale;
-
-                // self.force = init_force(&self.settings_simulation);
-            },
-        );
-
-        ui.add_space(10.);
-
-        drawers::draw_counts_sliders(
-            ui,
-            drawers::ValuesConfigSlidersGraph {
-                node_cnt: self.settings_graph.count_node,
-                edge_cnt: self.settings_graph.count_edge,
-            },
-            |delta_nodes, delta_edges| {
-                self.settings_graph.count_node += delta_nodes as usize;
-                self.settings_graph.count_edge += delta_edges as usize;
-
-                if delta_nodes != 0 {
-                    if delta_nodes > 0 {
-                        (0..delta_nodes).for_each(|_| self.add_random_node());
-                    } else {
-                        (0..delta_nodes.abs()).for_each(|_| self.remove_random_node());
-                    }
-                }
-
-                if delta_edges != 0 {
-                    if delta_edges > 0 {
-                        (0..delta_edges).for_each(|_| self.add_random_edge());
-                    } else {
-                        (0..delta_edges.abs()).for_each(|_| self.remove_random_edge());
-                    }
-                }
-            },
-        );
-    }
+    // fn random_node_idx(&self) -> Option<NodeIndex> {
+    //     let nodes_cnt = self.g.node_count();
+    //     if nodes_cnt == 0 {
+    //         return None;
+    //     }
+    //
+    //     let random_n_idx = rand::thread_rng().gen_range(0..nodes_cnt);
+    //     self.g.g.node_indices().nth(random_n_idx)
+    // }
+    //
+    // fn random_edge_idx(&self) -> Option<EdgeIndex> {
+    //     let edges_cnt = self.g.edge_count();
+    //     if edges_cnt == 0 {
+    //         return None;
+    //     }
+    //
+    //     let random_e_idx = rand::thread_rng().gen_range(0..edges_cnt);
+    //     self.g.g.edge_indices().nth(random_e_idx)
+    // }
+    //
+    // fn remove_random_node(&mut self) {
+    //     let idx = self.random_node_idx().unwrap();
+    //     self.remove_node(idx);
+    // }
+    //
+    // fn add_random_node(&mut self) {
+    //     let random_n_idx = self.random_node_idx();
+    //     if random_n_idx.is_none() {
+    //         return;
+    //     }
+    //
+    //     let random_n = self.g.node(random_n_idx.unwrap()).unwrap();
+    //
+    //     // location of new node is in in the closest surrounding of random existing node
+    //     let mut rng = rand::thread_rng();
+    //     let location = Pos2::new(
+    //         random_n.location().x + 10. + rng.gen_range(0. ..50.),
+    //         random_n.location().y + 10. + rng.gen_range(0. ..50.),
+    //     );
+    //
+    //     let g_idx = self.g.add_node_with_location((), location);
+    //
+    //     // let sim_node = egui_graphs::Node::new(());
+    //     let sim_node_loc = fdg::nalgebra::Point2::new(location.x, location.y);
+    //
+    //     // let sim_idx = self.sim.add_node((sim_node, sim_node_loc));
+    //
+    //     // assert_eq!(g_idx, sim_idx);
+    // }
+    //
+    // fn remove_node(&mut self, idx: NodeIndex) {
+    //     self.g.remove_node(idx);
+    //
+    //     // self.sim.remove_node(idx).unwrap();
+    //
+    //     // update edges count
+    //     self.settings_graph.count_edge = self.g.edge_count();
+    // }
+    //
+    // fn add_random_edge(&mut self) {
+    //     let random_start = self.random_node_idx().unwrap();
+    //     let random_end = self.random_node_idx().unwrap();
+    //
+    //     self.add_edge(random_start, random_end);
+    // }
+    //
+    // fn add_edge(&mut self, start: NodeIndex, end: NodeIndex) {
+    //     self.g.add_edge(start, end, ());
+    //
+    //     // self.sim.add_edge(start, end, egui_graphs::Edge::new(()));
+    // }
+    //
+    // fn remove_random_edge(&mut self) {
+    //     let random_e_idx = self.random_edge_idx();
+    //     if random_e_idx.is_none() {
+    //         return;
+    //     }
+    //     let endpoints = self.g.edge_endpoints(random_e_idx.unwrap()).unwrap();
+    //
+    //     self.remove_edge(endpoints.0, endpoints.1);
+    // }
+    //
+    // fn remove_edge(&mut self, start: NodeIndex, end: NodeIndex) {
+    //     let (g_idx, _) = self.g.edges_connecting(start, end).next().unwrap();
+    //     self.g.remove_edge(g_idx);
+    //
+    //     // let sim_idx = self.sim.find_edge(start, end).unwrap();
+    //     // self.sim.remove_edge(sim_idx).unwrap();
+    // }
+    //
+    // fn draw_section_simulation(&mut self, ui: &mut Ui) {
+    //     ui.horizontal_wrapped(|ui| {
+    //         ui.style_mut().spacing.item_spacing = Vec2::new(0., 0.);
+    //         ui.label("Force-Directed Simulation is done with ");
+    //         ui.hyperlink_to("fdg project", "https://github.com/grantshandy/fdg");
+    //     });
+    //
+    //     ui.separator();
+    //
+    //     drawers::draw_start_reset_buttons(
+    //         ui,
+    //         drawers::ValuesConfigButtonsStartReset {
+    //             simulation_stopped: self.simulation_stopped,
+    //         },
+    //         |simulation_stopped: bool, reset_pressed: bool| {
+    //             self.simulation_stopped = simulation_stopped;
+    //             if reset_pressed {
+    //                 self.reset()
+    //             };
+    //         },
+    //     );
+    //
+    //     ui.add_space(10.);
+    //
+    //     drawers::draw_simulation_config_sliders(
+    //         ui,
+    //         drawers::ValuesConfigSlidersSimulation {
+    //             dt: self.settings_simulation.dt,
+    //             cooloff_factor: self.settings_simulation.cooloff_factor,
+    //             scale: self.settings_simulation.scale,
+    //         },
+    //         |delta_dt: f32, delta_cooloff_factor: f32, delta_scale: f32| {
+    //             self.settings_simulation.dt += delta_dt;
+    //             self.settings_simulation.cooloff_factor += delta_cooloff_factor;
+    //             self.settings_simulation.scale += delta_scale;
+    //
+    //             // self.force = init_force(&self.settings_simulation);
+    //         },
+    //     );
+    //
+    //     ui.add_space(10.);
+    //
+    //     drawers::draw_counts_sliders(
+    //         ui,
+    //         drawers::ValuesConfigSlidersGraph {
+    //             node_cnt: self.settings_graph.count_node,
+    //             edge_cnt: self.settings_graph.count_edge,
+    //         },
+    //         |delta_nodes, delta_edges| {
+    //             self.settings_graph.count_node += delta_nodes as usize;
+    //             self.settings_graph.count_edge += delta_edges as usize;
+    //
+    //             if delta_nodes != 0 {
+    //                 if delta_nodes > 0 {
+    //                     (0..delta_nodes).for_each(|_| self.add_random_node());
+    //                 } else {
+    //                     (0..delta_nodes.abs()).for_each(|_| self.remove_random_node());
+    //                 }
+    //             }
+    //
+    //             if delta_edges != 0 {
+    //                 if delta_edges > 0 {
+    //                     (0..delta_edges).for_each(|_| self.add_random_edge());
+    //                 } else {
+    //                     (0..delta_edges.abs()).for_each(|_| self.remove_random_edge());
+    //                 }
+    //             }
+    //         },
+    //     );
+    // }
 
     fn draw_section_widget(&mut self, ui: &mut Ui) {
         CollapsingHeader::new("Navigation")
@@ -463,28 +463,28 @@ impl SCGui {
         );
     }
 
-    fn reset(&mut self) {
-        let settings_graph = settings::SettingsGraph::default();
-        let settings_simulation = settings::SettingsSimulation::default();
-
-        let g = Graph::from(&Self::generate_graph());
-
-        // let mut force = init_force(&self.settings_simulation);
-        // let mut sim = fdg::init_force_graph_uniform(g.g.clone(), 1.0);
-        // force.apply(&mut sim);
-        // g.g.node_weights_mut().for_each(|node| {
-        //     let point: fdg::nalgebra::OPoint<f32, fdg::nalgebra::Const<2>> =
-        //         sim.node_weight(node.id()).unwrap().1;
-        //     node.set_location(Pos2::new(point.coords.x, point.coords.y));
-        // });
-
-        self.settings_simulation = settings_simulation;
-        self.settings_graph = settings_graph;
-
-        // self.sim = sim;
-        self.g = g;
-        // self.force = force;
-    }
+    // fn reset(&mut self) {
+    //     let settings_graph = settings::SettingsGraph::default();
+    //     let settings_simulation = settings::SettingsSimulation::default();
+    //
+    //     let g = Graph::from(&Self::generate_graph());
+    //
+    //     // let mut force = init_force(&self.settings_simulation);
+    //     // let mut sim = fdg::init_force_graph_uniform(g.g.clone(), 1.0);
+    //     // force.apply(&mut sim);
+    //     // g.g.node_weights_mut().for_each(|node| {
+    //     //     let point: fdg::nalgebra::OPoint<f32, fdg::nalgebra::Const<2>> =
+    //     //         sim.node_weight(node.id()).unwrap().1;
+    //     //     node.set_location(Pos2::new(point.coords.x, point.coords.y));
+    //     // });
+    //
+    //     self.settings_simulation = settings_simulation;
+    //     self.settings_graph = settings_graph;
+    //
+    //     // self.sim = sim;
+    //     self.g = g;
+    //     // self.force = force;
+    // }
 }
 
 impl App for SCGui {
@@ -493,12 +493,6 @@ impl App for SCGui {
             .min_width(250.)
             .show(ctx, |ui| {
                 ScrollArea::vertical().show(ui, |ui| {
-                    CollapsingHeader::new("Simulation")
-                        .default_open(true)
-                        .show(ui, |ui| self.draw_section_simulation(ui));
-
-                    ui.add_space(10.);
-
                     egui::CollapsingHeader::new("Debug")
                         .default_open(true)
                         .show(ui, |ui| self.draw_section_debug(ui));
@@ -541,7 +535,7 @@ impl App for SCGui {
 
         self.handle_events();
         // self.sync();
-        self.update_simulation();
+        // self.update_simulation();
         self.update_fps();
     }
 }
@@ -568,110 +562,3 @@ pub fn run_gui(title: String, simulation_controller: SimulationController) {
     )
     .unwrap();
 }
-
-/*
-// use eframe::{run_native, App, CreationContext, NativeOptions};
-// use egui::{CollapsingHeader, Context, ScrollArea, Ui};
-// use egui_graphs::{Graph, GraphView, SettingsInteraction, SettingsStyle};
-// use petgraph::stable_graph::StableGraph;
-//
-// use crate::simulation_controller::SimulationController;
-//
-// // use super::settings::{SettingsInteraction, SettingsStyle};
-//
-// pub struct BasicApp {
-//     g: Graph,
-//     simulation_controller: SimulationController,
-//     inputs: [f32; 4],
-// }
-//
-// impl App for BasicApp {
-//     fn update(&mut self, ctx: &Context, _: &mut eframe::Frame) {
-//         egui::SidePanel::right("right_panel")
-//             .min_width(250.)
-//             .show(ctx, |ui| {
-//                 ScrollArea::vertical().show(ui, |ui| {
-//                     CollapsingHeader::new("Simulation")
-//                         .default_open(true)
-//                         .show(ui, |ui| self.render_widget(ui));
-//
-//                     ui.add_space(10.);
-//
-//                     egui::CollapsingHeader::new("Debug").default_open(true);
-//                     // .show(ui, |ui| self.draw_section_debug(ui));
-//
-//                     ui.add_space(10.);
-//
-//                     CollapsingHeader::new("Widget").default_open(true);
-//                     // .show(ui, |ui| self.draw_section_widget(ui));
-//                 });
-//             });
-//
-//         egui::CentralPanel::default().show(ctx, |ui| {
-//             let interaction_settings = &SettingsInteraction::new()
-//                 .with_dragging_enabled(true)
-//                 .with_node_clicking_enabled(true)
-//                 .with_node_selection_enabled(true)
-//                 .with_node_selection_multi_enabled(true)
-//                 .with_edge_clicking_enabled(true)
-//                 .with_edge_selection_enabled(true)
-//                 .with_edge_selection_multi_enabled(true);
-//             let style_settings = &SettingsStyle::new().with_labels_always(true);
-//             let var_name = GraphView::new(&mut self.g);
-//             let settings_navigation = &egui_graphs::SettingsNavigation::new()
-//                 .with_zoom_and_pan_enabled(self.settings_navigation.zoom_and_pan_enabled)
-//                 .with_fit_to_screen_enabled(self.settings_navigation.fit_to_screen_enabled)
-//                 .with_zoom_speed(self.settings_navigation.zoom_speed);
-//             ui.add(
-//                 &mut var_name
-//                     .with_styles(style_settings)
-//                     .with_interactions(interaction_settings),
-//             );
-//         });
-//     }
-// }
-//
-// impl BasicApp {
-//     pub fn new(_: &CreationContext<'_>, simulation_controller: SimulationController) -> Self {
-//         let g = generate_graph();
-//         Self {
-//             g: Graph::from(&g),
-//             simulation_controller,
-//             inputs: [0.0, 0.0, 0.0, 0.0],
-//         }
-//     }
-//     fn render_widget(&mut self, ui: &mut Ui) {
-//         for (i, value) in self.inputs.iter_mut().enumerate() {
-//             ui.horizontal(|ui| {
-//                 if ui.button(format!("Button {}", i + 1)).clicked() {
-//                     println!("Button {} clicked with input value: {}", i + 1, value);
-//                 }
-//                 ui.add(egui::DragValue::new(value).speed(0.1)); // Small numeric input
-//             });
-//         }
-//     }
-// }
-//
-// fn generate_graph() -> StableGraph<(), ()> {
-//     let mut g = StableGraph::new();
-//
-//     let a = g.add_node(());
-//     let b = g.add_node(());
-//     let c = g.add_node(());
-//
-//     g.add_edge(a, b, ());
-//     g.add_edge(b, c, ());
-//     g.add_edge(c, a, ());
-//
-//     g
-// }
-//
-// pub fn run_gui(title: String, simulation_controller: SimulationController) {
-//     run_native(
-//         &title,
-//         NativeOptions::default(),
-//         Box::new(|cc| Ok(Box::new(BasicApp::new(cc, simulation_controller)))),
-//     )
-//     .unwrap();
-// }
-*/
