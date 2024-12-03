@@ -1,6 +1,10 @@
+pub mod message;
+
+use message::Message;
+
 use std::collections::HashMap;
 
-use wg_2024::packet::{Fragment, Message};
+use wg_2024::packet::{Fragment};
 
 pub trait Fragmenter {
     fn disassemble(msg: Message) -> HashMap<u64, Fragment>;

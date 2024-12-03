@@ -5,8 +5,8 @@ use std::{
 
 use crossbeam::channel::{unbounded, Receiver, Sender};
 use wg_2024::{
-    controller::{DroneCommand, NodeEvent},
-    drone::{Drone, DroneOptions},
+    controller::{DroneCommand, DroneEvent},
+    drone::{Drone},
     network::NodeId,
     packet::Packet,
 };
@@ -23,7 +23,7 @@ use super::config_parsing::{parse_config, InitConfig};
 pub struct NetworkInitializer {
     config: InitConfig,
     packet_channels: HashMap<NodeId, (Sender<Packet>, Receiver<Packet>)>,
-    node_event_channels: HashMap<NodeId, (Sender<NodeEvent>, Receiver<NodeEvent>)>,
+    node_event_channels: HashMap<NodeId, (Sender<DroneEvent>, Receiver<DroneEvent>)>,
     drone_command_channels: HashMap<NodeId, (Sender<DroneCommand>, Receiver<DroneCommand>)>,
     client_event_channels: HashMap<NodeId, (Sender<ClientEvent>, Receiver<ClientEvent>)>,
     client_command_channels: HashMap<NodeId, (Sender<ClientCommand>, Receiver<ClientCommand>)>,
@@ -73,7 +73,7 @@ impl NetworkInitializer {
 
         for drone in self.config.drone.iter() {
             //create the channels used for simulation controller communication
-            let node_event_send = unbounded::<NodeEvent>();
+            let node_event_send = unbounded::<DroneEvent>();
             let drone_command_rec = unbounded::<DroneCommand>();
 
             // clone them to give them to the drone
@@ -105,15 +105,8 @@ impl NetworkInitializer {
             self.handles.insert(
                 drone_id,
                 thread::spawn(move || {
-                    let options = DroneOptions {
-                        id: drone_id,
-                        controller_send: command_send,
-                        controller_recv: command_receiver,
-                        packet_recv,
-                        packet_send,
-                        pdr,
-                    };
-                    let mut drone = MyDrone::new(options);
+                    
+                    let mut drone = MyDrone::new(drone_id, command_send, command_receiver, packet_recv, packet_send, pdr);
 
                     log::info!(
                         "{}, {:?}",

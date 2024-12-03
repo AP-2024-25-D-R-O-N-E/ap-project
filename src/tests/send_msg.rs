@@ -19,7 +19,7 @@ pub fn send_msg() {
         total_n_fragments: 1,
 
         length: 1,
-        data: [1; 80],
+        data: [1; 128],
     };
 
     let packet = Packet {

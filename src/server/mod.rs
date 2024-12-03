@@ -8,7 +8,7 @@ use wg_2024::{
 };
 
 use crate::{
-    fragmentation::Fragmenter,
+    fragmentation::{message::Message, Fragmenter},
     simulation_controller::structs::{ServerCommand, ServerEvent},
 };
 
@@ -23,12 +23,12 @@ pub struct Server {
 
 impl Fragmenter for Server {
     fn disassemble(
-        msg: wg_2024::packet::Message,
+        msg: Message,
     ) -> std::collections::HashMap<u64, wg_2024::packet::Fragment> {
         todo!()
     }
 
-    fn assemble(fragments: Vec<wg_2024::packet::Fragment>) -> wg_2024::packet::Message {
+    fn assemble(fragments: Vec<wg_2024::packet::Fragment>) -> Message {
         todo!()
     }
 }
