@@ -433,6 +433,27 @@ impl SCGui {
             });
     }
 
+    fn draw_section_console(&mut self, ui: &mut Ui) {
+        ScrollArea::vertical()
+            .auto_shrink([false, false])
+            .show(ui, |ui| {
+                //TODO draw node events
+                ui.label(egui::RichText::new("This is red text!").color(egui::Color32::RED));
+
+                ui.label(
+                    egui::RichText::new("This is green bold text!")
+                        .color(egui::Color32::GREEN)
+                        .strong(),
+                );
+
+                ui.label(
+                    egui::RichText::new("This is blue italic text!")
+                        .color(egui::Color32::BLUE)
+                        .italics(),
+                );
+            });
+    }
+
     // fn reset(&mut self) {
     //     let settings_graph = settings::SettingsGraph::default();
     //     let settings_simulation = settings::SettingsSimulation::default();
@@ -459,9 +480,18 @@ impl SCGui {
 
 impl App for SCGui {
     fn update(&mut self, ctx: &Context, _: &mut eframe::Frame) {
+        let custom_frame = egui::Frame {
+            fill: egui::Color32::from_rgb(10, 10, 10), // Custom background color
+            stroke: egui::Stroke::NONE,
+            rounding: egui::Rounding::ZERO,
+            inner_margin: egui::Margin::same(10.0),
+            outer_margin: egui::Margin::ZERO,
+            ..Default::default()
+        };
         egui::TopBottomPanel::bottom("bottom_panel")
-            .min_height(250.)
-            .show(ctx, |ui| {});
+            .frame(custom_frame)
+            .resizable(true)
+            .show(ctx, |ui| self.draw_section_console(ui));
 
         egui::CentralPanel::default().show(ctx, |ui| {
             let settings_interaction = &egui_graphs::SettingsInteraction::new()
@@ -520,17 +550,6 @@ impl App for SCGui {
         self.update_fps();
     }
 }
-
-// fn init_force(settings: &settings::SettingsSimulation) -> FruchtermanReingold<f32, 2> {
-//     FruchtermanReingold {
-//         conf: FruchtermanReingoldConfiguration {
-//             dt: settings.dt,
-//             cooloff_factor: settings.cooloff_factor,
-//             scale: settings.scale,
-//         },
-//         ..Default::default()
-//     }
-// }
 
 pub fn run_gui(title: String, simulation_controller: SimulationController) {
     run_native(
