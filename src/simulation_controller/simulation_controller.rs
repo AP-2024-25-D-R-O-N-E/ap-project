@@ -121,86 +121,26 @@ impl SimulationController {
         }
     }
 
-    pub fn send_default_msg_fragment(&self, node_id: NodeId) {
-        self.send_msg_fragment(self.default_msg_fragment.clone(), node_id);
-    }
-
-    pub fn send_msg_fragment(&self, packet: Packet, node_id: NodeId) {
-        match &self.packet_channels.get(&node_id) {
-            Some(channel) => match &packet.pack_type {
-                PacketType::MsgFragment(flood_request) => {
-                    channel.0.send(packet);
-                    log::info!("Sending to node {}", node_id)
+    fn prompt_id_and_execute(prompt: String, action: impl Fn(NodeId)) {
+        println!("{}", prompt.italic());
+        loop {
+            let mut buffer = String::new();
+            let input = io::stdin().read_line(&mut buffer);
+            match (input, buffer.trim().parse::<NodeId>()) {
+                (Ok(_), Ok(node_id)) => {
+                    println!("");
+                    action(node_id);
+                    sleep(Duration::from_millis(100));
+                    println!("");
+                    break;
                 }
-                _ => {
-                    log::error!("Provided package is not a msg fragment")
-                }
-            },
-            None => {
-                log::error!("Specified node does not exist")
-            }
-        }
-    }
-
-    pub fn send_default_flood_request(&self, node_id: NodeId) {
-        self.send_flood_request(self.default_flood.clone(), node_id);
-    }
-
-    pub fn send_flood_request(&self, packet: Packet, node_id: NodeId) {
-        match &self.packet_channels.get(&node_id) {
-            Some(channel) => match &packet.pack_type {
-                PacketType::FloodRequest(flood_request) => {
-                    channel.0.send(packet);
-                    log::info!("Sending to node {}", node_id)
-                }
-                _ => {
-                    log::error!("Provided package is not a flood request")
-                }
-            },
-            None => {
-                log::error!("Specified node does not exist")
+                _ => println!("{}", "Insert a valid number".italic().yellow()),
             }
         }
     }
 
     // launches a text user interface to launch functions in real time
     pub fn run_tui(&self) {
-        let send_default_msg_fragment = || {
-            println!("{}", "Please enter a node id: ".italic());
-            loop {
-                let mut buffer = String::new();
-                let input = io::stdin().read_line(&mut buffer);
-                match (input, buffer.trim().parse::<NodeId>()) {
-                    (Ok(_), Ok(node_id)) => {
-                        println!("");
-                        self.send_default_msg_fragment(node_id);
-                        sleep(Duration::from_millis(100));
-                        println!("");
-                        break;
-                    }
-                    _ => println!("{}", "Insert a valid number".italic().yellow()),
-                }
-            }
-        };
-
-        let send_default_flood_request = || {
-            println!("{}", "Please enter a node id: ".italic());
-            loop {
-                let mut buffer = String::new();
-                let input = io::stdin().read_line(&mut buffer);
-                match (input, buffer.trim().parse::<NodeId>()) {
-                    (Ok(_), Ok(node_id)) => {
-                        println!("");
-                        self.send_default_flood_request(node_id);
-                        sleep(Duration::from_millis(100));
-                        println!("");
-                        break;
-                    }
-                    _ => println!("{}", "Insert a valid number".italic().yellow()),
-                }
-            }
-        };
-
         loop {
             println!(" {}) {}", "1".italic(), "Send fragment".blue());
             println!(" {}) {}", "2".italic(), "Send ack".blue());
@@ -216,10 +156,22 @@ impl SimulationController {
                 Ok(input) => {
                     match buffer.trim().parse::<i32>() {
                         Ok(action_number) => match action_number {
-                            1 => send_default_msg_fragment(),
-                            2 => (),
-                            3 => (),
-                            4 => send_default_flood_request(),
+                            1 => SimulationController::prompt_id_and_execute(
+                                "Insert a node id".to_string(),
+                                |id| self.send_default_msg_fragment(id),
+                            ),
+                            2 => SimulationController::prompt_id_and_execute(
+                                "Insert a node id".to_string(),
+                                |id| self.send_default_ack(id),
+                            ),
+                            // 3 => SimulationController::prompt_id_and_execute(
+                            //     "Insert a node id".to_string(),
+                            //     |id| self.send_default_msg_fragment(id),
+                            // ),
+                            4 => SimulationController::prompt_id_and_execute(
+                                "Insert a node id".to_string(),
+                                |id| self.send_default_flood_request(id),
+                            ),
                             -1 => break,
                             _ => println!("{}", "Insert a valid number".italic().yellow()),
                         },

@@ -1,3 +1,4 @@
+pub mod sc_commands;
 pub mod simulation_controller;
 pub mod structs;
 
