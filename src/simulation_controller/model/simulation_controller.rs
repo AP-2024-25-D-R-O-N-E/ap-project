@@ -183,8 +183,3 @@ impl SimulationController {
         }
     }
 }
-
-// impl SimulationController {
-//     fn new(network_initializer: &NetworkInitializer) -> SimulationController {
-//     }
-// }

@@ -1,6 +1,5 @@
-pub mod sc_commands;
-pub mod simulation_controller;
-pub mod structs;
+pub mod model;
+pub mod view;
 
-pub use simulation_controller::*;
-pub use structs::*;
+pub use model::*;
+pub use view::*;
