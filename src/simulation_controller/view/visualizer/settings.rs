@@ -12,7 +12,6 @@ impl Default for SettingsGraph {
     }
 }
 
-#[derive(Default)]
 pub struct SettingsInteraction {
     pub dragging_enabled: bool,
     pub node_clicking_enabled: bool,
@@ -21,6 +20,20 @@ pub struct SettingsInteraction {
     pub edge_clicking_enabled: bool,
     pub edge_selection_enabled: bool,
     pub edge_selection_multi_enabled: bool,
+}
+
+impl Default for SettingsInteraction {
+    fn default() -> Self {
+        SettingsInteraction {
+            dragging_enabled: true,
+            node_clicking_enabled: true,
+            node_selection_enabled: true,
+            node_selection_multi_enabled: true,
+            edge_clicking_enabled: false,
+            edge_selection_enabled: false,
+            edge_selection_multi_enabled: false,
+        }
+    }
 }
 
 pub struct SettingsNavigation {
@@ -32,7 +45,7 @@ pub struct SettingsNavigation {
 impl Default for SettingsNavigation {
     fn default() -> Self {
         Self {
-            zoom_speed: 0.1,
+            zoom_speed: 0.05,
             fit_to_screen_enabled: true,
             zoom_and_pan_enabled: false,
         }
