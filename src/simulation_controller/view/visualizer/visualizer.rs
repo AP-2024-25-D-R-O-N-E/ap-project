@@ -549,10 +549,12 @@
 
 use eframe::{run_native, App, CreationContext, NativeOptions};
 use egui::Context;
-use egui_graphs::{Graph, GraphView};
+use egui_graphs::{Graph, GraphView, SettingsInteraction, SettingsStyle};
 use petgraph::stable_graph::StableGraph;
 
 use crate::simulation_controller::SimulationController;
+
+// use super::settings::{SettingsInteraction, SettingsStyle};
 
 pub struct BasicApp {
     g: Graph,
@@ -562,7 +564,21 @@ pub struct BasicApp {
 impl App for BasicApp {
     fn update(&mut self, ctx: &Context, _: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.add(&mut GraphView::new(&mut self.g));
+            let interaction_settings = &SettingsInteraction::new()
+                .with_dragging_enabled(true)
+                .with_node_clicking_enabled(true)
+                .with_node_selection_enabled(true)
+                .with_node_selection_multi_enabled(true)
+                .with_edge_clicking_enabled(true)
+                .with_edge_selection_enabled(true)
+                .with_edge_selection_multi_enabled(true);
+            let style_settings = &SettingsStyle::new().with_labels_always(true);
+            let var_name = GraphView::new(&mut self.g);
+            ui.add(
+                &mut var_name
+                    .with_styles(style_settings)
+                    .with_interactions(interaction_settings),
+            );
         });
     }
 }
