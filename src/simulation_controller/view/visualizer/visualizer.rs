@@ -56,21 +56,10 @@ impl SCGui {
         let settings_graph = settings::SettingsGraph::default();
         let settings_simulation = settings::SettingsSimulation::default();
 
-        let mut g = Graph::from(&Self::generate_graph());
-
-        // let mut force = init_force(&settings_simulation);
-        // let mut sim = fdg::init_force_graph_uniform(g.g.clone(), 1.0);
-        // force.apply(&mut sim);
-        // g.g.node_weights_mut().for_each(|node| {
-        //     let point: fdg::nalgebra::OPoint<f32, fdg::nalgebra::Const<2>> =
-        //         sim.node_weight(node.id()).unwrap().1;
-        //     node.set_location(Pos2::new(point.coords.x, point.coords.y));
-        // });
-
         let (event_publisher, event_consumer) = unbounded();
 
         Self {
-            g,
+            g: Graph::from(&Self::generate_graph()),
             // sim,
             // force,
             event_consumer,
@@ -112,26 +101,6 @@ impl SCGui {
         g
     }
 
-    // fn update_simulation(&mut self) {
-    //     if self.simulation_stopped {
-    //         return;
-    //     }
-    //
-    //     // self.force.apply(&mut self.sim);
-    // }
-
-    //sync locations computed by the simulation with egui_graphs::Graph nodes.
-    // fn sync(&mut self) {
-    //     self.g.g.node_weights_mut().for_each(|node| {
-    //         let sim_computed_point: OPoint<f32, Const<2>> =
-    //             self.sim.node_weight(node.id()).unwrap().1;
-    //         node.set_location(Pos2::new(
-    //             sim_computed_point.coords.x,
-    //             sim_computed_point.coords.y,
-    //         ));
-    //     });
-    // }
-
     fn update_fps(&mut self) {
         self.frames_last_time_span += 1;
         let now = Instant::now();
@@ -153,12 +122,6 @@ impl SCGui {
             match e {
                 Event::Pan(payload) => self.pan = payload.new_pan,
                 Event::Zoom(payload) => self.zoom = payload.new_zoom,
-                Event::NodeMove(payload) => {
-                    // let node_id = NodeIndex::new(payload.id);
-
-                    // self.sim.node_weight_mut(node_id).unwrap().1.coords.x = payload.new_pos[0];
-                    // self.sim.node_weight_mut(node_id).unwrap().1.coords.y = payload.new_pos[1];
-                }
                 _ => {}
             }
         });
@@ -325,35 +288,78 @@ impl SCGui {
     //     );
     // }
 
+    // fn update_simulation(&mut self) {
+    //     if self.simulation_stopped {
+    //         return;
+    //     }
+    //
+    //     // self.force.apply(&mut self.sim);
+    // }
+
+    //sync locations computed by the simulation with egui_graphs::Graph nodes.
+    // fn sync(&mut self) {
+    //     self.g.g.node_weights_mut().for_each(|node| {
+    //         let sim_computed_point: OPoint<f32, Const<2>> =
+    //             self.sim.node_weight(node.id()).unwrap().1;
+    //         node.set_location(Pos2::new(
+    //             sim_computed_point.coords.x,
+    //             sim_computed_point.coords.y,
+    //         ));
+    //     });
+    // }
+
     fn draw_section_widget(&mut self, ui: &mut Ui) {
         CollapsingHeader::new("Navigation")
             .default_open(true)
             .show(ui, |ui| {
                 if ui
-                    .checkbox(
-                        &mut self.settings_navigation.fit_to_screen_enabled,
-                        "fit_to_screen",
+                    .radio(
+                        self.settings_navigation.fit_to_screen_enabled,
+                        "Fit to screen",
                     )
-                    .changed()
-                    && self.settings_navigation.fit_to_screen_enabled
+                    .on_hover_text_at_pointer(
+                        "Automatically fits the graph to screen\nDisables zooming",
+                    )
+                    .clicked()
                 {
-                    self.settings_navigation.zoom_and_pan_enabled = false
-                };
-                ui.label("Enable fit to screen to fit the graph to the screen on every frame.");
+                    self.settings_navigation.fit_to_screen_enabled = true;
+                    self.settings_navigation.zoom_and_pan_enabled = false;
+                }
 
-                ui.add_space(5.);
+                if ui
+                    .radio(self.settings_navigation.zoom_and_pan_enabled, "Zoom + pan")
+                    .on_hover_text_at_pointer("Move: left drag\nZoom: ctrl/cmd + scroll")
+                    .clicked()
+                {
+                    self.settings_navigation.fit_to_screen_enabled = false;
+                    self.settings_navigation.zoom_and_pan_enabled = true;
+                }
 
-                ui.add_enabled_ui(!self.settings_navigation.fit_to_screen_enabled, |ui| {
-                    ui.vertical(|ui| {
-                        ui.checkbox(
-                            &mut self.settings_navigation.zoom_and_pan_enabled,
-                            "zoom_and_pan",
-                        );
-                        ui.label("Zoom with ctrl + mouse wheel, pan with middle mouse drag.");
-                    })
-                    .response
-                    .on_disabled_hover_text("disable fit_to_screen to enable zoom_and_pan");
-                });
+                // if ui
+                //     .checkbox(
+                //         &mut self.settings_navigation.fit_to_screen_enabled,
+                //         "fit_to_screen",
+                //     )
+                //     .changed()
+                //     && self.settings_navigation.fit_to_screen_enabled
+                // {
+                //     self.settings_navigation.zoom_and_pan_enabled = false
+                // };
+                // ui.label("Enable fit to screen to fit the graph to the screen on every frame.");
+                //
+                // ui.add_space(5.);
+                //
+                // ui.add_enabled_ui(!self.settings_navigation.fit_to_screen_enabled, |ui| {
+                //     ui.vertical(|ui| {
+                //         ui.checkbox(
+                //             &mut self.settings_navigation.zoom_and_pan_enabled,
+                //             "zoom_and_pan",
+                //         );
+                //         ui.label("Zoom with ctrl + mouse wheel, pan with middle mouse drag.");
+                //     })
+                //     .response
+                //     .on_disabled_hover_text("disable fit_to_screen to enable zoom_and_pan");
+                // });
             });
 
         CollapsingHeader::new("Style").show(ui, |ui| {
@@ -436,20 +442,20 @@ impl SCGui {
                     });
             });
 
-        CollapsingHeader::new("Last Events")
-            .default_open(true)
-            .show(ui, |ui| {
-                if ui.button("clear").clicked() {
-                    self.last_events.clear();
-                }
-                ScrollArea::vertical()
-                    .auto_shrink([false, true])
-                    .show(ui, |ui| {
-                        self.last_events.iter().rev().for_each(|event| {
-                            ui.label(event);
-                        });
-                    });
-            });
+        // CollapsingHeader::new("Last Events")
+        //     .default_open(true)
+        //     .show(ui, |ui| {
+        //         if ui.button("clear").clicked() {
+        //             self.last_events.clear();
+        //         }
+        //         ScrollArea::vertical()
+        //             .auto_shrink([false, true])
+        //             .show(ui, |ui| {
+        //                 self.last_events.iter().rev().for_each(|event| {
+        //                     ui.label(event);
+        //                 });
+        //             });
+        //     });
     }
 
     fn draw_section_debug(&self, ui: &mut Ui) {
@@ -533,7 +539,7 @@ impl App for SCGui {
             );
         });
 
-        self.handle_events();
+        // self.handle_events();
         // self.sync();
         // self.update_simulation();
         self.update_fps();
