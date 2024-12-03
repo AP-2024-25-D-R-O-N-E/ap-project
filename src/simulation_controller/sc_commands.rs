@@ -68,4 +68,25 @@ impl SimulationController {
             }
         }
     }
+
+    pub fn send_default_nack(&self, node_id: NodeId) {
+        self.send_nack(self.default_nack.clone(), node_id);
+    }
+
+    pub fn send_nack(&self, packet: Packet, node_id: NodeId) {
+        match &self.packet_channels.get(&node_id) {
+            Some(channel) => match &packet.pack_type {
+                PacketType::Nack(_) => {
+                    channel.0.send(packet);
+                    log::info!("Sending to node {}", node_id)
+                }
+                _ => {
+                    log::error!("Provided package is not an nack")
+                }
+            },
+            None => {
+                log::error!("Specified node does not exist")
+            }
+        }
+    }
 }

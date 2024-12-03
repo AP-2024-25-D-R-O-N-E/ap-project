@@ -164,10 +164,10 @@ impl SimulationController {
                                 "Insert a node id".to_string(),
                                 |id| self.send_default_ack(id),
                             ),
-                            // 3 => SimulationController::prompt_id_and_execute(
-                            //     "Insert a node id".to_string(),
-                            //     |id| self.send_default_msg_fragment(id),
-                            // ),
+                            3 => SimulationController::prompt_id_and_execute(
+                                "Insert a node id".to_string(),
+                                |id| self.send_default_nack(id),
+                            ),
                             4 => SimulationController::prompt_id_and_execute(
                                 "Insert a node id".to_string(),
                                 |id| self.send_default_flood_request(id),
