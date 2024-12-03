@@ -13,9 +13,9 @@ use egui_graphs::{Edge, Graph, GraphView, Node};
 // use fdg::nalgebra::{Const, OPoint};
 // use fdg::{Force, ForceGraph};
 
-use petgraph::prelude::StableGraph;
+use petgraph::prelude::{StableGraph, StableUnGraph};
 use petgraph::stable_graph::{DefaultIx, EdgeIndex, NodeIndex};
-use petgraph::Directed;
+use petgraph::{Directed, Undirected};
 use rand::Rng;
 
 use super::drawers;
@@ -24,7 +24,7 @@ use super::settings;
 const EVENTS_LIMIT: usize = 100;
 
 pub struct SCGui {
-    g: Graph<(), (), Directed, DefaultIx>,
+    g: Graph<(), (), Undirected, DefaultIx>,
     // sim: ForceGraph<f32, 2, Node<(), ()>, Edge<(), ()>>,
     // force: FruchtermanReingold<f32, 2>,
     settings_simulation: settings::SettingsSimulation,
@@ -98,8 +98,8 @@ impl SCGui {
         }
     }
 
-    fn generate_graph() -> StableGraph<(), ()> {
-        let mut g = StableGraph::new();
+    fn generate_graph() -> StableGraph<(), (), Undirected> {
+        let mut g = StableUnGraph::default();
 
         let a = g.add_node(());
         let b = g.add_node(());
@@ -467,16 +467,16 @@ impl SCGui {
         let settings_graph = settings::SettingsGraph::default();
         let settings_simulation = settings::SettingsSimulation::default();
 
-        let mut g = Graph::from(&Self::generate_graph());
+        let g = Graph::from(&Self::generate_graph());
 
         // let mut force = init_force(&self.settings_simulation);
-        let mut sim = fdg::init_force_graph_uniform(g.g.clone(), 1.0);
+        // let mut sim = fdg::init_force_graph_uniform(g.g.clone(), 1.0);
         // force.apply(&mut sim);
-        g.g.node_weights_mut().for_each(|node| {
-            let point: fdg::nalgebra::OPoint<f32, fdg::nalgebra::Const<2>> =
-                sim.node_weight(node.id()).unwrap().1;
-            node.set_location(Pos2::new(point.coords.x, point.coords.y));
-        });
+        // g.g.node_weights_mut().for_each(|node| {
+        //     let point: fdg::nalgebra::OPoint<f32, fdg::nalgebra::Const<2>> =
+        //         sim.node_weight(node.id()).unwrap().1;
+        //     node.set_location(Pos2::new(point.coords.x, point.coords.y));
+        // });
 
         self.settings_simulation = settings_simulation;
         self.settings_graph = settings_graph;
