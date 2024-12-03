@@ -46,15 +46,22 @@ impl Default for SettingsNavigation {
     fn default() -> Self {
         Self {
             zoom_speed: 0.05,
-            fit_to_screen_enabled: true,
-            zoom_and_pan_enabled: false,
+            fit_to_screen_enabled: false,
+            zoom_and_pan_enabled: true,
         }
     }
 }
 
-#[derive(Default)]
 pub struct SettingsStyle {
     pub labels_always: bool,
+}
+
+impl Default for SettingsStyle {
+    fn default() -> Self {
+        SettingsStyle {
+            labels_always: true,
+        }
+    }
 }
 
 pub struct SettingsSimulation {

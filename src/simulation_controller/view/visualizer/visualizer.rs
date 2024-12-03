@@ -59,13 +59,13 @@ impl SCGui {
         let mut g = Graph::from(&Self::generate_graph());
 
         // let mut force = init_force(&settings_simulation);
-        let mut sim = fdg::init_force_graph_uniform(g.g.clone(), 1.0);
+        // let mut sim = fdg::init_force_graph_uniform(g.g.clone(), 1.0);
         // force.apply(&mut sim);
-        g.g.node_weights_mut().for_each(|node| {
-            let point: fdg::nalgebra::OPoint<f32, fdg::nalgebra::Const<2>> =
-                sim.node_weight(node.id()).unwrap().1;
-            node.set_location(Pos2::new(point.coords.x, point.coords.y));
-        });
+        // g.g.node_weights_mut().for_each(|node| {
+        //     let point: fdg::nalgebra::OPoint<f32, fdg::nalgebra::Const<2>> =
+        //         sim.node_weight(node.id()).unwrap().1;
+        //     node.set_location(Pos2::new(point.coords.x, point.coords.y));
+        // });
 
         let (event_publisher, event_consumer) = unbounded();
 
@@ -120,7 +120,7 @@ impl SCGui {
         // self.force.apply(&mut self.sim);
     }
 
-    /// sync locations computed by the simulation with egui_graphs::Graph nodes.
+    //sync locations computed by the simulation with egui_graphs::Graph nodes.
     // fn sync(&mut self) {
     //     self.g.g.node_weights_mut().for_each(|node| {
     //         let sim_computed_point: OPoint<f32, Const<2>> =
@@ -569,6 +569,7 @@ pub fn run_gui(title: String, simulation_controller: SimulationController) {
     .unwrap();
 }
 
+/*
 // use eframe::{run_native, App, CreationContext, NativeOptions};
 // use egui::{CollapsingHeader, Context, ScrollArea, Ui};
 // use egui_graphs::{Graph, GraphView, SettingsInteraction, SettingsStyle};
@@ -673,3 +674,4 @@ pub fn run_gui(title: String, simulation_controller: SimulationController) {
 //     )
 //     .unwrap();
 // }
+*/
