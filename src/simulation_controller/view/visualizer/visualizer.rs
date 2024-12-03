@@ -5,7 +5,7 @@ use crate::simulation_controller::SimulationController;
 use super::drawers::ValuesSectionDebug;
 use crossbeam::channel::{unbounded, Receiver, Sender};
 use eframe::{run_native, App, CreationContext, NativeOptions};
-use egui::{CollapsingHeader, Context, Pos2, ScrollArea, Ui, Vec2};
+use egui::{CollapsingHeader, Context, Pos2, ScrollArea, Ui, Vec2, Window};
 use egui_graphs::events::Event;
 use egui_graphs::{Edge, Graph, GraphView, Node};
 
@@ -16,7 +16,6 @@ use egui_graphs::{Edge, Graph, GraphView, Node};
 use petgraph::prelude::{StableGraph, StableUnGraph};
 use petgraph::stable_graph::{DefaultIx, EdgeIndex, NodeIndex};
 use petgraph::{Directed, Undirected};
-use rand::Rng;
 
 use super::drawers;
 use super::settings;
@@ -25,9 +24,6 @@ const EVENTS_LIMIT: usize = 100;
 
 pub struct SCGui {
     g: Graph<(), (), Undirected, DefaultIx>,
-    // sim: ForceGraph<f32, 2, Node<(), ()>, Edge<(), ()>>,
-    // force: FruchtermanReingold<f32, 2>,
-    settings_simulation: settings::SettingsSimulation,
 
     settings_graph: settings::SettingsGraph,
     settings_interaction: settings::SettingsInteraction,
@@ -35,8 +31,6 @@ pub struct SCGui {
     settings_style: settings::SettingsStyle,
 
     last_events: Vec<String>,
-
-    simulation_stopped: bool,
 
     fps: f32,
     last_update_time: Instant,
@@ -54,7 +48,6 @@ pub struct SCGui {
 impl SCGui {
     fn new(_: &CreationContext<'_>, simulation_controller: SimulationController) -> Self {
         let settings_graph = settings::SettingsGraph::default();
-        let settings_simulation = settings::SettingsSimulation::default();
 
         let (event_publisher, event_consumer) = unbounded();
 
@@ -66,15 +59,12 @@ impl SCGui {
             event_publisher,
 
             settings_graph,
-            settings_simulation,
 
             settings_interaction: settings::SettingsInteraction::default(),
             settings_navigation: settings::SettingsNavigation::default(),
             settings_style: settings::SettingsStyle::default(),
 
             last_events: Vec::default(),
-
-            simulation_stopped: false,
 
             fps: 0.,
             last_update_time: Instant::now(),
@@ -308,7 +298,7 @@ impl SCGui {
     //     });
     // }
 
-    fn draw_section_widget(&mut self, ui: &mut Ui) {
+    fn draw_section_settings(&mut self, ui: &mut Ui) {
         CollapsingHeader::new("Navigation")
             .default_open(true)
             .show(ui, |ui| {
@@ -334,32 +324,6 @@ impl SCGui {
                     self.settings_navigation.fit_to_screen_enabled = false;
                     self.settings_navigation.zoom_and_pan_enabled = true;
                 }
-
-                // if ui
-                //     .checkbox(
-                //         &mut self.settings_navigation.fit_to_screen_enabled,
-                //         "fit_to_screen",
-                //     )
-                //     .changed()
-                //     && self.settings_navigation.fit_to_screen_enabled
-                // {
-                //     self.settings_navigation.zoom_and_pan_enabled = false
-                // };
-                // ui.label("Enable fit to screen to fit the graph to the screen on every frame.");
-                //
-                // ui.add_space(5.);
-                //
-                // ui.add_enabled_ui(!self.settings_navigation.fit_to_screen_enabled, |ui| {
-                //     ui.vertical(|ui| {
-                //         ui.checkbox(
-                //             &mut self.settings_navigation.zoom_and_pan_enabled,
-                //             "zoom_and_pan",
-                //         );
-                //         ui.label("Zoom with ctrl + mouse wheel, pan with middle mouse drag.");
-                //     })
-                //     .response
-                //     .on_disabled_hover_text("disable fit_to_screen to enable zoom_and_pan");
-                // });
             });
 
         CollapsingHeader::new("Style").show(ui, |ui| {
@@ -441,24 +405,9 @@ impl SCGui {
                         });
                     });
             });
-
-        // CollapsingHeader::new("Last Events")
-        //     .default_open(true)
-        //     .show(ui, |ui| {
-        //         if ui.button("clear").clicked() {
-        //             self.last_events.clear();
-        //         }
-        //         ScrollArea::vertical()
-        //             .auto_shrink([false, true])
-        //             .show(ui, |ui| {
-        //                 self.last_events.iter().rev().for_each(|event| {
-        //                     ui.label(event);
-        //                 });
-        //             });
-        //     });
     }
 
-    fn draw_section_debug(&self, ui: &mut Ui) {
+    fn draw_section_debug(&mut self, ui: &mut Ui) {
         drawers::draw_section_debug(
             ui,
             ValuesSectionDebug {
@@ -467,6 +416,21 @@ impl SCGui {
                 fps: self.fps,
             },
         );
+
+        CollapsingHeader::new("Last Events")
+            .default_open(true)
+            .show(ui, |ui| {
+                if ui.button("clear").clicked() {
+                    self.last_events.clear();
+                }
+                ScrollArea::vertical()
+                    .auto_shrink([false, true])
+                    .show(ui, |ui| {
+                        self.last_events.iter().rev().for_each(|event| {
+                            ui.label(event);
+                        });
+                    });
+            });
     }
 
     // fn reset(&mut self) {
@@ -495,21 +459,9 @@ impl SCGui {
 
 impl App for SCGui {
     fn update(&mut self, ctx: &Context, _: &mut eframe::Frame) {
-        egui::SidePanel::right("right_panel")
-            .min_width(250.)
-            .show(ctx, |ui| {
-                ScrollArea::vertical().show(ui, |ui| {
-                    egui::CollapsingHeader::new("Debug")
-                        .default_open(true)
-                        .show(ui, |ui| self.draw_section_debug(ui));
-
-                    ui.add_space(10.);
-
-                    CollapsingHeader::new("Widget")
-                        .default_open(true)
-                        .show(ui, |ui| self.draw_section_widget(ui));
-                });
-            });
+        egui::TopBottomPanel::bottom("bottom_panel")
+            .min_height(250.)
+            .show(ctx, |ui| {});
 
         egui::CentralPanel::default().show(ctx, |ui| {
             let settings_interaction = &egui_graphs::SettingsInteraction::new()
@@ -539,9 +491,32 @@ impl App for SCGui {
             );
         });
 
-        // self.handle_events();
+        Window::new("Settings")
+            .collapsible(true)
+            .resizable(true)
+            .default_width(200.0)
+            .default_height(100.0)
+            .show(ctx, |ui| {
+                ScrollArea::vertical().show(ui, |ui| self.draw_section_settings(ui));
+            });
+
+        Window::new("Debug")
+            .collapsible(true)
+            .resizable(true)
+            .default_width(200.0)
+            .default_height(100.0)
+            .default_open(false)
+            .show(ctx, |ui| {
+                ScrollArea::vertical().show(ui, |ui| {
+                    egui::CollapsingHeader::new("Debug")
+                        .default_open(true)
+                        .show(ui, |ui| self.draw_section_debug(ui));
+                });
+            });
+
         // self.sync();
         // self.update_simulation();
+        self.handle_events();
         self.update_fps();
     }
 }
