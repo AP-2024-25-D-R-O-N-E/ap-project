@@ -1,6 +1,6 @@
 use std::time::Instant;
 
-use crate::simulation_controller::SimulationController;
+use crate::simulation_controller::{ClientEvent, ServerEvent, SimulationController};
 
 use super::drawers::ValuesSectionDebug;
 use crossbeam::channel::{unbounded, Receiver, Sender};
@@ -16,11 +16,15 @@ use egui_graphs::{Edge, Graph, GraphView, Node};
 use petgraph::prelude::{StableGraph, StableUnGraph};
 use petgraph::stable_graph::{DefaultIx, EdgeIndex, NodeIndex};
 use petgraph::{Directed, Undirected};
+use wg_2024::controller::NodeEvent;
 
 use super::drawers;
 use super::settings;
 
-const EVENTS_LIMIT: usize = 100;
+const GRAPH_EVENTS_LIMIT: usize = 100;
+const CLIENT_EVENTS_LIMIT: usize = 100;
+const SERVER_EVENTS_LIMIT: usize = 100;
+const NODE_EVENTS_LIMIT: usize = 100;
 
 pub struct SCGui {
     g: Graph<(), (), Undirected, DefaultIx>,
@@ -36,8 +40,12 @@ pub struct SCGui {
     last_update_time: Instant,
     frames_last_time_span: usize,
 
-    event_publisher: Sender<Event>,
-    event_consumer: Receiver<Event>,
+    graph_event_publisher: Sender<Event>,
+    graph_event_consumer: Receiver<Event>,
+
+    node_events: Vec<NodeEvent>,
+    client_events: Vec<ClientEvent>,
+    server_events: Vec<ServerEvent>,
 
     pan: [f32; 2],
     zoom: f32,
@@ -55,8 +63,8 @@ impl SCGui {
             g: Graph::from(&Self::generate_graph()),
             // sim,
             // force,
-            event_consumer,
-            event_publisher,
+            graph_event_consumer: event_consumer,
+            graph_event_publisher: event_publisher,
 
             settings_graph,
 
@@ -69,6 +77,10 @@ impl SCGui {
             fps: 0.,
             last_update_time: Instant::now(),
             frames_last_time_span: 0,
+
+            node_events: vec![],
+            client_events: vec![],
+            server_events: vec![],
 
             pan: [0., 0.],
             zoom: 0.,
@@ -102,9 +114,9 @@ impl SCGui {
         }
     }
 
-    fn handle_events(&mut self) {
-        self.event_consumer.try_iter().for_each(|e| {
-            if self.last_events.len() > EVENTS_LIMIT {
+    fn handle_graph_events(&mut self) {
+        self.graph_event_consumer.try_iter().for_each(|e| {
+            if self.last_events.len() > GRAPH_EVENTS_LIMIT {
                 self.last_events.remove(0);
             }
             self.last_events.push(serde_json::to_string(&e).unwrap());
@@ -115,6 +127,35 @@ impl SCGui {
                 _ => {}
             }
         });
+    }
+
+    fn handle_sc_events(&mut self) {
+        for (_, channel) in self.simulation_controller.node_event_channels.iter() {
+            channel.try_iter().for_each(|e| {
+                if self.node_events.len() > NODE_EVENTS_LIMIT {
+                    self.node_events.remove(0);
+                }
+                self.node_events.push(e);
+            })
+        }
+
+        for (_, channel) in self.simulation_controller.client_event_channels.iter() {
+            channel.try_iter().for_each(|e| {
+                if self.client_events.len() > CLIENT_EVENTS_LIMIT {
+                    self.client_events.remove(0);
+                }
+                self.client_events.push(e);
+            })
+        }
+
+        for (_, channel) in self.simulation_controller.server_event_channels.iter() {
+            channel.try_iter().for_each(|e| {
+                if self.server_events.len() > SERVER_EVENTS_LIMIT {
+                    self.server_events.remove(0);
+                }
+                self.server_events.push(e);
+            })
+        }
     }
 
     // fn random_node_idx(&self) -> Option<NodeIndex> {
@@ -517,7 +558,7 @@ impl App for SCGui {
                     .with_interactions(settings_interaction)
                     .with_navigations(settings_navigation)
                     .with_styles(settings_style)
-                    .with_events(&self.event_publisher),
+                    .with_events(&self.graph_event_publisher),
             );
         });
 
@@ -546,7 +587,8 @@ impl App for SCGui {
 
         // self.sync();
         // self.update_simulation();
-        self.handle_events();
+        self.handle_graph_events();
+        self.handle_sc_events();
         self.update_fps();
     }
 }
