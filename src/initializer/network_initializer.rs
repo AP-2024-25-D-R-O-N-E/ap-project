@@ -104,7 +104,6 @@ impl NetworkInitializer {
 
             let pdr = drone.pdr as f32;
 
-
             let barrier_clone = Arc::clone(&drone_barrier);
             self.handles.insert(
                 drone_id,
@@ -206,7 +205,6 @@ impl NetworkInitializer {
             let packet_recv = self.packet_channels[&server.id].1.clone();
 
             let server_id: NodeId = server.id;
-
 
             let barrier_clone = Arc::clone(&server_barrier);
             self.handles.insert(

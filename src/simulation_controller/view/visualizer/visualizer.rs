@@ -336,6 +336,7 @@ impl App for SCGui {
             outer_margin: egui::Margin::ZERO,
             ..Default::default()
         };
+
         egui::TopBottomPanel::bottom("bottom_panel")
             .frame(custom_frame)
             .resizable(true)

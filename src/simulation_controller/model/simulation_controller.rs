@@ -1,4 +1,5 @@
 use colored::Colorize;
+use petgraph::{prelude::StableGraph, Undirected};
 use std::{io, thread::sleep, time::Duration};
 use wg_2024::{
     network::SourceRoutingHeader,
@@ -19,6 +20,7 @@ use crate::initializer::network_initializer::NetworkInitializer;
 use super::structs::{ClientCommand, ClientEvent, ServerCommand, ServerEvent};
 
 pub struct SimulationController {
+
     pub packet_channels: HashMap<NodeId, (Sender<Packet>, Receiver<Packet>)>,
     pub node_event_channels: HashMap<NodeId, Receiver<DroneEvent>>,
     pub drone_command_channels: HashMap<NodeId, Sender<DroneCommand>>,
@@ -26,10 +28,13 @@ pub struct SimulationController {
     pub client_command_channels: HashMap<NodeId, Sender<ClientCommand>>,
     pub server_event_channels: HashMap<NodeId, Receiver<ServerEvent>>,
     pub server_command_channels: HashMap<NodeId, Sender<ServerCommand>>,
+
     pub default_msg_fragment: Packet,
     pub default_ack: Packet,
     pub default_nack: Packet,
     pub default_flood: Packet,
+
+    // pub topology: StableGraph<(), (), Undirected>,
 }
 
 impl SimulationController {
@@ -182,4 +187,5 @@ impl SimulationController {
             }
         }
     }
+
 }
