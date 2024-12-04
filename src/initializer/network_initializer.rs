@@ -1,14 +1,18 @@
 use colored::Colorize;
 use std::{
     collections::HashMap,
+    collections::HashMap,
     sync::{Arc, Barrier},
+    sync::{Arc, Barrier},
+    thread::{self, sleep, JoinHandle},
     thread::{self, JoinHandle},
+    time::Duration,
 };
 
 use crossbeam::channel::{unbounded, Receiver, Sender};
 use wg_2024::{
-    controller::{DroneCommand, NodeEvent},
-    drone::{Drone, DroneOptions},
+    controller::{DroneCommand, DroneEvent},
+    drone::Drone,
     network::NodeId,
     packet::Packet,
 };
@@ -17,6 +21,7 @@ use d_r_o_n_e_drone::MyDrone;
 
 use crate::{
     client, server,
+    simulation_controller::structs::{ClientCommand, ClientEvent, ServerCommand, ServerEvent},
     simulation_controller::{
         ClientCommand, ClientEvent, ServerCommand, ServerEvent, SimulationController,
     },
@@ -67,18 +72,15 @@ impl NetworkInitializer {
         for server in self.config.server.iter() {
             self.packet_channels
                 .insert(server.id, unbounded::<Packet>());
-            //change this is a similar way to drones
-            self.server_event_channels
-                .insert(server.id, unbounded::<ServerEvent>());
-            self.server_command_channels
-                .insert(server.id, unbounded::<ServerCommand>());
         }
+
+        sleep(Duration::from_secs(1));
 
         // thread creations
         let drone_barrier = Arc::new(Barrier::new(self.config.drone.len() + 1));
         for drone in self.config.drone.iter() {
             //create the channels used for simulation controller communication
-            let node_event_send = unbounded::<NodeEvent>();
+            let node_event_send = unbounded::<DroneEvent>();
             let drone_command_rec = unbounded::<DroneCommand>();
 
             // clone them to give them to the drone
@@ -101,23 +103,24 @@ impl NetworkInitializer {
             let packet_recv = self.packet_channels[&drone.id].1.clone();
 
             // since the thread::spawn function will take ownership of the values, we need to copy or clone them to not have problems with the Vec
-            let drone_id: NodeId = drone.id.try_into().unwrap();
+            let drone_id: NodeId = drone.id;
 
             let pdr = drone.pdr as f32;
+
+            let barrier_clone = Arc::clone(&drone_barrier);
 
             let barrier_clone = Arc::clone(&drone_barrier);
             self.handles.insert(
                 drone_id,
                 thread::spawn(move || {
-                    let options = DroneOptions {
-                        id: drone_id,
-                        controller_send: command_send,
-                        controller_recv: command_receiver,
+                    let mut drone = MyDrone::new(
+                        drone_id,
+                        command_send,
+                        command_receiver,
                         packet_recv,
                         packet_send,
                         pdr,
-                    };
-                    let mut drone = MyDrone::new(options);
+                    );
 
                     log::info!(
                         "{}, {:?}",
@@ -132,6 +135,8 @@ impl NetworkInitializer {
         }
         drone_barrier.wait();
         log::info!("{}", "Drones initialized successfully!".bold().green());
+
+        // client initialization
 
         let client_barrier = Arc::new(Barrier::new(self.config.client.len() + 1));
         for client in self.config.client.iter() {
@@ -154,26 +159,28 @@ impl NetworkInitializer {
 
             let packet_recv = self.packet_channels[&client.id].1.clone();
 
-            let client_id: NodeId = client.id.try_into().unwrap();
+            let client_id: NodeId = client.id;
 
             let barrier_clone = Arc::clone(&client_barrier);
+
             self.handles.insert(
                 client_id,
                 thread::spawn(move || {
-                    let client = client::Client::new(
+                    let mut client = client::Client::new(
                         client_id,
                         command_send,
                         command_receiver,
                         packet_recv,
                         packet_send,
                     );
-
                     log::info!(
                         "{}, {:?}",
-                        format!("Initialized client {}", client.id).purple(),
+                        format!("Initialized client {}", client_id).bold().purple(),
                         client,
                     );
+
                     barrier_clone.wait();
+
                     client.run();
                 }),
             );
@@ -202,26 +209,29 @@ impl NetworkInitializer {
 
             let packet_recv = self.packet_channels[&server.id].1.clone();
 
-            let server_id: NodeId = server.id.try_into().unwrap();
+            let server_id: NodeId = server.id;
+
+            let barrier_clone = Arc::clone(&server_barrier);
 
             let barrier_clone = Arc::clone(&server_barrier);
             self.handles.insert(
                 server_id,
                 thread::spawn(move || {
-                    let server = server::Server::new(
+                    let mut server = server::Server::new(
                         server_id,
                         command_send,
                         command_receiver,
                         packet_recv,
                         packet_send,
                     );
-
                     log::info!(
                         "{}, {:?}",
-                        format!("Initialized server {}", server.id).purple(),
+                        format!("Initialized server {}", server_id).bold().purple(),
                         server,
                     );
+
                     barrier_clone.wait();
+
                     server.run();
                 }),
             );
@@ -236,5 +246,9 @@ impl NetworkInitializer {
     //just for testing purposes
     pub fn get_send_channel(&self, drone_id: NodeId) -> &Sender<Packet> {
         &self.packet_channels.get(&drone_id).unwrap().0
+    }
+
+    pub fn get_drone_command_channel(&self, drone_id: NodeId) -> &Sender<DroneCommand> {
+        &self.drone_command_channels[&drone_id].0
     }
 }
