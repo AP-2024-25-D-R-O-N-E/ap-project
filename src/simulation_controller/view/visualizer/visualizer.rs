@@ -2,7 +2,7 @@ use std::time::Instant;
 
 use crate::simulation_controller::{ClientEvent, ServerEvent, SimulationController};
 
-use super::drawers::ValuesSectionDebug;
+// use super::drawers::drawers::ValuesSectionDebug;
 use crossbeam::channel::{unbounded, Receiver, Sender};
 use eframe::{run_native, App, CreationContext, NativeOptions};
 use egui::{CollapsingHeader, Context, Pos2, ScrollArea, Ui, Vec2, Window};
@@ -18,8 +18,9 @@ use petgraph::stable_graph::{DefaultIx, EdgeIndex, NodeIndex};
 use petgraph::{Directed, Undirected};
 use wg_2024::controller::NodeEvent;
 
-use super::drawers;
+use super::drawers::{self, draw_section_testing};
 use super::settings;
+use super::state::State;
 
 const GRAPH_EVENTS_LIMIT: usize = 100;
 const CLIENT_EVENTS_LIMIT: usize = 100;
@@ -51,6 +52,8 @@ pub struct SCGui {
     zoom: f32,
 
     simulation_controller: SimulationController,
+
+    state: State,
 }
 
 impl SCGui {
@@ -86,6 +89,7 @@ impl SCGui {
             zoom: 0.,
 
             simulation_controller,
+            state: State::default(),
         }
     }
 
@@ -582,6 +586,18 @@ impl App for SCGui {
                     egui::CollapsingHeader::new("Debug")
                         .default_open(true)
                         .show(ui, |ui| self.draw_section_debug(ui));
+                });
+            });
+
+        Window::new("Test")
+            .collapsible(true)
+            .resizable(true)
+            .default_width(200.0)
+            .default_height(100.0)
+            .default_open(false)
+            .show(ctx, |ui| {
+                ScrollArea::vertical().show(ui, |ui| {
+                    draw_section_testing(ui, &mut self.state);
                 });
             });
 
