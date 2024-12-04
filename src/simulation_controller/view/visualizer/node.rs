@@ -1,4 +1,6 @@
-use egui::{epaint::TextShape, Color32, FontFamily, FontId, Pos2, Rect, Shape, Stroke, Vec2};
+use egui::{
+    epaint::TextShape, Color32, FontFamily, FontId, Pos2, Rect, Rounding, Shape, Stroke, Vec2,
+};
 use egui_graphs::{DisplayNode, NodeProps};
 use petgraph::{stable_graph::IndexType, EdgeType};
 
@@ -50,33 +52,79 @@ trait DrawShape {
 impl DrawShape for CustomNodeShape {
     fn draw_shape(&mut self, ctx: &egui_graphs::DrawContext) -> Vec<egui::Shape> {
         // find node center location on the screen coordinates
+
         let center = ctx.meta.canvas_to_screen_pos(self.loc);
-        let color = ctx.ctx.style().visuals.text_color();
+        let text_color = ctx.ctx.style().visuals.text_color();
+        let backgound_color = ctx.ctx.style().visuals.extreme_bg_color;
 
         // create label
-        let galley = ctx.ctx.fonts(|f| {
+        let label_bounding_box = ctx.ctx.fonts(|f| {
             f.layout_no_wrap(
                 self.label.clone(),
-                FontId::new(ctx.meta.canvas_to_screen_size(10.), FontFamily::Monospace),
-                color,
+                FontId::new(ctx.meta.canvas_to_screen_size(10.), FontFamily::default()),
+                text_color,
             )
         });
 
+        let offset = Vec2::new(
+            -label_bounding_box.size().x / 2.,
+            -label_bounding_box.size().y / 2.,
+        );
+
+        match &mut self.node_type {
+            NodeType::Server(_server_node) => {
+                // create the shape and add it to the layers
+                let shape_label = TextShape::new(center + offset, label_bounding_box, text_color);
+
+                let rect = shape_label
+                    .visual_bounding_rect()
+                    .expand2(Vec2::new(10., 10.));
+
+                let shape_rect = Shape::rect_filled(
+                    rect,
+                    Rounding {
+                        nw: 10.,
+                        ne: 10.,
+                        sw: 10.,
+                        se: 10.,
+                    },
+                    Color32::BLACK,
+                );
+
+                // update self size
+                self.size_x = rect.size().x;
+                self.size_y = rect.size().y;
+
+                vec![shape_rect, shape_label.into()]
+            }
+            NodeType::Client(_client_node) => {
+                let shape_label = TextShape::new(center + offset, label_bounding_box, text_color);
+
+                let rect = shape_label
+                    .visual_bounding_rect()
+                    .expand2(Vec2::new(10., 10.));
+
+                let shape_rect = Shape::rect_filled(rect, Rounding::default(), Color32::BLACK);
+
+                // update self size
+                self.size_x = rect.size().x;
+                self.size_y = rect.size().y;
+
+                vec![shape_rect, shape_label.into()]
+            }
+            NodeType::Drone(_drone_node) => {
+                let shape_label = TextShape::new(
+                    center + Vec2::new(-10., 10.),
+                    label_bounding_box,
+                    text_color,
+                );
+
+                let shape_rect = Shape::circle_filled(center, 10., Color32::BLACK);
+                vec![shape_rect, shape_label.into()]
+            }
+        }
+
         // we need to offset label by half its size to place it in the center of the rect
-        let offset = Vec2::new(-galley.size().x / 2., -galley.size().y / 2.);
-
-        // create the shape and add it to the layers
-        let shape_label = TextShape::new(center + offset, galley, color);
-
-        let rect = shape_label.visual_bounding_rect();
-        let points = rect_to_points(rect);
-        let shape_rect = Shape::convex_polygon(points, Color32::default(), Stroke::new(1., color));
-
-        // update self size
-        self.size_x = rect.size().x;
-        self.size_y = rect.size().y;
-
-        vec![shape_rect, shape_label.into()]
     }
 }
 
