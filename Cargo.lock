@@ -96,7 +96,7 @@ checksum = "22ec99545bb0ed0ea7bb9b8e1e9122ea386ff8a48c0922e43f36d45ab09e0e80"
 [[package]]
 name = "d-r-o-n-e_drone"
 version = "0.1.0"
-source = "git+https://github.com/AP-2024-25-D-R-O-N-E/drone.git?branch=updating-WG-definitions-and-implementing-crash#fa737766ad06ebd87185bc5761154c76f6c4b6aa"
+source = "git+https://github.com/AP-2024-25-D-R-O-N-E/drone.git?branch=updating-WG-definitions-and-implementing-crash#c8370cd59f763975afa31be643b673fdfd959f9c"
 dependencies = [
  "colored",
  "crossbeam",
@@ -389,7 +389,7 @@ checksum = "9c8d87e72b64a3b4db28d11ce29237c246188f4f51057d65a7eab63b7987e423"
 [[package]]
 name = "wg_2024"
 version = "0.1.0"
-source = "git+https://github.com/WGL-2024/WGL_repo_2024.git#f282d8a0b58463d86cfa765adcde5ed9f4d4862c"
+source = "git+https://github.com/WGL-2024/WGL_repo_2024.git#311975ad49283f1b7a13bf71c3b7cd27af655e94"
 dependencies = [
  "wg_internal",
 ]
@@ -397,7 +397,7 @@ dependencies = [
 [[package]]
 name = "wg_config"
 version = "0.1.0"
-source = "git+https://github.com/WGL-2024/WGL_repo_2024.git#f282d8a0b58463d86cfa765adcde5ed9f4d4862c"
+source = "git+https://github.com/WGL-2024/WGL_repo_2024.git#311975ad49283f1b7a13bf71c3b7cd27af655e94"
 dependencies = [
  "serde",
  "wg_network",
@@ -406,7 +406,7 @@ dependencies = [
 [[package]]
 name = "wg_controller"
 version = "0.1.0"
-source = "git+https://github.com/WGL-2024/WGL_repo_2024.git#f282d8a0b58463d86cfa765adcde5ed9f4d4862c"
+source = "git+https://github.com/WGL-2024/WGL_repo_2024.git#311975ad49283f1b7a13bf71c3b7cd27af655e94"
 dependencies = [
  "crossbeam-channel",
  "wg_network",
@@ -416,7 +416,7 @@ dependencies = [
 [[package]]
 name = "wg_drone"
 version = "0.1.0"
-source = "git+https://github.com/WGL-2024/WGL_repo_2024.git#f282d8a0b58463d86cfa765adcde5ed9f4d4862c"
+source = "git+https://github.com/WGL-2024/WGL_repo_2024.git#311975ad49283f1b7a13bf71c3b7cd27af655e94"
 dependencies = [
  "crossbeam-channel",
  "wg_controller",
@@ -427,26 +427,38 @@ dependencies = [
 [[package]]
 name = "wg_internal"
 version = "0.1.0"
-source = "git+https://github.com/WGL-2024/WGL_repo_2024.git#f282d8a0b58463d86cfa765adcde5ed9f4d4862c"
+source = "git+https://github.com/WGL-2024/WGL_repo_2024.git#311975ad49283f1b7a13bf71c3b7cd27af655e94"
 dependencies = [
  "wg_config",
  "wg_controller",
  "wg_drone",
  "wg_network",
  "wg_packet",
+ "wg_tests",
 ]
 
 [[package]]
 name = "wg_network"
 version = "0.1.0"
-source = "git+https://github.com/WGL-2024/WGL_repo_2024.git#f282d8a0b58463d86cfa765adcde5ed9f4d4862c"
+source = "git+https://github.com/WGL-2024/WGL_repo_2024.git#311975ad49283f1b7a13bf71c3b7cd27af655e94"
 
 [[package]]
 name = "wg_packet"
 version = "0.1.0"
-source = "git+https://github.com/WGL-2024/WGL_repo_2024.git#f282d8a0b58463d86cfa765adcde5ed9f4d4862c"
+source = "git+https://github.com/WGL-2024/WGL_repo_2024.git#311975ad49283f1b7a13bf71c3b7cd27af655e94"
 dependencies = [
  "wg_network",
+]
+
+[[package]]
+name = "wg_tests"
+version = "0.1.0"
+source = "git+https://github.com/WGL-2024/WGL_repo_2024.git#311975ad49283f1b7a13bf71c3b7cd27af655e94"
+dependencies = [
+ "crossbeam-channel",
+ "wg_drone",
+ "wg_network",
+ "wg_packet",
 ]
 
 [[package]]

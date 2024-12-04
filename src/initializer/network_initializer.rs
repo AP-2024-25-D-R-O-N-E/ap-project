@@ -237,4 +237,10 @@ impl NetworkInitializer {
     pub fn get_send_channel(&self, drone_id: NodeId) -> &Sender<Packet> {
         &self.packet_channels.get(&drone_id).unwrap().0
     }
+
+
+    pub fn get_drone_command_channel(&self, drone_id: NodeId) -> &Sender<DroneCommand> {
+        &self.drone_command_channels[&drone_id].0
+    }
+
 }
