@@ -9,7 +9,7 @@ use std::{collections::HashMap, thread::JoinHandle};
 
 use crossbeam::channel::{Receiver, Sender};
 use wg_2024::{
-    controller::{DroneCommand, NodeEvent},
+    controller::{DroneCommand, DroneEvent},
     network::NodeId,
     packet::{Ack, FloodRequest, Fragment, Nack, Packet},
 };
@@ -20,7 +20,7 @@ use super::structs::{ClientCommand, ClientEvent, ServerCommand, ServerEvent};
 
 pub struct SimulationController {
     pub packet_channels: HashMap<NodeId, (Sender<Packet>, Receiver<Packet>)>,
-    pub node_event_channels: HashMap<NodeId, Receiver<NodeEvent>>,
+    pub node_event_channels: HashMap<NodeId, Receiver<DroneEvent>>,
     pub drone_command_channels: HashMap<NodeId, Sender<DroneCommand>>,
     pub client_event_channels: HashMap<NodeId, Receiver<ClientEvent>>,
     pub client_command_channels: HashMap<NodeId, Sender<ClientCommand>>,
@@ -79,7 +79,7 @@ impl SimulationController {
                     fragment_index: 0,
                     total_n_fragments: 1,
                     length: 1,
-                    data: [1; 80],
+                    data: [1; 128],
                 }),
                 routing_header: SourceRoutingHeader {
                     hop_index: 1,

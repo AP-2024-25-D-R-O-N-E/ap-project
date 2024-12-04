@@ -1,11 +1,8 @@
 use colored::Colorize;
 use std::{
     collections::HashMap,
-    collections::HashMap,
-    sync::{Arc, Barrier},
     sync::{Arc, Barrier},
     thread::{self, sleep, JoinHandle},
-    thread::{self, JoinHandle},
     time::Duration,
 };
 
@@ -21,9 +18,9 @@ use d_r_o_n_e_drone::MyDrone;
 
 use crate::{
     client, server,
-    simulation_controller::structs::{ClientCommand, ClientEvent, ServerCommand, ServerEvent},
     simulation_controller::{
-        ClientCommand, ClientEvent, ServerCommand, ServerEvent, SimulationController,
+        structs::{ClientCommand, ClientEvent, ServerCommand, ServerEvent},
+        SimulationController,
     },
 };
 
@@ -32,7 +29,7 @@ use super::config_parsing::{parse_config, InitConfig};
 pub struct NetworkInitializer {
     config: InitConfig,
     pub packet_channels: HashMap<NodeId, (Sender<Packet>, Receiver<Packet>)>,
-    pub node_event_channels: HashMap<NodeId, (Sender<NodeEvent>, Receiver<NodeEvent>)>,
+    pub node_event_channels: HashMap<NodeId, (Sender<DroneEvent>, Receiver<DroneEvent>)>,
     pub drone_command_channels: HashMap<NodeId, (Sender<DroneCommand>, Receiver<DroneCommand>)>,
     pub client_event_channels: HashMap<NodeId, (Sender<ClientEvent>, Receiver<ClientEvent>)>,
     pub client_command_channels: HashMap<NodeId, (Sender<ClientCommand>, Receiver<ClientCommand>)>,
@@ -107,7 +104,6 @@ impl NetworkInitializer {
 
             let pdr = drone.pdr as f32;
 
-            let barrier_clone = Arc::clone(&drone_barrier);
 
             let barrier_clone = Arc::clone(&drone_barrier);
             self.handles.insert(
@@ -211,7 +207,6 @@ impl NetworkInitializer {
 
             let server_id: NodeId = server.id;
 
-            let barrier_clone = Arc::clone(&server_barrier);
 
             let barrier_clone = Arc::clone(&server_barrier);
             self.handles.insert(

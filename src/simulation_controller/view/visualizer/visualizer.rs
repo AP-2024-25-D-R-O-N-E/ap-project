@@ -10,7 +10,7 @@ use egui_graphs::events::Event;
 // use fdg::nalgebra::{Const, OPoint};
 // use fdg::{Force, ForceGraph};
 
-use wg_2024::controller::NodeEvent;
+use wg_2024::controller::DroneEvent;
 
 use super::drawers::{
     draw_section_console, draw_section_debug, draw_section_graph, draw_section_settings,
@@ -28,7 +28,7 @@ pub struct SCGui {
     last_update_time: Instant,
     frames_last_time_span: usize,
 
-    node_events: Vec<NodeEvent>,
+    node_events: Vec<DroneEvent>,
     client_events: Vec<ClientEvent>,
     server_events: Vec<ServerEvent>,
 

@@ -4,7 +4,6 @@
 use initializer::network_initializer::NetworkInitializer;
 use simple_logger::SimpleLogger;
 use simulation_controller::visualizer::visualizer::run_gui;
-use std::env;
 
 mod client;
 mod fragmentation;
@@ -28,7 +27,7 @@ fn main() {
         .unwrap();
 
     let mut simulation_controller =
-        NetworkInitializer::new("src/config.toml".to_string()).init_network();
+        NetworkInitializer::new("src/topology_configs/config.toml".to_string()).init_network();
     match simulation_controller {
         Ok(sc) => run_gui("Simulation controller".to_string(), sc),
         Err(err) => log::error!("Error in network initialization: {}", err),

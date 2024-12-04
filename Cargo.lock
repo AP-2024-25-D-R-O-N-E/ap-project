@@ -846,11 +846,7 @@ checksum = "96a6ac251f4a2aca6b3f91340350eab87ae57c3f127ffeb585e92bd336717991"
 [[package]]
 name = "d-r-o-n-e_drone"
 version = "0.1.0"
-<<<<<<< HEAD
-source = "git+https://github.com/AP-2024-25-D-R-O-N-E/drone.git#7219d0fa8a366b294c71dc18296af266bfe3b01b"
-=======
 source = "git+https://github.com/AP-2024-25-D-R-O-N-E/drone.git#25aa75fbd89836e2bf0db9eda130372815de4c66"
->>>>>>> master
 dependencies = [
  "colored",
  "crossbeam",
@@ -1800,7 +1796,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fc2f4eb4bc735547cfed7c0a4922cbd04a4655978c09b54f1f7b228750664c34"
 dependencies = [
  "cfg-if",
- "windows-targets 0.52.6",
+ "windows-targets 0.48.5",
 ]
 
 [[package]]
@@ -3509,7 +3505,17 @@ dependencies = [
 ]
 
 [[package]]
-<<<<<<< HEAD
+name = "wg_tests"
+version = "0.1.0"
+source = "git+https://github.com/WGL-2024/WGL_repo_2024.git#311975ad49283f1b7a13bf71c3b7cd27af655e94"
+dependencies = [
+ "crossbeam-channel",
+ "wg_drone",
+ "wg_network",
+ "wg_packet",
+]
+
+[[package]]
 name = "wgpu"
 version = "22.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3648,7 +3654,7 @@ version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf221c93e13a30d793f7645a0e7762c55d169dbb0a49671918a2319d289b10bb"
 dependencies = [
- "windows-sys 0.59.0",
+ "windows-sys 0.48.0",
 ]
 
 [[package]]
@@ -3747,16 +3753,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "75283be5efb2831d37ea142365f009c02ec203cd29a3ebecbc093d52315b66d0"
 dependencies = [
  "windows-targets 0.42.2",
-=======
-name = "wg_tests"
-version = "0.1.0"
-source = "git+https://github.com/WGL-2024/WGL_repo_2024.git#311975ad49283f1b7a13bf71c3b7cd27af655e94"
-dependencies = [
- "crossbeam-channel",
- "wg_drone",
- "wg_network",
- "wg_packet",
->>>>>>> master
 ]
 
 [[package]]
