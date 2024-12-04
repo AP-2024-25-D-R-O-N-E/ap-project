@@ -18,7 +18,7 @@ use petgraph::stable_graph::{DefaultIx, EdgeIndex, NodeIndex};
 use petgraph::{Directed, Undirected};
 use wg_2024::controller::NodeEvent;
 
-use super::drawers::{self, draw_section_debug, draw_section_testing};
+use super::drawers::{self, draw_section_console, draw_section_debug, draw_section_testing};
 use super::settings;
 use super::state::State;
 
@@ -451,27 +451,6 @@ impl SCGui {
             });
     }
 
-    fn draw_section_console(&mut self, ui: &mut Ui) {
-        ScrollArea::vertical()
-            .auto_shrink([false, false])
-            .show(ui, |ui| {
-                //TODO draw node events
-                ui.label(egui::RichText::new("This is red text!").color(egui::Color32::RED));
-
-                ui.label(
-                    egui::RichText::new("This is green bold text!")
-                        .color(egui::Color32::GREEN)
-                        .strong(),
-                );
-
-                ui.label(
-                    egui::RichText::new("This is blue italic text!")
-                        .color(egui::Color32::BLUE)
-                        .italics(),
-                );
-            });
-    }
-
     // fn reset(&mut self) {
     //     let settings_graph = settings::SettingsGraph::default();
     //     let settings_simulation = settings::SettingsSimulation::default();
@@ -509,7 +488,7 @@ impl App for SCGui {
         egui::TopBottomPanel::bottom("bottom_panel")
             .frame(custom_frame)
             .resizable(true)
-            .show(ctx, |ui| self.draw_section_console(ui));
+            .show(ctx, |ui| draw_section_console(ui, &mut self.state));
 
         egui::CentralPanel::default().show(ctx, |ui| {
             let settings_interaction = &egui_graphs::SettingsInteraction::new()
