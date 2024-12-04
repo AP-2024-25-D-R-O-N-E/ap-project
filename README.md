@@ -28,7 +28,12 @@ General list of stuff needed for the project.
         - [ ] we need to define if user input (like clients sending a message or requesting a file) is done through the simulation controller
     - [ ] handling received requests and responding with a new message, which is sent through the disassembler
 - [ ] Simulation controller:
-    - [ ] initialization
+    - [x] initialization
     - [ ] GUI for visualizing topology and moving packets
     - [ ] inputs for sending commands to nodes
     - [ ] listening to events from nodes and handling them accordingly (usually with a responsive GUI element)
+    - [ ] give actual graph topology 
+    - [ ] input packet path
+    - [ ] display node type on graph ui
+    - [ ] display events on the app console instead of terminal
+    - [ ] default to fit to screen
