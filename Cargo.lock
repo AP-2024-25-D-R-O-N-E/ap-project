@@ -96,7 +96,7 @@ checksum = "22ec99545bb0ed0ea7bb9b8e1e9122ea386ff8a48c0922e43f36d45ab09e0e80"
 [[package]]
 name = "d-r-o-n-e_drone"
 version = "0.1.0"
-source = "git+https://github.com/AP-2024-25-D-R-O-N-E/drone.git?branch=updating-WG-definitions-and-implementing-crash#c8370cd59f763975afa31be643b673fdfd959f9c"
+source = "git+https://github.com/AP-2024-25-D-R-O-N-E/drone.git#25aa75fbd89836e2bf0db9eda130372815de4c66"
 dependencies = [
  "colored",
  "crossbeam",
