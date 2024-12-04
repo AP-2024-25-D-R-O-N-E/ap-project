@@ -43,21 +43,12 @@ impl From<NodeProps<NodePayload>> for CustomNodeShape {
         }
     }
 }
+trait DrawShape {
+    fn draw_shape(&mut self, ctx: &egui_graphs::DrawContext) -> Vec<egui::Shape>;
+}
 
-impl<E: Clone, Ty: EdgeType, Ix: IndexType> DisplayNode<NodePayload, E, Ty, Ix>
-    for CustomNodeShape
-{
-    fn is_inside(&self, pos: Pos2) -> bool {
-        let rect = Rect::from_center_size(self.loc, Vec2::new(self.size_x, self.size_y));
-
-        rect.contains(pos)
-    }
-
-    fn closest_boundary_point(&self, dir: Vec2) -> Pos2 {
-        find_intersection(self.loc, self.size_x / 2., self.size_y / 2., dir)
-    }
-
-    fn shapes(&mut self, ctx: &egui_graphs::DrawContext) -> Vec<egui::Shape> {
+impl DrawShape for CustomNodeShape {
+    fn draw_shape(&mut self, ctx: &egui_graphs::DrawContext) -> Vec<egui::Shape> {
         // find node center location on the screen coordinates
         let center = ctx.meta.canvas_to_screen_pos(self.loc);
         let color = ctx.ctx.style().visuals.text_color();
@@ -86,6 +77,24 @@ impl<E: Clone, Ty: EdgeType, Ix: IndexType> DisplayNode<NodePayload, E, Ty, Ix>
         self.size_y = rect.size().y;
 
         vec![shape_rect, shape_label.into()]
+    }
+}
+
+impl<E: Clone, Ty: EdgeType, Ix: IndexType> DisplayNode<NodePayload, E, Ty, Ix>
+    for CustomNodeShape
+{
+    fn is_inside(&self, pos: Pos2) -> bool {
+        let rect = Rect::from_center_size(self.loc, Vec2::new(self.size_x, self.size_y));
+
+        rect.contains(pos)
+    }
+
+    fn closest_boundary_point(&self, dir: Vec2) -> Pos2 {
+        find_intersection(self.loc, self.size_x / 2., self.size_y / 2., dir)
+    }
+
+    fn shapes(&mut self, ctx: &egui_graphs::DrawContext) -> Vec<egui::Shape> {
+        self.draw_shape(ctx)
     }
 
     fn update(&mut self, state: &NodeProps<NodePayload>) {
