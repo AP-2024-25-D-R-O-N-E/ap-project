@@ -18,7 +18,7 @@ use petgraph::stable_graph::{DefaultIx, EdgeIndex, NodeIndex};
 use petgraph::{Directed, Undirected};
 use wg_2024::controller::NodeEvent;
 
-use super::drawers::{self, draw_section_testing};
+use super::drawers::{self, draw_section_debug, draw_section_testing};
 use super::settings;
 use super::state::State;
 
@@ -34,8 +34,6 @@ pub struct SCGui {
     settings_interaction: settings::SettingsInteraction,
     settings_navigation: settings::SettingsNavigation,
     settings_style: settings::SettingsStyle,
-
-    last_events: Vec<String>,
 
     fps: f32,
     last_update_time: Instant,
@@ -74,8 +72,6 @@ impl SCGui {
             settings_interaction: settings::SettingsInteraction::default(),
             settings_navigation: settings::SettingsNavigation::default(),
             settings_style: settings::SettingsStyle::default(),
-
-            last_events: Vec::default(),
 
             fps: 0.,
             last_update_time: Instant::now(),
@@ -120,10 +116,13 @@ impl SCGui {
 
     fn handle_graph_events(&mut self) {
         self.graph_event_consumer.try_iter().for_each(|e| {
-            if self.last_events.len() > GRAPH_EVENTS_LIMIT {
-                self.last_events.remove(0);
+            if self.state.debug_section.graph_events.len() > GRAPH_EVENTS_LIMIT {
+                self.state.debug_section.graph_events.remove(0);
             }
-            self.last_events.push(serde_json::to_string(&e).unwrap());
+            self.state
+                .debug_section
+                .graph_events
+                .push(serde_json::to_string(&e).unwrap());
 
             match e {
                 Event::Pan(payload) => self.pan = payload.new_pan,
@@ -452,32 +451,6 @@ impl SCGui {
             });
     }
 
-    fn draw_section_debug(&mut self, ui: &mut Ui) {
-        drawers::draw_section_debug(
-            ui,
-            ValuesSectionDebug {
-                zoom: self.zoom,
-                pan: self.pan,
-                fps: self.fps,
-            },
-        );
-
-        CollapsingHeader::new("Last Events")
-            .default_open(true)
-            .show(ui, |ui| {
-                if ui.button("clear").clicked() {
-                    self.last_events.clear();
-                }
-                ScrollArea::vertical()
-                    .auto_shrink([false, true])
-                    .show(ui, |ui| {
-                        self.last_events.iter().rev().for_each(|event| {
-                            ui.label(event);
-                        });
-                    });
-            });
-    }
-
     fn draw_section_console(&mut self, ui: &mut Ui) {
         ScrollArea::vertical()
             .auto_shrink([false, false])
@@ -583,9 +556,7 @@ impl App for SCGui {
             .default_open(false)
             .show(ctx, |ui| {
                 ScrollArea::vertical().show(ui, |ui| {
-                    egui::CollapsingHeader::new("Debug")
-                        .default_open(true)
-                        .show(ui, |ui| self.draw_section_debug(ui));
+                    draw_section_debug(ui, &mut self.state);
                 });
             });
 

@@ -2,6 +2,7 @@ pub struct DebugSectionState {
     pub zoom: f32,
     pub pan: [f32; 2],
     pub fps: f32,
+    pub graph_events: Vec<String>,
 }
 
 impl Default for DebugSectionState {
@@ -10,6 +11,7 @@ impl Default for DebugSectionState {
             zoom: 0.,
             pan: [0., 0.],
             fps: 100.,
+            graph_events: vec![],
         }
     }
 }
