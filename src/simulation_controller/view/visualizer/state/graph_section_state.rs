@@ -36,22 +36,22 @@ fn generate_graph() -> StableGraph<NodePayload, (), Undirected> {
         node_type: NodeType::Client(ClientNode {}),
     });
     let b = graph.add_node(NodePayload {
-        node_type: NodeType::Drone(DroneNode {}),
+        node_type: NodeType::Drone(DroneNode::default()),
     });
     let c = graph.add_node(NodePayload {
-        node_type: NodeType::Drone(DroneNode {}),
+        node_type: NodeType::Drone(DroneNode::default()),
     });
     let d = graph.add_node(NodePayload {
         node_type: NodeType::Server(ServerNode {}),
     });
     let e = graph.add_node(NodePayload {
-        node_type: NodeType::Drone(DroneNode {}),
+        node_type: NodeType::Drone(DroneNode::default()),
     });
     let f = graph.add_node(NodePayload {
-        node_type: NodeType::Drone(DroneNode {}),
+        node_type: NodeType::Drone(DroneNode::default()),
     });
     let g = graph.add_node(NodePayload {
-        node_type: NodeType::Drone(DroneNode {}),
+        node_type: NodeType::Drone(DroneNode::default()),
     });
     let h = graph.add_node(NodePayload {
         node_type: NodeType::Server(ServerNode {}),

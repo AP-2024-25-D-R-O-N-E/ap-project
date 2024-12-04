@@ -21,7 +21,14 @@ pub struct ServerNode {}
 #[derive(Clone)]
 pub struct ClientNode {}
 #[derive(Clone)]
-pub struct DroneNode {}
+pub struct DroneNode {
+    radius: f32,
+}
+impl Default for DroneNode {
+    fn default() -> Self {
+        Self { radius: 15. }
+    }
+}
 
 #[derive(Clone)]
 pub struct CustomNodeShape {
@@ -112,14 +119,14 @@ impl DrawShape for CustomNodeShape {
 
                 vec![shape_rect, shape_label.into()]
             }
-            NodeType::Drone(_drone_node) => {
+            NodeType::Drone(drone_node) => {
                 let shape_label = TextShape::new(
-                    center + Vec2::new(-10., 10.),
+                    center + Vec2::new(-drone_node.radius / 2., drone_node.radius / 2.),
                     label_bounding_box,
                     text_color,
                 );
 
-                let shape_rect = Shape::circle_filled(center, 10., Color32::BLACK);
+                let shape_rect = Shape::circle_filled(center, drone_node.radius, Color32::BLACK);
                 vec![shape_rect, shape_label.into()]
             }
         }
@@ -132,9 +139,13 @@ impl<E: Clone, Ty: EdgeType, Ix: IndexType> DisplayNode<NodePayload, E, Ty, Ix>
     for CustomNodeShape
 {
     fn is_inside(&self, pos: Pos2) -> bool {
-        let rect = Rect::from_center_size(self.loc, Vec2::new(self.size_x, self.size_y));
-
-        rect.contains(pos)
+        match &self.node_type {
+            NodeType::Drone(drone_node) => self.loc.distance(pos) < drone_node.radius,
+            _ => {
+                let rect = Rect::from_center_size(self.loc, Vec2::new(self.size_x, self.size_y));
+                rect.contains(pos)
+            }
+        }
     }
 
     fn closest_boundary_point(&self, dir: Vec2) -> Pos2 {
