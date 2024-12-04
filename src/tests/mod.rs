@@ -1,6 +1,7 @@
 pub mod send_ack;
 pub mod send_flood_request;
 pub mod send_msg;
+pub mod crash_test;
 
 use log::*;
 use simple_logger::SimpleLogger;
