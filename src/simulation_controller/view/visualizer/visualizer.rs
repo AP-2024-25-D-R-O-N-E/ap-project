@@ -2,24 +2,20 @@ use std::time::Instant;
 
 use crate::simulation_controller::{ClientEvent, ServerEvent, SimulationController};
 
-// use super::drawers::drawers::ValuesSectionDebug;
-use crossbeam::channel::{unbounded, Receiver, Sender};
 use eframe::{run_native, App, CreationContext, NativeOptions};
-use egui::{CollapsingHeader, Context, Pos2, ScrollArea, Ui, Vec2, Window};
+use egui::{Context, ScrollArea, Window};
 use egui_graphs::events::Event;
-use egui_graphs::{Edge, Graph, GraphView, Node};
 
 // use fdg::fruchterman_reingold::{FruchtermanReingold, FruchtermanReingoldConfiguration};
 // use fdg::nalgebra::{Const, OPoint};
 // use fdg::{Force, ForceGraph};
 
-use petgraph::prelude::{StableGraph, StableUnGraph};
-use petgraph::stable_graph::{DefaultIx, EdgeIndex, NodeIndex};
-use petgraph::{Directed, Undirected};
 use wg_2024::controller::NodeEvent;
 
-use super::drawers::{self, draw_section_console, draw_section_debug, draw_section_testing};
-use super::settings;
+use super::drawers::{
+    draw_section_console, draw_section_debug, draw_section_graph, draw_section_settings,
+    draw_section_testing,
+};
 use super::state::State;
 
 const GRAPH_EVENTS_LIMIT: usize = 100;
@@ -28,19 +24,9 @@ const SERVER_EVENTS_LIMIT: usize = 100;
 const NODE_EVENTS_LIMIT: usize = 100;
 
 pub struct SCGui {
-    g: Graph<(), (), Undirected, DefaultIx>,
-
-    settings_graph: settings::SettingsGraph,
-    settings_interaction: settings::SettingsInteraction,
-    settings_navigation: settings::SettingsNavigation,
-    settings_style: settings::SettingsStyle,
-
     fps: f32,
     last_update_time: Instant,
     frames_last_time_span: usize,
-
-    graph_event_publisher: Sender<Event>,
-    graph_event_consumer: Receiver<Event>,
 
     node_events: Vec<NodeEvent>,
     client_events: Vec<ClientEvent>,
@@ -56,23 +42,7 @@ pub struct SCGui {
 
 impl SCGui {
     fn new(_: &CreationContext<'_>, simulation_controller: SimulationController) -> Self {
-        let settings_graph = settings::SettingsGraph::default();
-
-        let (event_publisher, event_consumer) = unbounded();
-
         Self {
-            g: Graph::from(&Self::generate_graph()),
-            // sim,
-            // force,
-            graph_event_consumer: event_consumer,
-            graph_event_publisher: event_publisher,
-
-            settings_graph,
-
-            settings_interaction: settings::SettingsInteraction::default(),
-            settings_navigation: settings::SettingsNavigation::default(),
-            settings_style: settings::SettingsStyle::default(),
-
             fps: 0.,
             last_update_time: Instant::now(),
             frames_last_time_span: 0,
@@ -89,20 +59,6 @@ impl SCGui {
         }
     }
 
-    fn generate_graph() -> StableGraph<(), (), Undirected> {
-        let mut g = StableUnGraph::default();
-
-        let a = g.add_node(());
-        let b = g.add_node(());
-        let c = g.add_node(());
-
-        g.add_edge(a, b, ());
-        g.add_edge(b, c, ());
-        g.add_edge(c, a, ());
-
-        g
-    }
-
     fn update_fps(&mut self) {
         self.frames_last_time_span += 1;
         let now = Instant::now();
@@ -115,21 +71,25 @@ impl SCGui {
     }
 
     fn handle_graph_events(&mut self) {
-        self.graph_event_consumer.try_iter().for_each(|e| {
-            if self.state.debug_section.graph_events.len() > GRAPH_EVENTS_LIMIT {
-                self.state.debug_section.graph_events.remove(0);
-            }
-            self.state
-                .debug_section
-                .graph_events
-                .push(serde_json::to_string(&e).unwrap());
+        self.state
+            .graph_section
+            .graph_event_consumer
+            .try_iter()
+            .for_each(|e| {
+                if self.state.debug_section.graph_events.len() > GRAPH_EVENTS_LIMIT {
+                    self.state.debug_section.graph_events.remove(0);
+                }
+                self.state
+                    .debug_section
+                    .graph_events
+                    .push(serde_json::to_string(&e).unwrap());
 
-            match e {
-                Event::Pan(payload) => self.pan = payload.new_pan,
-                Event::Zoom(payload) => self.zoom = payload.new_zoom,
-                _ => {}
-            }
-        });
+                match e {
+                    Event::Pan(payload) => self.pan = payload.new_pan,
+                    Event::Zoom(payload) => self.zoom = payload.new_zoom,
+                    _ => {}
+                }
+            });
     }
 
     fn handle_sc_events(&mut self) {
@@ -342,115 +302,6 @@ impl SCGui {
     //     });
     // }
 
-    fn draw_section_settings(&mut self, ui: &mut Ui) {
-        CollapsingHeader::new("Navigation")
-            .default_open(true)
-            .show(ui, |ui| {
-                if ui
-                    .radio(
-                        self.settings_navigation.fit_to_screen_enabled,
-                        "Fit to screen",
-                    )
-                    .on_hover_text_at_pointer(
-                        "Automatically fits the graph to screen\nDisables zooming",
-                    )
-                    .clicked()
-                {
-                    self.settings_navigation.fit_to_screen_enabled = true;
-                    self.settings_navigation.zoom_and_pan_enabled = false;
-                }
-
-                if ui
-                    .radio(self.settings_navigation.zoom_and_pan_enabled, "Zoom + pan")
-                    .on_hover_text_at_pointer("Move: left drag\nZoom: ctrl/cmd + scroll")
-                    .clicked()
-                {
-                    self.settings_navigation.fit_to_screen_enabled = false;
-                    self.settings_navigation.zoom_and_pan_enabled = true;
-                }
-            });
-
-        CollapsingHeader::new("Style").show(ui, |ui| {
-            ui.checkbox(&mut self.settings_style.labels_always, "labels_always");
-            ui.label("Wheter to show labels always or when interacted only.");
-        });
-
-        CollapsingHeader::new("Interaction").show(ui, |ui| {
-                if ui.checkbox(&mut self.settings_interaction.dragging_enabled, "dragging_enabled").clicked() && self.settings_interaction.dragging_enabled {
-                    self.settings_interaction.node_clicking_enabled = true;
-                };
-                ui.label("To drag use LMB click + drag on a node.");
-
-                ui.add_space(5.);
-
-                ui.add_enabled_ui(!(self.settings_interaction.dragging_enabled || self.settings_interaction.node_selection_enabled || self.settings_interaction.node_selection_multi_enabled), |ui| {
-                    ui.vertical(|ui| {
-                        ui.checkbox(&mut self.settings_interaction.node_clicking_enabled, "node_clicking_enabled");
-                        ui.label("Check click events in last events");
-                    }).response.on_disabled_hover_text("node click is enabled when any of the interaction is also enabled");
-                });
-
-                ui.add_space(5.);
-
-                ui.add_enabled_ui(!self.settings_interaction.node_selection_multi_enabled, |ui| {
-                    ui.vertical(|ui| {
-                        if ui.checkbox(&mut self.settings_interaction.node_selection_enabled, "node_selection_enabled").clicked() && self.settings_interaction.node_selection_enabled {
-                            self.settings_interaction.node_clicking_enabled = true;
-                        };
-                        ui.label("Enable select to select nodes with LMB click. If node is selected clicking on it again will deselect it.");
-                    }).response.on_disabled_hover_text("node_selection_multi_enabled enables select");
-                });
-
-                if ui.checkbox(&mut self.settings_interaction.node_selection_multi_enabled, "node_selection_multi_enabled").changed() && self.settings_interaction.node_selection_multi_enabled {
-                    self.settings_interaction.node_clicking_enabled = true;
-                    self.settings_interaction.node_selection_enabled = true;
-                }
-                ui.label("Enable multiselect to select multiple nodes.");
-
-                ui.add_space(5.);
-
-                ui.add_enabled_ui(!(self.settings_interaction.edge_selection_enabled || self.settings_interaction.edge_selection_multi_enabled), |ui| {
-                    ui.vertical(|ui| {
-                        ui.checkbox(&mut self.settings_interaction.edge_clicking_enabled, "edge_clicking_enabled");
-                        ui.label("Check click events in last events");
-                    }).response.on_disabled_hover_text("edge click is enabled when any of the interaction is also enabled");
-                });
-
-                ui.add_space(5.);
-
-                ui.add_enabled_ui(!self.settings_interaction.edge_selection_multi_enabled, |ui| {
-                    ui.vertical(|ui| {
-                        if ui.checkbox(&mut self.settings_interaction.edge_selection_enabled, "edge_selection_enabled").clicked() && self.settings_interaction.edge_selection_enabled {
-                            self.settings_interaction.edge_clicking_enabled = true;
-                        };
-                        ui.label("Enable select to select edges with LMB click. If edge is selected clicking on it again will deselect it.");
-                    }).response.on_disabled_hover_text("edge_selection_multi_enabled enables select");
-                });
-
-                if ui.checkbox(&mut self.settings_interaction.edge_selection_multi_enabled, "edge_selection_multi_enabled").changed() && self.settings_interaction.edge_selection_multi_enabled {
-                    self.settings_interaction.edge_clicking_enabled = true;
-                    self.settings_interaction.edge_selection_enabled = true;
-                }
-                ui.label("Enable multiselect to select multiple edges.");
-            });
-
-        CollapsingHeader::new("Selected")
-            .default_open(true)
-            .show(ui, |ui| {
-                ScrollArea::vertical()
-                    .auto_shrink([false, true])
-                    .max_height(200.)
-                    .show(ui, |ui| {
-                        self.g.selected_nodes().iter().for_each(|node| {
-                            ui.label(format!("{node:?}"));
-                        });
-                        self.g.selected_edges().iter().for_each(|edge| {
-                            ui.label(format!("{edge:?}"));
-                        });
-                    });
-            });
-    }
-
     // fn reset(&mut self) {
     //     let settings_graph = settings::SettingsGraph::default();
     //     let settings_simulation = settings::SettingsSimulation::default();
@@ -490,33 +341,7 @@ impl App for SCGui {
             .resizable(true)
             .show(ctx, |ui| draw_section_console(ui, &mut self.state));
 
-        egui::CentralPanel::default().show(ctx, |ui| {
-            let settings_interaction = &egui_graphs::SettingsInteraction::new()
-                .with_node_selection_enabled(self.settings_interaction.node_selection_enabled)
-                .with_node_selection_multi_enabled(
-                    self.settings_interaction.node_selection_multi_enabled,
-                )
-                .with_dragging_enabled(self.settings_interaction.dragging_enabled)
-                .with_node_clicking_enabled(self.settings_interaction.node_clicking_enabled)
-                .with_edge_clicking_enabled(self.settings_interaction.edge_clicking_enabled)
-                .with_edge_selection_enabled(self.settings_interaction.edge_selection_enabled)
-                .with_edge_selection_multi_enabled(
-                    self.settings_interaction.edge_selection_multi_enabled,
-                );
-            let settings_navigation = &egui_graphs::SettingsNavigation::new()
-                .with_zoom_and_pan_enabled(self.settings_navigation.zoom_and_pan_enabled)
-                .with_fit_to_screen_enabled(self.settings_navigation.fit_to_screen_enabled)
-                .with_zoom_speed(self.settings_navigation.zoom_speed);
-            let settings_style = &egui_graphs::SettingsStyle::new()
-                .with_labels_always(self.settings_style.labels_always);
-            ui.add(
-                &mut GraphView::new(&mut self.g)
-                    .with_interactions(settings_interaction)
-                    .with_navigations(settings_navigation)
-                    .with_styles(settings_style)
-                    .with_events(&self.graph_event_publisher),
-            );
-        });
+        egui::CentralPanel::default().show(ctx, |ui| draw_section_graph(ui, &mut self.state));
 
         Window::new("Settings")
             .collapsible(true)
@@ -524,7 +349,7 @@ impl App for SCGui {
             .default_width(200.0)
             .default_height(100.0)
             .show(ctx, |ui| {
-                ScrollArea::vertical().show(ui, |ui| self.draw_section_settings(ui));
+                ScrollArea::vertical().show(ui, |ui| draw_section_settings(ui, &mut self.state));
             });
 
         Window::new("Debug")
@@ -547,7 +372,7 @@ impl App for SCGui {
             .default_open(false)
             .show(ctx, |ui| {
                 ScrollArea::vertical().show(ui, |ui| {
-                    draw_section_testing(ui, &mut self.state);
+                    draw_section_testing(ui, &mut self.state, &self.simulation_controller);
                 });
             });
 
