@@ -22,9 +22,7 @@ pub struct Client {
 }
 
 impl Fragmenter for Client {
-    fn disassemble(
-        msg: Message,
-    ) -> std::collections::HashMap<u64, wg_2024::packet::Fragment> {
+    fn disassemble(msg: Message) -> std::collections::HashMap<u64, wg_2024::packet::Fragment> {
         todo!()
     }
 
@@ -64,7 +62,7 @@ impl Client {
                         //remember to remove the underscores when you actually start using the variable ig
                         Ok(packet) => {
                             log::debug!("{} at {} - packet: {:?}, {:?}", " <- packet received".green(), self.id, packet.session_id, packet.routing_header);
-                            
+
                             match &packet.pack_type {
                                 PacketType::Nack(nack)=>self.manage_nack(nack),
                                 PacketType::Ack(ack)=>self.manage_ack(ack),
@@ -90,26 +88,51 @@ impl Client {
 
     fn manage_nack(&self, nack: &Nack) {
         //resend the packet
-        log::debug!("{} {} received a nack: {:?}", "↳ client".green(), self.id, nack);
+        log::debug!(
+            "{} {} received a nack: {:?}",
+            "↳ client".green(),
+            self.id,
+            nack
+        );
     }
 
     fn manage_ack(&self, ack: &Ack) {
         //free memory of message vector
-        log::debug!("{} {} received an ack: {:?}", "↳ client".green(), self.id, ack);
+        log::debug!(
+            "{} {} received an ack: {:?}",
+            "↳ client".green(),
+            self.id,
+            ack
+        );
     }
 
     fn manage_msg_fragment(&self, msg: &Fragment) {
         //call to the assembler
-        log::debug!("{} {} received a fragment: {:?}", "↳ client".green(), self.id, msg);
+        log::debug!(
+            "{} {} received a fragment: {:?}",
+            "↳ client".green(),
+            self.id,
+            msg
+        );
     }
 
     fn manage_flood_request(&self, fr: &FloodRequest) {
         //call to the assembler
-        log::debug!("{} {} received a flood request: {:?}", "↳ client".green(), self.id, fr);
+        log::debug!(
+            "{} {} received a flood request: {:?}",
+            "↳ client".green(),
+            self.id,
+            fr
+        );
     }
 
     fn manage_flood_response(&self, fr: &FloodResponse) {
         //call to the assembler
-        log::debug!("{} {} received a flood response: {:?}", "↳ client".green(), self.id, fr);
+        log::debug!(
+            "{} {} received a flood response: {:?}",
+            "↳ client".green(),
+            self.id,
+            fr
+        );
     }
 }

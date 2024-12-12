@@ -35,9 +35,8 @@ pub fn draw_section_testing(
             });
             ui.horizontal(|ui| {
                 if ui.button("Send default ack").clicked() {
-                    simulation_controller.send_default_ack(
-                        state.test_section.send_default_ack_node_id,
-                    )
+                    simulation_controller
+                        .send_default_ack(state.test_section.send_default_ack_node_id)
                 }
                 ui.add(
                     egui::DragValue::new(&mut state.test_section.send_default_ack_node_id)
@@ -46,9 +45,8 @@ pub fn draw_section_testing(
             });
             ui.horizontal(|ui| {
                 if ui.button("Send default nack").clicked() {
-                    simulation_controller.send_default_nack(
-                        state.test_section.send_default_nack_node_id,
-                    )
+                    simulation_controller
+                        .send_default_nack(state.test_section.send_default_nack_node_id)
                 }
                 ui.add(
                     egui::DragValue::new(&mut state.test_section.send_default_nack_node_id)

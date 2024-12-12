@@ -22,9 +22,7 @@ pub struct Server {
 }
 
 impl Fragmenter for Server {
-    fn disassemble(
-        msg: Message,
-    ) -> std::collections::HashMap<u64, wg_2024::packet::Fragment> {
+    fn disassemble(msg: Message) -> std::collections::HashMap<u64, wg_2024::packet::Fragment> {
         todo!()
     }
 
@@ -88,26 +86,51 @@ impl Server {
 
     fn manage_nack(&self, nack: &Nack) {
         //resend the packet
-        log::debug!("{} {} received a nack: {:?}", "↳ server".green(), self.id, nack);
+        log::debug!(
+            "{} {} received a nack: {:?}",
+            "↳ server".green(),
+            self.id,
+            nack
+        );
     }
 
     fn manage_ack(&self, ack: &Ack) {
         //free memory of message vector
-        log::debug!("{} {} received an ack: {:?}", "↳ server".green(), self.id, ack);
+        log::debug!(
+            "{} {} received an ack: {:?}",
+            "↳ server".green(),
+            self.id,
+            ack
+        );
     }
 
     fn manage_msg_fragment(&self, msg: &Fragment) {
         //call to the assembler
-        log::debug!("{} {} received a fragment: {:?}", "↳ server".green(), self.id, msg);
+        log::debug!(
+            "{} {} received a fragment: {:?}",
+            "↳ server".green(),
+            self.id,
+            msg
+        );
     }
 
     fn manage_flood_request(&self, fr: &FloodRequest) {
         //call to the assembler
-        log::debug!("{} {} received a flood request: {:?}", "↳ server".green(), self.id, fr);
+        log::debug!(
+            "{} {} received a flood request: {:?}",
+            "↳ server".green(),
+            self.id,
+            fr
+        );
     }
 
     fn manage_flood_response(&self, fr: &FloodResponse) {
         //call to the assembler
-        log::debug!("{} {} received a flood response: {:?}", "↳ server".green(), self.id, fr);
+        log::debug!(
+            "{} {} received a flood response: {:?}",
+            "↳ server".green(),
+            self.id,
+            fr
+        );
     }
 }
