@@ -17,8 +17,10 @@ serde_json = "1.0"
 petgraph = "0.6"
 fdg = { git = "https://github.com/grantshandy/fdg" }
 rand = "0.8"
-d-r-o-n-e_drone = { git = "https://github.com/AP-2024-25-D-R-O-N-E/drone.git", branch="drone-refactoring-for-protocol" }
+d-r-o-n-e_drone = { git = "https://github.com/AP-2024-25-D-R-O-N-E/drone.git", branch = "flooding-path-trace-fix" }
 rustafarian-drone = { git = "https://github.com/Rustafarian-Unitn/rustafarian-drone"}
 lockheedrustin-drone = { git = "https://github.com/Lockheed-Rustin/drone.git" }
 rusty_drones = { git = "https://github.com/matteo-dinoia/rusty-drones", branch = "main" }
 rustbusters-drone = { git = "https://github.com/Rustbusters/drone.git" }
+# ap2024_unitn_cppenjoyers_drone = { git = "https://github.com/Cpp-enjoyers/drone.git" }
+rusteze_drone = { git = "https://github.com/Rusteze-AP/drone.git", branch = "main" }
