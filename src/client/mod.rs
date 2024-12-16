@@ -124,6 +124,7 @@ impl Client {
             self.id,
             fr
         );
+        println!("works");
     }
 
     fn manage_flood_response(&self, fr: &FloodResponse) {
@@ -134,5 +135,6 @@ impl Client {
             self.id,
             fr
         );
+        println!("works2");
     }
 }

@@ -22,5 +22,5 @@ rustafarian-drone = { git = "https://github.com/Rustafarian-Unitn/rustafarian-dr
 lockheedrustin-drone = { git = "https://github.com/Lockheed-Rustin/drone.git" }
 rusty_drones = { git = "https://github.com/matteo-dinoia/rusty-drones", branch = "main" }
 rustbusters-drone = { git = "https://github.com/Rustbusters/drone.git" }
-# ap2024_unitn_cppenjoyers_drone = { git = "https://github.com/Cpp-enjoyers/drone.git" }
+ap2024_unitn_cppenjoyers_drone = { git = "https://github.com/Cpp-enjoyers/drone.git" }
 rusteze_drone = { git = "https://github.com/Rusteze-AP/drone.git", branch = "main" }

@@ -3,7 +3,7 @@ use lockheedrustin_drone::LockheedRustin;
 use rustafarian_drone::RustafarianDrone;
 use rusty_drones::RustyDrone;
 use rustbusters_drone::RustBustersDrone;
-// use ap2024_unitn_cppenjoyers_drone::CppEnjoyersDrone;
+use ap2024_unitn_cppenjoyers_drone::CppEnjoyersDrone;
 use rusteze_drone::RustezeDrone;
 
 use std::{
@@ -268,9 +268,9 @@ impl NetworkInitializer {
             3 => {
                 spawn_drone_thread::<RustBustersDrone>(id, controller_send, controller_recv, packet_recv, packet_send, pdr, barrier_clone)
             }
-            // 4 => {
-            //     spawn_drone_thread::<CppEnjoyersDrone>(id, controller_send, controller_recv, packet_recv, packet_send, pdr, barrier_clone)
-            // }
+            4 => {
+                spawn_drone_thread::<CppEnjoyersDrone>(id, controller_send, controller_recv, packet_recv, packet_send, pdr, barrier_clone)
+            }
             5 => {
                 spawn_drone_thread::<RustezeDrone>(id, controller_send, controller_recv, packet_recv, packet_send, pdr, barrier_clone)
             }
