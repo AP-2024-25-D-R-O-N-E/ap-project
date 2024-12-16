@@ -8,6 +8,7 @@ wg_2024 = { git = "https://github.com/WGL-2024/WGL_repo_2024.git", features = ["
 toml = "0.8.19"
 crossbeam = "0.8.4"
 simple_logger = "5.0.0"
+serde = { version = "1.0", features = ["derive"] }
 log = "0.4.22"
 colored = "2.1.0"
 egui_graphs = { version = "0.22.0", features = ["events"] }
@@ -24,3 +25,4 @@ rusty_drones = { git = "https://github.com/matteo-dinoia/rusty-drones", branch =
 rustbusters-drone = { git = "https://github.com/Rustbusters/drone.git" }
 ap2024_unitn_cppenjoyers_drone = { git = "https://github.com/Cpp-enjoyers/drone.git" }
 rusteze_drone = { git = "https://github.com/Rusteze-AP/drone.git", branch = "main" }
+bincode = "1.3.3"

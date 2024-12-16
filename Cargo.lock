@@ -220,6 +220,7 @@ name = "ap-project"
 version = "0.1.0"
 dependencies = [
  "ap2024_unitn_cppenjoyers_drone",
+ "bincode",
  "colored",
  "crossbeam",
  "d-r-o-n-e_drone",
@@ -235,6 +236,7 @@ dependencies = [
  "rustbusters-drone",
  "rusteze_drone",
  "rusty_drones",
+ "serde",
  "serde_json",
  "simple_logger",
  "toml",
@@ -541,6 +543,15 @@ name = "base64"
 version = "0.21.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9d297deb1925b89f2ccc13d7635fa0714f12c87adce1c75356b39ca9b7178567"
+
+[[package]]
+name = "bincode"
+version = "1.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b1f45e9417d87227c7a56d22e471c6206462cba514c7590c09aff4cf6d1ddcad"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "bindgen"
