@@ -1,5 +1,6 @@
 use ap2024_unitn_cppenjoyers_drone::CppEnjoyersDrone;
 use colored::Colorize;
+use getdroned::GetDroned;
 use lockheedrustin_drone::LockheedRustin;
 use rustafarian_drone::RustafarianDrone;
 use rustbusters_drone::RustBustersDrone;
@@ -302,6 +303,15 @@ impl NetworkInitializer {
                 barrier_clone,
             ),
             5 => spawn_drone_thread::<RustezeDrone>(
+                id,
+                controller_send,
+                controller_recv,
+                packet_recv,
+                packet_send,
+                pdr,
+                barrier_clone,
+            ),
+            6 => spawn_drone_thread::<GetDroned>(
                 id,
                 controller_send,
                 controller_recv,
