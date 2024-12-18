@@ -6,6 +6,7 @@ use rustafarian_drone::RustafarianDrone;
 use rustbusters_drone::RustBustersDrone;
 use rusteze_drone::RustezeDrone;
 use rusty_drones::RustyDrone;
+use rust_roveri::RustRoveri;
 
 use std::{
     collections::HashMap,
@@ -312,6 +313,15 @@ impl NetworkInitializer {
                 barrier_clone,
             ),
             6 => spawn_drone_thread::<GetDroned>(
+                id,
+                controller_send,
+                controller_recv,
+                packet_recv,
+                packet_send,
+                pdr,
+                barrier_clone,
+            ),
+            7 => spawn_drone_thread::<RustRoveri>(
                 id,
                 controller_send,
                 controller_recv,
