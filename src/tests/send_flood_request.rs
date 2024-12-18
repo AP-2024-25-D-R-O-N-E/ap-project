@@ -13,7 +13,7 @@ fn send_flood_request() {
     sleep(Duration::from_millis(100));
 
     let flood_req = FloodRequest {
-        path_trace: vec![],
+        path_trace: vec![(0, NodeType::Client)],
         flood_id: 0,
         initiator_id: 0,
     };

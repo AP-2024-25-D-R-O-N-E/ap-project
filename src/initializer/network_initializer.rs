@@ -17,7 +17,7 @@ use wg_2024::{
 use d_r_o_n_e_drone::MyDrone;
 
 use crate::{
-    client, server,
+    client::{client_test::Client, client_test_2::Client2, ClientTrait}, server::{server_test::Server, ServerTrait},
     simulation_controller::{
         structs::{ClientCommand, ClientEvent, ServerCommand, ServerEvent},
         SimulationController,
@@ -134,7 +134,7 @@ impl NetworkInitializer {
         // client initialization
 
         let client_barrier = Arc::new(Barrier::new(self.config.client.len() + 1));
-        for client in self.config.client.iter() {
+        for (index, client) in self.config.client.iter().enumerate() {
             let client_event_send = unbounded::<ClientEvent>();
             let client_command_rec = unbounded::<ClientCommand>();
 
@@ -161,13 +161,7 @@ impl NetworkInitializer {
             self.handles.insert(
                 client_id,
                 thread::spawn(move || {
-                    let mut client = client::Client::new(
-                        client_id,
-                        command_send,
-                        command_receiver,
-                        packet_recv,
-                        packet_send,
-                    );
+                    let mut client = Self::create_client(index as u8, command_receiver, command_send, packet_send, packet_recv, client_id);
                     log::info!(
                         "{}, {:?}",
                         format!("Initialized client {}", client_id).bold().purple(),
@@ -184,7 +178,7 @@ impl NetworkInitializer {
         log::info!("{}", "Clients initialized successfully!".bold().green());
 
         let server_barrier = Arc::new(Barrier::new(self.config.server.len() + 1));
-        for server in self.config.server.iter() {
+        for (index, server) in self.config.server.iter().enumerate() {
             let server_event_send = unbounded::<ServerEvent>();
             let server_command_rec = unbounded::<ServerCommand>();
 
@@ -210,13 +204,7 @@ impl NetworkInitializer {
             self.handles.insert(
                 server_id,
                 thread::spawn(move || {
-                    let mut server = server::Server::new(
-                        server_id,
-                        command_send,
-                        command_receiver,
-                        packet_recv,
-                        packet_send,
-                    );
+                    let mut server = Self::create_server(index as u8, command_receiver, command_send, packet_send, packet_recv, server_id);
                     log::info!(
                         "{}, {:?}",
                         format!("Initialized server {}", server_id).bold().purple(),
@@ -244,4 +232,43 @@ impl NetworkInitializer {
     pub fn get_drone_command_channel(&self, drone_id: NodeId) -> &Sender<DroneCommand> {
         &self.drone_command_channels[&drone_id].0
     }
+
+    fn create_server(index: u8, command_receiver: Receiver<ServerCommand>, command_send: Sender<ServerEvent>, packet_send: HashMap<u8, Sender<Packet>>, packet_recv: Receiver<Packet>, server_id: u8) -> Box<dyn ServerTrait> {
+        match index {
+            _ => Box::new(Server::new(
+                server_id,
+                command_send,
+                command_receiver,
+                packet_recv,
+                packet_send,
+            ))
+        }
+    }
+
+    fn create_client(index: u8, command_receiver: Receiver<ClientCommand>, command_send: Sender<ClientEvent>, packet_send: HashMap<u8, Sender<Packet>>, packet_recv: Receiver<Packet>, client_id: u8) -> Box<dyn ClientTrait> {
+        match index {
+            0 => Box::new(Client2::new(
+                client_id,
+                command_send,
+                command_receiver,
+                packet_recv,
+                packet_send,
+            )),
+            _ => Box::new(Client::new(
+                client_id,
+                command_send,
+                command_receiver,
+                packet_recv,
+                packet_send,
+            )),
+        }
+    }
+
+}
+
+
+
+#[test] 
+fn testing() {
+
 }
