@@ -3,8 +3,8 @@ use std::collections::HashMap;
 use colored::Colorize;
 use crossbeam::channel::{select_biased, Receiver, Sender};
 use wg_2024::{
-    network::NodeId,
-    packet::{Ack, FloodRequest, FloodResponse, Fragment, Nack, Packet, PacketType},
+    network::{NodeId, SourceRoutingHeader},
+    packet::{Ack, FloodRequest, FloodResponse, Fragment, Nack, NodeType, Packet, PacketType},
 };
 
 use crate::{
@@ -60,7 +60,7 @@ impl ServerTrait for Server {
                                 PacketType::Ack(ack)=>self.manage_ack(ack),
                                 PacketType::MsgFragment(fragment)=>self.manage_msg_fragment(fragment),
                                 //  ...these two are jet to be defined...
-                                PacketType::FloodRequest(flood_request) => self.manage_flood_request(flood_request),
+                                PacketType::FloodRequest(flood_request) => self.manage_flood_request(packet),
                                 PacketType::FloodResponse(flood_response) => self.manage_flood_response(flood_response),
                             }
                         },
@@ -106,13 +106,65 @@ impl Server {
         log::debug!("{} {} received a fragment: {:?}", "↳ server".green(), self.id, msg);
     }
 
-    fn manage_flood_request(&self, fr: &FloodRequest) {
-        //call to the assembler
-        log::debug!("{} {} received a flood request: {:?}", "↳ server".green(), self.id, fr);
+    fn manage_flood_request(&self, mut packet: Packet) {
+
+        log::debug!("{} {} received a flood request: {:?}", "↳ server".green(), self.id, packet.pack_type);
+        
+        if let PacketType::FloodRequest(mut flood_request) = packet.pack_type {
+
+            flood_request
+            .path_trace
+            .push((self.id, NodeType::Server));
+
+            let new_flood_res = FloodResponse {
+                path_trace: flood_request.path_trace,
+                flood_id: flood_request.flood_id,
+            };
+
+            // creates inverted route starting from path_trace
+            let mut inverse_route: Vec<NodeId> = new_flood_res.path_trace.iter().map(|(id, _)| *id).collect();
+            // ignore the rare occurrances where a loop might be created as its not computationally viable to consider it
+            inverse_route.reverse();
+
+            let packet = Packet {
+                pack_type: PacketType::FloodResponse(new_flood_res),
+                routing_header: SourceRoutingHeader {
+                    hops: inverse_route,
+                    hop_index: 0,
+                },
+                session_id: 0, // it'll be whatever for now
+            };
+
+            self.forward_packet(packet);
+        }
+
     }
 
     fn manage_flood_response(&self, fr: &FloodResponse) {
         //call to the assembler
         log::debug!("{} {} received a flood response: {:?}", "↳ server".green(), self.id, fr);
+    }
+
+    fn forward_packet(&self, mut packet: Packet) {
+        packet.routing_header.hop_index += 1;
+        let next_node = packet.routing_header.hops[packet.routing_header.hop_index];
+
+        // finds the channel corresponding to the next node without any checks, since they were done previously
+        let send_channel = &self.ps[&next_node];
+
+        log::debug!(
+            "{} from {} - packet: {}",
+            " -> packet sent ".blue(),
+            self.id,
+            packet
+        );
+
+        let res = send_channel.send(packet.clone());
+
+        if let Err(mut packet) = res {
+            log::error!("The send inside channel gave an error, this shouldn't be happening");
+        } else {
+            self.scs.send(ServerEvent::PacketSent(packet));
+        }
     }
 }

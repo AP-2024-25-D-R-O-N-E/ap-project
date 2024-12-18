@@ -247,14 +247,14 @@ impl NetworkInitializer {
 
     fn create_client(index: u8, command_receiver: Receiver<ClientCommand>, command_send: Sender<ClientEvent>, packet_send: HashMap<u8, Sender<Packet>>, packet_recv: Receiver<Packet>, client_id: u8) -> Box<dyn ClientTrait> {
         match index {
-            0 => Box::new(Client2::new(
+            0 => Box::new(Client::new(
                 client_id,
                 command_send,
                 command_receiver,
                 packet_recv,
                 packet_send,
             )),
-            _ => Box::new(Client::new(
+            _ => Box::new(Client2::new(
                 client_id,
                 command_send,
                 command_receiver,
@@ -265,8 +265,6 @@ impl NetworkInitializer {
     }
 
 }
-
-
 
 #[test] 
 fn testing() {
