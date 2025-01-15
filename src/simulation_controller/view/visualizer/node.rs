@@ -88,13 +88,7 @@ impl DrawShape for CustomNodeShape {
         println!("{}", ctx.meta.zoom);
         match &mut self.node_type {
             NodeType::Server(_server_node) => {
-                // create the shape and add it to the layers
-                // let shape_label = TextShape::new(center + offset, label_bounding_box, text_color);
-                //
-                // let rect = shape_label
-                //     .visual_bounding_rect()
-                //     .expand2(Vec2::new(10., 10.));
-
+                let text = get_text(ctx, self.label.clone(), center);
                 let rect = Rect {
                     min: Pos2::new(center.x - 20.0, center.y - 20.0),
                     max: Pos2::new(center.x + 20.0, center.y + 20.0),
@@ -111,11 +105,7 @@ impl DrawShape for CustomNodeShape {
                     Color32::BLACK,
                 );
 
-                // update self size
-                // self.size_x = rect.size().x;
-                // self.size_y = rect.size().y;
-
-                vec![shape_rect]
+                vec![shape_rect, text]
             }
             NodeType::Client(_client_node) => {
                 // let shape_label = TextShape::new(center + offset, label_bounding_box, text_color);
@@ -124,6 +114,7 @@ impl DrawShape for CustomNodeShape {
                 //     .visual_bounding_rect()
                 //     .expand2(Vec2::new(10., 10.));
 
+                let text = get_text(ctx, self.label.clone(), center);
                 let rect = Rect {
                     min: Pos2::new(center.x - 20.0, center.y - 20.0),
                     max: Pos2::new(center.x + 20.0, center.y + 20.0),
@@ -134,27 +125,10 @@ impl DrawShape for CustomNodeShape {
                 // self.size_x = rect.size().x * ctx.meta.zoom;
                 // self.size_y = rect.size().y * ctx.meta.zoom;
 
-                vec![shape_rect]
+                vec![shape_rect, text]
             }
             NodeType::Drone(drone_node) => {
-                // let shape_label = TextShape::new(
-                //     center + Vec2::new(-drone_node.radius / 2., drone_node.radius / 2.),
-                //     label_bounding_box,
-                //     text_color,
-                // );
-
-                let text = ctx.ctx.fonts(|fonts| {
-                    Shape::text(
-                        fonts,
-                        center,
-                        egui::Align2::CENTER_CENTER,
-                        self.label.clone(),
-                        // FontId::new(10., FontFamily::default()),
-                        FontId::proportional(10.),
-                        Color32::WHITE,
-                    )
-                });
-
+                let text = get_text(ctx, self.label.clone(), center);
                 let circle = Shape::circle_filled(center, drone_node.radius, Color32::BLACK);
 
                 vec![circle, text]
@@ -163,6 +137,19 @@ impl DrawShape for CustomNodeShape {
 
         // we need to offset label by half its size to place it in the center of the rect
     }
+}
+fn get_text(ctx: &egui_graphs::DrawContext, text: String, pos: Pos2) -> Shape {
+    ctx.ctx.fonts(|fonts| {
+        Shape::text(
+            fonts,
+            pos,
+            egui::Align2::CENTER_CENTER,
+            text,
+            // FontId::new(10., FontFamily::default()),
+            FontId::proportional(10.),
+            Color32::WHITE,
+        )
+    })
 }
 
 impl<E: Clone, Ty: EdgeType, Ix: IndexType> DisplayNode<NodePayload, E, Ty, Ix>
@@ -181,7 +168,7 @@ impl<E: Clone, Ty: EdgeType, Ix: IndexType> DisplayNode<NodePayload, E, Ty, Ix>
         }
     }
 
-    fn closest_boundary_point(&self, dir: Vec2) -> Pos2 {
+    fn closest_boundary_point(&self, _: Vec2) -> Pos2 {
         // find_intersection(self.loc, self.size_x / 2., self.size_y / 2., dir)
         self.loc
     }
