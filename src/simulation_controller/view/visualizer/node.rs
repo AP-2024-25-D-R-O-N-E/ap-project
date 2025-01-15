@@ -1,5 +1,6 @@
 use egui::{
-    epaint::TextShape, Color32, FontFamily, FontId, Pos2, Rect, Rounding, Shape, Stroke, Vec2,
+    epaint::TextShape, text::Fonts, Color32, FontFamily, FontId, Pos2, Rect, Rounding, Shape,
+    Stroke, Vec2,
 };
 use egui_graphs::{DisplayNode, NodeProps};
 use petgraph::{stable_graph::IndexType, EdgeType};
@@ -38,6 +39,10 @@ pub struct CustomNodeShape {
 
     pub size_x: f32,
     pub size_y: f32,
+    pub zoom: f32,
+}
+impl CustomNodeShape {
+    // const FONT: Fonts = Fonts::new(2., 100, egui::FontDefinitions::default());
 }
 
 impl From<NodeProps<NodePayload>> for CustomNodeShape {
@@ -47,8 +52,9 @@ impl From<NodeProps<NodePayload>> for CustomNodeShape {
             label: node_props.label.clone(),
             loc: node_props.location.clone(),
 
-            size_x: 0.,
-            size_y: 0.,
+            size_x: 20.,
+            size_y: 20.,
+            zoom: 1.,
         }
     }
 }
@@ -78,6 +84,8 @@ impl DrawShape for CustomNodeShape {
         //     -label_bounding_box.size().y / 2.,
         // );
 
+        self.zoom = ctx.meta.zoom;
+        println!("{}", ctx.meta.zoom);
         match &mut self.node_type {
             NodeType::Server(_server_node) => {
                 // create the shape and add it to the layers
@@ -104,8 +112,8 @@ impl DrawShape for CustomNodeShape {
                 );
 
                 // update self size
-                self.size_x = rect.size().x;
-                self.size_y = rect.size().y;
+                // self.size_x = rect.size().x;
+                // self.size_y = rect.size().y;
 
                 vec![shape_rect]
             }
@@ -123,8 +131,8 @@ impl DrawShape for CustomNodeShape {
                 let shape_rect = Shape::rect_filled(rect, Rounding::default(), Color32::BLACK);
 
                 // update self size
-                self.size_x = rect.size().x;
-                self.size_y = rect.size().y;
+                // self.size_x = rect.size().x * ctx.meta.zoom;
+                // self.size_y = rect.size().y * ctx.meta.zoom;
 
                 vec![shape_rect]
             }
@@ -135,8 +143,21 @@ impl DrawShape for CustomNodeShape {
                 //     text_color,
                 // );
 
-                let shape_rect = Shape::circle_filled(center, drone_node.radius, Color32::BLACK);
-                vec![shape_rect]
+                let text = ctx.ctx.fonts(|fonts| {
+                    Shape::text(
+                        fonts,
+                        center,
+                        egui::Align2::CENTER_CENTER,
+                        self.label.clone(),
+                        // FontId::new(10., FontFamily::default()),
+                        FontId::proportional(10.),
+                        Color32::WHITE,
+                    )
+                });
+
+                let circle = Shape::circle_filled(center, drone_node.radius, Color32::BLACK);
+
+                vec![circle, text]
             }
         }
 
@@ -149,16 +170,20 @@ impl<E: Clone, Ty: EdgeType, Ix: IndexType> DisplayNode<NodePayload, E, Ty, Ix>
 {
     fn is_inside(&self, pos: Pos2) -> bool {
         match &self.node_type {
-            NodeType::Drone(drone_node) => self.loc.distance(pos) < drone_node.radius,
+            NodeType::Drone(drone_node) => self.loc.distance(pos) <= drone_node.radius / self.zoom,
             _ => {
-                let rect = Rect::from_center_size(self.loc, Vec2::new(self.size_x, self.size_y));
+                let rect = Rect::from_center_size(
+                    self.loc,
+                    Vec2::new(self.size_x / self.zoom, self.size_y / self.zoom),
+                );
                 rect.contains(pos)
             }
         }
     }
 
     fn closest_boundary_point(&self, dir: Vec2) -> Pos2 {
-        find_intersection(self.loc, self.size_x / 2., self.size_y / 2., dir)
+        // find_intersection(self.loc, self.size_x / 2., self.size_y / 2., dir)
+        self.loc
     }
 
     fn shapes(&mut self, ctx: &egui_graphs::DrawContext) -> Vec<egui::Shape> {
