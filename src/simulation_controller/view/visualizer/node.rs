@@ -65,27 +65,32 @@ impl DrawShape for CustomNodeShape {
         let backgound_color = ctx.ctx.style().visuals.extreme_bg_color;
 
         // create label
-        let label_bounding_box = ctx.ctx.fonts(|f| {
-            f.layout_no_wrap(
-                self.label.clone(),
-                FontId::new(ctx.meta.canvas_to_screen_size(10.), FontFamily::default()),
-                text_color,
-            )
-        });
-
-        let offset = Vec2::new(
-            -label_bounding_box.size().x / 2.,
-            -label_bounding_box.size().y / 2.,
-        );
+        // let label_bounding_box = ctx.ctx.fonts(|f| {
+        //     f.layout_no_wrap(
+        //         self.label.clone(),
+        //         FontId::new(ctx.meta.canvas_to_screen_size(10.), FontFamily::default()),
+        //         text_color,
+        //     )
+        // });
+        //
+        // let offset = Vec2::new(
+        //     -label_bounding_box.size().x / 2.,
+        //     -label_bounding_box.size().y / 2.,
+        // );
 
         match &mut self.node_type {
             NodeType::Server(_server_node) => {
                 // create the shape and add it to the layers
-                let shape_label = TextShape::new(center + offset, label_bounding_box, text_color);
+                // let shape_label = TextShape::new(center + offset, label_bounding_box, text_color);
+                //
+                // let rect = shape_label
+                //     .visual_bounding_rect()
+                //     .expand2(Vec2::new(10., 10.));
 
-                let rect = shape_label
-                    .visual_bounding_rect()
-                    .expand2(Vec2::new(10., 10.));
+                let rect = Rect {
+                    min: Pos2::new(center.x - 20.0, center.y - 20.0),
+                    max: Pos2::new(center.x + 20.0, center.y + 20.0),
+                };
 
                 let shape_rect = Shape::rect_filled(
                     rect,
@@ -102,32 +107,36 @@ impl DrawShape for CustomNodeShape {
                 self.size_x = rect.size().x;
                 self.size_y = rect.size().y;
 
-                vec![shape_rect, shape_label.into()]
+                vec![shape_rect]
             }
             NodeType::Client(_client_node) => {
-                let shape_label = TextShape::new(center + offset, label_bounding_box, text_color);
+                // let shape_label = TextShape::new(center + offset, label_bounding_box, text_color);
+                //
+                // let rect = shape_label
+                //     .visual_bounding_rect()
+                //     .expand2(Vec2::new(10., 10.));
 
-                let rect = shape_label
-                    .visual_bounding_rect()
-                    .expand2(Vec2::new(10., 10.));
-
+                let rect = Rect {
+                    min: Pos2::new(center.x - 20.0, center.y - 20.0),
+                    max: Pos2::new(center.x + 20.0, center.y + 20.0),
+                };
                 let shape_rect = Shape::rect_filled(rect, Rounding::default(), Color32::BLACK);
 
                 // update self size
                 self.size_x = rect.size().x;
                 self.size_y = rect.size().y;
 
-                vec![shape_rect, shape_label.into()]
+                vec![shape_rect]
             }
             NodeType::Drone(drone_node) => {
-                let shape_label = TextShape::new(
-                    center + Vec2::new(-drone_node.radius / 2., drone_node.radius / 2.),
-                    label_bounding_box,
-                    text_color,
-                );
+                // let shape_label = TextShape::new(
+                //     center + Vec2::new(-drone_node.radius / 2., drone_node.radius / 2.),
+                //     label_bounding_box,
+                //     text_color,
+                // );
 
                 let shape_rect = Shape::circle_filled(center, drone_node.radius, Color32::BLACK);
-                vec![shape_rect, shape_label.into()]
+                vec![shape_rect]
             }
         }
 
