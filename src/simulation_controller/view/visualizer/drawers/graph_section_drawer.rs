@@ -65,4 +65,5 @@ pub fn draw_section_graph(ui: &mut Ui, state: &mut State) {
             .with_styles(settings_style)
             .with_events(&state.graph_section.graph_event_publisher),
     );
+
 }
