@@ -122,12 +122,12 @@ impl DrawShape for CustomNodeShape {
                     se: 10.,
                 };
 
-                let rect_fill = Shape::rect_filled(rect, rounding, Color32::DARK_GRAY);
+                let rect_fill = Shape::rect_filled(rect, rounding, Color32::from_gray(45));
                 let shadow = Shadow {
                     offset: Vec2::new(8., 8.),
-                    blur: 20.,
-                    spread: -4.,
-                    color: Color32::BLACK,
+                    blur: 30.,
+                    spread: -10.,
+                    color: Color32::from_gray(25),
                 }
                 .as_shape(rect, Rounding::ZERO);
                 if self.selected {
@@ -139,30 +139,51 @@ impl DrawShape for CustomNodeShape {
                 }
             }
             NodeType::Client(_client_node) => {
-                // let shape_label = TextShape::new(center + offset, label_bounding_box, text_color);
-                //
-                // let rect = shape_label
-                //     .visual_bounding_rect()
-                //     .expand2(Vec2::new(10., 10.));
-
                 let text = get_text(ctx, self.label.clone(), center);
                 let rect = Rect {
                     min: Pos2::new(center.x - 20.0, center.y - 20.0),
                     max: Pos2::new(center.x + 20.0, center.y + 20.0),
                 };
-                let shape_rect = Shape::rect_filled(rect, Rounding::default(), Color32::BLACK);
+                let rect_fill =
+                    Shape::rect_filled(rect, Rounding::default(), Color32::from_gray(45));
+                let shadow = Shadow {
+                    offset: Vec2::new(8., 8.),
+                    blur: 30.,
+                    spread: -10.,
+                    color: Color32::BLACK,
+                }
+                .as_shape(rect, Rounding::ZERO);
 
-                // update self size
-                // self.size_x = rect.size().x * ctx.meta.zoom;
-                // self.size_y = rect.size().y * ctx.meta.zoom;
-
-                vec![shape_rect, text]
+                if self.selected {
+                    let rect_stroke =
+                        Shape::rect_stroke(rect, Rounding::ZERO, Stroke::new(2., Color32::WHITE));
+                    vec![Shape::from(shadow), rect_fill, rect_stroke, text]
+                } else {
+                    vec![Shape::from(shadow), rect_fill, text]
+                }
             }
             NodeType::Drone(drone_node) => {
                 let text = get_text(ctx, self.label.clone(), center);
-                let circle = Shape::circle_filled(center, drone_node.radius, Color32::BLACK);
+                let circle_fill =
+                    Shape::circle_filled(center, drone_node.radius, Color32::from_gray(27));
+                let circle_stroke = Shape::circle_stroke(
+                    center,
+                    drone_node.radius,
+                    Stroke::new(1., Color32::DARK_GRAY),
+                );
 
-                vec![circle, text]
+                let shadow = Shadow {
+                    offset: Vec2::new(8., 8.),
+                    blur: 30.,
+                    spread: -10.,
+                    color: Color32::BLACK,
+                }
+                .as_shape(
+                    circle_fill.visual_bounding_rect(),
+                    Rounding::same(circle_fill.visual_bounding_rect().width() / 2.),
+                );
+
+                vec![Shape::from(shadow), circle_fill, circle_stroke, text]
             }
         }
 
