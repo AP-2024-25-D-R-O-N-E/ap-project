@@ -69,9 +69,9 @@ pub struct CustomNodeShape {
 impl From<NodeProps<NodePayload>> for CustomNodeShape {
     fn from(node_props: NodeProps<NodePayload>) -> Self {
         Self {
-            node_type: node_props.payload.node_type,
+            node_type: node_props.payload.node_type.clone(),
             label: node_props.label.clone(),
-            loc: node_props.location.clone(),
+            loc: node_props.location().clone(),
             selected: node_props.selected,
 
             size_x: 20.,
@@ -217,7 +217,7 @@ impl<E: Clone, Ty: EdgeType, Ix: IndexType> DisplayNode<NodePayload, E, Ty, Ix>
 
     fn update(&mut self, state: &NodeProps<NodePayload>) {
         self.label = state.label.clone();
-        self.loc = state.location.clone();
+        self.loc = state.location().clone();
         self.selected = state.selected;
     }
 }

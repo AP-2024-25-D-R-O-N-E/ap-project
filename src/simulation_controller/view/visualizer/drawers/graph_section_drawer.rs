@@ -1,5 +1,7 @@
 use egui::Ui;
-use egui_graphs::GraphView;
+use egui_graphs::{
+    GraphView, LayoutHierarchical, LayoutRandom, LayoutStateHierarchical, LayoutStateRandom,
+};
 
 use crate::simulation_controller::state::State;
 
@@ -59,11 +61,12 @@ pub fn draw_section_graph(ui: &mut Ui, state: &mut State) {
     let settings_style = &egui_graphs::SettingsStyle::new()
         .with_labels_always(state.settings_section.style_settings.labels_always);
     ui.add(
-        &mut GraphView::new(&mut state.graph_section.g)
-            .with_interactions(settings_interaction)
-            .with_navigations(settings_navigation)
-            .with_styles(settings_style)
-            .with_events(&state.graph_section.graph_event_publisher),
+        &mut GraphView::<_, _, _, _, _, _, LayoutStateRandom, LayoutRandom>::new(
+            &mut state.graph_section.g,
+        )
+        .with_interactions(settings_interaction)
+        .with_navigations(settings_navigation)
+        .with_styles(settings_style)
+        .with_events(&state.graph_section.graph_event_publisher),
     );
-
 }
