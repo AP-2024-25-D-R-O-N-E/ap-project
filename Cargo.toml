@@ -11,7 +11,7 @@ d-r-o-n-e_drone = { git = "https://github.com/AP-2024-25-D-R-O-N-E/drone.git" }
 simple_logger = "5.0.0"
 log = "0.4.22"
 colored = "2.1.0"
-egui_graphs = { path = "local_crates/egui_graphs", features = ["events"] }
+egui_graphs = { git = "https://github.com/mattia-marini/egui_graphs.git", features = ["events"] }
 egui = "0.29"
 eframe = "0.29"
 serde_json = "1.0"
