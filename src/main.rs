@@ -1,4 +1,4 @@
-// #![allow(unused, dead_code)]
+#![allow(unused, dead_code)]
 // use 'use' for easier naming
 
 use initializer::network_initializer::NetworkInitializer;

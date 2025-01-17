@@ -1,9 +1,12 @@
 use std::time::Instant;
 
+use super::state::events_state;
 use crate::simulation_controller::{ClientEvent, ServerEvent, SimulationController};
 
+use super::state::EventsState;
 use eframe::{run_native, App, CreationContext, NativeOptions};
 use egui::{Context, ScrollArea, Window};
+
 use egui_graphs::events::Event;
 
 // use fdg::fruchterman_reingold::{FruchtermanReingold, FruchtermanReingoldConfiguration};
@@ -28,9 +31,7 @@ pub struct SCGui {
     last_update_time: Instant,
     frames_last_time_span: usize,
 
-    node_events: Vec<DroneEvent>,
-    client_events: Vec<ClientEvent>,
-    server_events: Vec<ServerEvent>,
+    events: EventsState,
 
     pan: [f32; 2],
     zoom: f32,
@@ -47,9 +48,7 @@ impl SCGui {
             last_update_time: Instant::now(),
             frames_last_time_span: 0,
 
-            node_events: vec![],
-            client_events: vec![],
-            server_events: vec![],
+            events: EventsState::new(),
 
             pan: [0., 0.],
             zoom: 0.,
@@ -95,28 +94,28 @@ impl SCGui {
     fn handle_sc_events(&mut self) {
         for (_, channel) in self.simulation_controller.node_event_channels.iter() {
             channel.try_iter().for_each(|e| {
-                if self.node_events.len() > NODE_EVENTS_LIMIT {
-                    self.node_events.remove(0);
+                if self.events.drone_events.len() > NODE_EVENTS_LIMIT {
+                    self.events.drone_events.remove(0);
                 }
-                self.node_events.push(e);
+                self.events.drone_events.push(e);
             })
         }
 
         for (_, channel) in self.simulation_controller.client_event_channels.iter() {
             channel.try_iter().for_each(|e| {
-                if self.client_events.len() > CLIENT_EVENTS_LIMIT {
-                    self.client_events.remove(0);
+                if self.events.client_events.len() > CLIENT_EVENTS_LIMIT {
+                    self.events.client_events.remove(0);
                 }
-                self.client_events.push(e);
+                self.events.client_events.push(e);
             })
         }
 
         for (_, channel) in self.simulation_controller.server_event_channels.iter() {
             channel.try_iter().for_each(|e| {
-                if self.server_events.len() > SERVER_EVENTS_LIMIT {
-                    self.server_events.remove(0);
+                if self.events.server_events.len() > SERVER_EVENTS_LIMIT {
+                    self.events.server_events.remove(0);
                 }
-                self.server_events.push(e);
+                self.events.server_events.push(e);
             })
         }
     }
