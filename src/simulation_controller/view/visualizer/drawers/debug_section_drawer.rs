@@ -1,7 +1,7 @@
 use egui::{CollapsingHeader, ScrollArea, Ui};
 
 use crate::simulation_controller::{
-    node::NodeType::{Client, Drone, Server},
+    node::UiNodeType::{Client, Drone, Server},
     state::State,
 };
 

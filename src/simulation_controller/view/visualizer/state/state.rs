@@ -1,3 +1,5 @@
+use crate::simulation_controller::SimulationController;
+
 use super::{
     DebugSectionState, EventsState, GraphSectionState, SettingsSectionState, TestSectionState,
 };
@@ -9,6 +11,14 @@ pub struct State {
     pub graph_section: GraphSectionState,
     pub events: EventsState,
 }
+
+// impl State {
+//     pub fn new(sc: &SimulationController)->State{
+//         let mut default_state = State::default();
+//         default_state.graph_section.g = sc.get
+//         default_state
+//     }
+// }
 
 impl Default for State {
     fn default() -> Self {

@@ -1,4 +1,8 @@
 use colored::Colorize;
+use petgraph::{
+    prelude::{StableGraph, StableUnGraph},
+    Undirected,
+};
 use std::{
     collections::HashMap,
     sync::{Arc, Barrier},
@@ -19,6 +23,7 @@ use d_r_o_n_e_drone::MyDrone;
 use crate::{
     client, server,
     simulation_controller::{
+        node::{UiClientNode, UiNodePayload, UiNodeType},
         structs::{ClientCommand, ClientEvent, ServerCommand, ServerEvent},
         SimulationController,
     },
@@ -35,13 +40,15 @@ pub struct NetworkInitializer {
     pub client_command_channels: HashMap<NodeId, (Sender<ClientCommand>, Receiver<ClientCommand>)>,
     pub server_event_channels: HashMap<NodeId, (Sender<ServerEvent>, Receiver<ServerEvent>)>,
     pub server_command_channels: HashMap<NodeId, (Sender<ServerCommand>, Receiver<ServerCommand>)>,
+    pub topology: StableGraph<UiNodePayload, (), Undirected>,
+
     handles: HashMap<NodeId, JoinHandle<()>>,
 }
 
 impl NetworkInitializer {
     pub fn new(config_path: String) -> NetworkInitializer {
+        let config = parse_config(config_path);
         NetworkInitializer {
-            config: parse_config(config_path),
             packet_channels: HashMap::new(), // packets
             node_event_channels: HashMap::new(),
             drone_command_channels: HashMap::new(),
@@ -50,10 +57,12 @@ impl NetworkInitializer {
             server_event_channels: HashMap::new(),
             server_command_channels: HashMap::new(),
             handles: HashMap::new(),
+            topology: NetworkInitializer::get_topology_from_config(&config),
+            config,
         }
     }
 
-    pub fn init_network(&mut self) -> Result<SimulationController, String> {
+    pub fn init_network(mut self) -> Result<SimulationController, String> {
         //create 3 different version since we might want the simulation controller channels to depend on node type
         for drone in self.config.drone.iter() {
             //create unbounded channel for drones
@@ -243,5 +252,18 @@ impl NetworkInitializer {
 
     pub fn get_drone_command_channel(&self, drone_id: NodeId) -> &Sender<DroneCommand> {
         &self.drone_command_channels[&drone_id].0
+    }
+
+    pub fn get_topology_from_config(
+        config: &InitConfig,
+    ) -> StableGraph<UiNodePayload, (), Undirected> {
+        let mut graph = StableUnGraph::<UiNodePayload, ()>::default();
+
+        log::warn!("{:?}", config);
+        // let a = graph.add_node(UiNodePayload {
+        //     node_type: UiNodeType::Client(UiClientNode {}),
+        //     vendor: ,
+        // });
+        graph
     }
 }

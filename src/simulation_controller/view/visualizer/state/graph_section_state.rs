@@ -1,4 +1,4 @@
-use super::super::node::NodeType;
+use super::super::node::UiNodeType;
 use crossbeam::channel::{unbounded, Receiver, Sender};
 use egui_graphs::{events::Event, Graph};
 use petgraph::{
@@ -8,11 +8,11 @@ use petgraph::{
 };
 
 use crate::simulation_controller::node::{
-    ClientNode, CustomNodeShape, DroneNode, NodePayload, ServerNode,
+    CustomNodeShape, UiClientNode, UiDroneNode, UiNodePayload, UiServerNode,
 };
 
 pub struct GraphSectionState {
-    pub g: Graph<NodePayload, (), Undirected, DefaultIx, CustomNodeShape>,
+    pub g: Graph<UiNodePayload, (), Undirected, DefaultIx, CustomNodeShape>,
 
     pub graph_event_publisher: Sender<Event>,
     pub graph_event_consumer: Receiver<Event>,
@@ -29,35 +29,44 @@ impl Default for GraphSectionState {
     }
 }
 
-fn generate_graph() -> StableGraph<NodePayload, (), Undirected> {
-    let mut graph = StableUnGraph::<NodePayload, ()>::default();
+fn generate_graph() -> StableGraph<UiNodePayload, (), Undirected> {
+    let mut graph = StableUnGraph::<UiNodePayload, ()>::default();
 
-    let a = graph.add_node(NodePayload {
-        node_type: NodeType::Client(ClientNode {}),
+    let a = graph.add_node(UiNodePayload {
+        node_type: UiNodeType::Client(UiClientNode {}),
+        vendor: "d_r_o_n_e".to_string(),
     });
-    let b = graph.add_node(NodePayload {
-        node_type: NodeType::Drone(DroneNode::default()),
+    let b = graph.add_node(UiNodePayload {
+        node_type: UiNodeType::Drone(UiDroneNode::default()),
+        vendor: "d_r_o_n_e".to_string(),
     });
-    let c = graph.add_node(NodePayload {
-        node_type: NodeType::Drone(DroneNode::default()),
+    let c = graph.add_node(UiNodePayload {
+        node_type: UiNodeType::Drone(UiDroneNode::default()),
+        vendor: "d_r_o_n_e".to_string(),
     });
-    let d = graph.add_node(NodePayload {
-        node_type: NodeType::Server(ServerNode {}),
+    let d = graph.add_node(UiNodePayload {
+        node_type: UiNodeType::Server(UiServerNode {}),
+        vendor: "d_r_o_n_e".to_string(),
     });
-    let e = graph.add_node(NodePayload {
-        node_type: NodeType::Drone(DroneNode::default()),
+    let e = graph.add_node(UiNodePayload {
+        node_type: UiNodeType::Drone(UiDroneNode::default()),
+        vendor: "d_r_o_n_e".to_string(),
     });
-    let f = graph.add_node(NodePayload {
-        node_type: NodeType::Drone(DroneNode::default()),
+    let f = graph.add_node(UiNodePayload {
+        node_type: UiNodeType::Drone(UiDroneNode::default()),
+        vendor: "d_r_o_n_e".to_string(),
     });
-    let g = graph.add_node(NodePayload {
-        node_type: NodeType::Drone(DroneNode::default()),
+    let g = graph.add_node(UiNodePayload {
+        node_type: UiNodeType::Drone(UiDroneNode::default()),
+        vendor: "d_r_o_n_e".to_string(),
     });
-    let h = graph.add_node(NodePayload {
-        node_type: NodeType::Server(ServerNode {}),
+    let h = graph.add_node(UiNodePayload {
+        node_type: UiNodeType::Server(UiServerNode {}),
+        vendor: "d_r_o_n_e".to_string(),
     });
-    let i = graph.add_node(NodePayload {
-        node_type: NodeType::Server(ServerNode {}),
+    let i = graph.add_node(UiNodePayload {
+        node_type: UiNodeType::Server(UiServerNode {}),
+        vendor: "d_r_o_n_e".to_string(),
     });
 
     graph.add_edge(a, b, ());
