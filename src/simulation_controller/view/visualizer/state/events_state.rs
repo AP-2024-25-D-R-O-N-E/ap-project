@@ -7,8 +7,10 @@ pub struct EventsState {
     pub server_events: Vec<ServerEvent>,
 }
 
-impl EventsState {
-    pub fn new() -> EventsState {
+impl EventsState {}
+
+impl Default for EventsState {
+    fn default() -> Self {
         EventsState {
             drone_events: vec![],
             client_events: vec![],

@@ -9,10 +9,6 @@ use egui::{Context, ScrollArea, Window};
 
 use egui_graphs::events::Event;
 
-// use fdg::fruchterman_reingold::{FruchtermanReingold, FruchtermanReingoldConfiguration};
-// use fdg::nalgebra::{Const, OPoint};
-// use fdg::{Force, ForceGraph};
-
 use wg_2024::controller::DroneEvent;
 
 use super::drawers::{
@@ -31,8 +27,6 @@ pub struct SCGui {
     last_update_time: Instant,
     frames_last_time_span: usize,
 
-    events: EventsState,
-
     pan: [f32; 2],
     zoom: f32,
 
@@ -47,8 +41,6 @@ impl SCGui {
             fps: 0.,
             last_update_time: Instant::now(),
             frames_last_time_span: 0,
-
-            events: EventsState::new(),
 
             pan: [0., 0.],
             zoom: 0.,
@@ -94,28 +86,28 @@ impl SCGui {
     fn handle_sc_events(&mut self) {
         for (_, channel) in self.simulation_controller.node_event_channels.iter() {
             channel.try_iter().for_each(|e| {
-                if self.events.drone_events.len() > NODE_EVENTS_LIMIT {
-                    self.events.drone_events.remove(0);
+                if self.state.events.drone_events.len() > NODE_EVENTS_LIMIT {
+                    self.state.events.drone_events.remove(0);
                 }
-                self.events.drone_events.push(e);
+                self.state.events.drone_events.push(e);
             })
         }
 
         for (_, channel) in self.simulation_controller.client_event_channels.iter() {
             channel.try_iter().for_each(|e| {
-                if self.events.client_events.len() > CLIENT_EVENTS_LIMIT {
-                    self.events.client_events.remove(0);
+                if self.state.events.client_events.len() > CLIENT_EVENTS_LIMIT {
+                    self.state.events.client_events.remove(0);
                 }
-                self.events.client_events.push(e);
+                self.state.events.client_events.push(e);
             })
         }
 
         for (_, channel) in self.simulation_controller.server_event_channels.iter() {
             channel.try_iter().for_each(|e| {
-                if self.events.server_events.len() > SERVER_EVENTS_LIMIT {
-                    self.events.server_events.remove(0);
+                if self.state.events.server_events.len() > SERVER_EVENTS_LIMIT {
+                    self.state.events.server_events.remove(0);
                 }
-                self.events.server_events.push(e);
+                self.state.events.server_events.push(e);
             })
         }
     }
