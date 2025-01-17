@@ -1048,7 +1048,7 @@ dependencies = [
 [[package]]
 name = "egui_graphs"
 version = "0.22.0"
-source = "git+https://github.com/mattia-marini/egui_graphs.git#d13e1eea37de16b7014e02151840c7ce509b0ed8"
+source = "git+https://github.com/mattia-marini/egui_graphs.git#2c7fbe9213c1240c9c370e28532132c9446400ca"
 dependencies = [
  "crossbeam",
  "egui",
