@@ -43,8 +43,8 @@ impl SCGui {
             pan: [0., 0.],
             zoom: 0.,
 
+            state: State::from(&simulation_controller),
             simulation_controller,
-            state: State::default(),
         }
     }
 

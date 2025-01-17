@@ -1,3 +1,5 @@
+use egui_graphs::Graph;
+
 use crate::simulation_controller::SimulationController;
 
 use super::{
@@ -12,13 +14,13 @@ pub struct State {
     pub events: EventsState,
 }
 
-// impl State {
-//     pub fn new(sc: &SimulationController)->State{
-//         let mut default_state = State::default();
-//         default_state.graph_section.g = sc.get
-//         default_state
-//     }
-// }
+impl State {
+    pub fn from(sc: &SimulationController) -> State {
+        let mut default_state = State::default();
+        default_state.graph_section.g = Graph::from(&sc.topology);
+        default_state
+    }
+}
 
 impl Default for State {
     fn default() -> Self {
