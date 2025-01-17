@@ -18,9 +18,7 @@ use super::drawers::{
 use super::state::State;
 
 const GRAPH_EVENTS_LIMIT: usize = 100;
-const CLIENT_EVENTS_LIMIT: usize = 100;
-const SERVER_EVENTS_LIMIT: usize = 100;
-const NODE_EVENTS_LIMIT: usize = 100;
+const MAIN_CONSOLE_SCROLLBACK_LIMIT: usize = 100;
 
 pub struct SCGui {
     fps: f32,
@@ -86,28 +84,25 @@ impl SCGui {
     fn handle_sc_events(&mut self) {
         for (_, channel) in self.simulation_controller.node_event_channels.iter() {
             channel.try_iter().for_each(|e| {
-                if self.state.events.drone_events.len() > NODE_EVENTS_LIMIT {
-                    self.state.events.drone_events.remove(0);
-                }
-                self.state.events.drone_events.push(e);
+                self.state
+                    .events
+                    .add_with_limit(e.into(), MAIN_CONSOLE_SCROLLBACK_LIMIT);
             })
         }
 
         for (_, channel) in self.simulation_controller.client_event_channels.iter() {
             channel.try_iter().for_each(|e| {
-                if self.state.events.client_events.len() > CLIENT_EVENTS_LIMIT {
-                    self.state.events.client_events.remove(0);
-                }
-                self.state.events.client_events.push(e);
+                self.state
+                    .events
+                    .add_with_limit(e.into(), MAIN_CONSOLE_SCROLLBACK_LIMIT);
             })
         }
 
         for (_, channel) in self.simulation_controller.server_event_channels.iter() {
             channel.try_iter().for_each(|e| {
-                if self.state.events.server_events.len() > SERVER_EVENTS_LIMIT {
-                    self.state.events.server_events.remove(0);
-                }
-                self.state.events.server_events.push(e);
+                self.state
+                    .events
+                    .add_with_limit(e.into(), MAIN_CONSOLE_SCROLLBACK_LIMIT);
             })
         }
     }
