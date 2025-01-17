@@ -12,7 +12,8 @@ pub fn send_msg() {
     let mut network_initializer =
         NetworkInitializer::new("src/topology_configs/config.toml".to_string());
 
-    network_initializer.init_network();
+    let sc = network_initializer.init_network().unwrap();
+    sleep(Duration::from_secs(100));
 
     let msg = Fragment {
         fragment_index: 0,
@@ -31,6 +32,6 @@ pub fn send_msg() {
         session_id: 1,
     };
 
-    let _ = network_initializer.get_send_channel(6).send(packet);
-    sleep(Duration::from_secs(4));
+    sc.send_msg_fragment(packet, 1);
+    sleep(Duration::from_secs(100));
 }

@@ -14,22 +14,20 @@ fn main() {
     let mut network_initializer =
         NetworkInitializer::new("src/topology_configs/config.toml".to_string());
 
-    let sc = network_initializer.init_network();
-    sleep(Duration::from_secs(2));
+    let sc = network_initializer.init_network().unwrap();
+    sleep(Duration::from_secs(100));
 
-    //* just some testing */
-    // let ack = Ack { fragment_index: 0 };
-    //
-    // let packet = Packet {
-    //     pack_type: PacketType::Ack(ack),
-    //     routing_header: SourceRoutingHeader {
-    //         hops: vec![0, 1, 2, 3],
-    //         hop_index: 1,
-    //     },
-    //     session_id: 0,
-    // };
-    //
-    // let _ = network_initializer.get_send_channel(1).send(packet);
+    let ack = Ack { fragment_index: 0 };
 
-    sleep(Duration::from_secs(4));
+    let packet = Packet {
+        pack_type: PacketType::Ack(ack),
+        routing_header: SourceRoutingHeader {
+            hops: vec![0, 1, 2, 3],
+            hop_index: 1,
+        },
+        session_id: 0,
+    };
+
+    sc.send_ack(packet, 1);
+    sleep(Duration::from_secs(100));
 }
