@@ -1,10 +1,11 @@
 use colored::Colorize;
 use petgraph::{
+    graph::NodeIndex,
     prelude::{StableGraph, StableUnGraph},
     Undirected,
 };
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     sync::{Arc, Barrier},
     thread::{self, sleep, JoinHandle},
     time::Duration,
@@ -23,7 +24,7 @@ use d_r_o_n_e_drone::MyDrone;
 use crate::{
     client, server,
     simulation_controller::{
-        node::{UiClientNode, UiNodePayload, UiNodeType},
+        node::{UiClientNode, UiDroneNode, UiNodePayload, UiNodeType, UiServerNode},
         structs::{ClientCommand, ClientEvent, ServerCommand, ServerEvent},
         SimulationController,
     },
@@ -259,11 +260,58 @@ impl NetworkInitializer {
     ) -> StableGraph<UiNodePayload, (), Undirected> {
         let mut graph = StableUnGraph::<UiNodePayload, ()>::default();
 
-        log::warn!("{:?}", config);
-        // let a = graph.add_node(UiNodePayload {
-        //     node_type: UiNodeType::Client(UiClientNode {}),
-        //     vendor: ,
-        // });
+        let mut nodes: HashMap<u8, petgraph::graph::NodeIndex> = HashMap::new();
+        for drone in &config.drone {
+            let n = graph.add_node(UiNodePayload {
+                node_type: UiNodeType::Drone(UiDroneNode::default()),
+                vendor: "unknown".to_string(),
+            });
+            nodes.insert(drone.id, n);
+        }
+        for server in &config.server {
+            let n = graph.add_node(UiNodePayload {
+                node_type: UiNodeType::Server(UiServerNode {}),
+                vendor: "unknown".to_string(),
+            });
+            nodes.insert(server.id, n);
+        }
+        for client in &config.client {
+            let n = graph.add_node(UiNodePayload {
+                node_type: UiNodeType::Client(UiClientNode {}),
+                vendor: "unknown".to_string(),
+            });
+            nodes.insert(client.id, n);
+        }
+
+        let mut set: HashSet<(NodeIndex, NodeIndex)> = HashSet::new();
+        let mut insert_if_not_duplicated = |id1, id2| {
+            let node_graph_id = *nodes.get(&id1).unwrap();
+            let node_to_graph_id = *nodes.get(id2).unwrap();
+
+            if !(set.contains(&(node_graph_id, node_to_graph_id))
+                || set.contains(&(node_to_graph_id, node_graph_id)))
+            {
+                graph.add_edge(node_graph_id, node_to_graph_id, ());
+            }
+            set.insert((node_graph_id, node_to_graph_id));
+        };
+
+        for drone in &config.drone {
+            for node_to in &drone.connected_node_ids {
+                insert_if_not_duplicated(drone.id, node_to);
+            }
+        }
+        for server in &config.server {
+            for node_to in &server.connected_drone_ids {
+                insert_if_not_duplicated(server.id, node_to);
+            }
+        }
+        for client in &config.client {
+            for node_to in &client.connected_drone_ids {
+                insert_if_not_duplicated(client.id, node_to);
+            }
+        }
+
         graph
     }
 }
