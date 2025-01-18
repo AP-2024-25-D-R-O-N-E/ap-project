@@ -177,11 +177,20 @@ impl DrawShape for CustomNodeShape {
                 let text = get_text(ctx, self.label.clone(), center);
                 let circle_fill =
                     Shape::circle_filled(center, drone_node.radius, Color32::from_gray(27));
-                let circle_stroke = Shape::circle_stroke(
-                    center,
-                    drone_node.radius,
-                    Stroke::new(1., Color32::DARK_GRAY),
-                );
+                let circle_stroke;
+                if self.selected {
+                    circle_stroke = Shape::circle_stroke(
+                        center,
+                        drone_node.radius,
+                        Stroke::new(2., Color32::WHITE),
+                    );
+                } else {
+                    circle_stroke = Shape::circle_stroke(
+                        center,
+                        drone_node.radius,
+                        Stroke::new(1., Color32::DARK_GRAY),
+                    );
+                }
 
                 let shadow = Shadow {
                     offset: Vec2::new(8., 8.),

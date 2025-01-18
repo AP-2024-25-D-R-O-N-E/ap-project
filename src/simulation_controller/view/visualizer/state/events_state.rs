@@ -1,23 +1,56 @@
 use crate::simulation_controller::{ClientEvent, SCEvent, ServerEvent};
+use petgraph::graph::NodeIndex;
 use wg_2024::controller::DroneEvent;
 
 pub struct EventsState {
     pub events: Vec<SCEvent>,
 }
 
+fn get_node_index_from_event(event: &SCEvent) -> Option<u8> {
+    let packet = match event {
+        SCEvent::ClientEvent(client_event) => match client_event {
+            ClientEvent::PacketSent(packet) => packet,
+            ClientEvent::PacketDropped(packet) => packet,
+        },
+        SCEvent::ServerEvent(server_event) => match server_event {
+            ServerEvent::PacketSent(packet) => packet,
+            ServerEvent::PacketDropped(packet) => packet,
+        },
+        SCEvent::DroneEvent(drone_event) => match drone_event {
+            DroneEvent::PacketSent(packet) => packet,
+            DroneEvent::PacketDropped(packet) => packet,
+            DroneEvent::ControllerShortcut(packet) => packet,
+        },
+    };
+
+    packet.routing_header.current_hop()
+}
 impl EventsState {
     pub fn get_events_list(&self, display_options: DisplayOptions) -> Vec<SCEvent> {
         // self.events.clone()
-        self.events
-            .clone()
-            .into_iter()
-            .filter(|e| match e {
-                SCEvent::ClientEvent(client_event) => display_options.clients,
-                SCEvent::ServerEvent(server_event) => display_options.servers,
-                SCEvent::DroneEvent(drone_event) => display_options.drones,
-            })
-            .collect()
+        match display_options.specific_index {
+            Some(specific_index) => self
+                .events
+                .clone()
+                .into_iter()
+                .filter(|e| match get_node_index_from_event(e) {
+                    Some(idx) => idx == specific_index.index() as u8,
+                    None => false,
+                })
+                .collect(),
+            None => self
+                .events
+                .clone()
+                .into_iter()
+                .filter(|e| match e {
+                    SCEvent::ClientEvent(client_event) => display_options.clients,
+                    SCEvent::ServerEvent(server_event) => display_options.servers,
+                    SCEvent::DroneEvent(drone_event) => display_options.drones,
+                })
+                .collect(),
+        }
     }
+
     pub fn add_with_limit(&mut self, event: SCEvent, limit: usize) {
         if self.events.len() > limit {
             self.events.remove(0);
@@ -42,6 +75,7 @@ pub struct DisplayOptions {
     pub drones: bool,
     pub clients: bool,
     pub servers: bool,
+    pub specific_index: Option<NodeIndex>,
 }
 
 impl DisplayOptions {
@@ -49,20 +83,32 @@ impl DisplayOptions {
         drones: true,
         clients: true,
         servers: true,
+        specific_index: None,
     };
     pub const DRONES_ONLY: DisplayOptions = DisplayOptions {
         drones: true,
         clients: false,
         servers: false,
+        specific_index: None,
     };
     pub const CLIENTS_ONLY: DisplayOptions = DisplayOptions {
         drones: false,
         clients: true,
         servers: false,
+        specific_index: None,
     };
     pub const SERVERS_ONLY: DisplayOptions = DisplayOptions {
         drones: false,
         clients: false,
         servers: true,
+        specific_index: None,
     };
+    pub fn from_index(node_index: NodeIndex) -> DisplayOptions {
+        DisplayOptions {
+            drones: true,
+            clients: true,
+            servers: true,
+            specific_index: Some(node_index),
+        }
+    }
 }

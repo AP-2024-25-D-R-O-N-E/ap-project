@@ -17,19 +17,11 @@ pub fn draw_node_info(ctx: &Context, node_index: NodeIndex, state: &mut State) {
         .default_height(100.0)
         .show(ctx, |ui| {
             ScrollArea::vertical().show(ui, |ui| {
-                ui.label(node_index.index().to_string());
+                let n = state.graph_section.g.node(node_index).unwrap();
+
+                ui.label(format!("Vendor: {}", n.payload().vendor));
                 ui.horizontal(|ui| {
                     if ui.button("Close").clicked() {
-                        // let new_selected_nodes = state
-                        //     .graph_section
-                        //     .g
-                        //     .selected_nodes()
-                        //     .to_owned()
-                        //     .into_iter()
-                        //     .filter(|n| *n != node_index)
-                        //     .collect();
-                        // println!("{:?}", new_selected_nodes);
-                        // state.graph_section.g.set_selected_nodes(new_selected_nodes);
                         let n = state
                             .graph_section
                             .g
@@ -53,10 +45,12 @@ pub fn draw_node_info(ctx: &Context, node_index: NodeIndex, state: &mut State) {
                 })
             });
 
-            let events = state.events.get_events_list(DisplayOptions::ALL);
             CollapsingHeader::new("Logs").show(ui, |ui| {
                 ScrollArea::vertical().show(ui, |ui| {
-                    for x in state.events.get_events_list(DisplayOptions::ALL) {
+                    for x in state
+                        .events
+                        .get_events_list(DisplayOptions::from_index(node_index))
+                    {
                         ui.label(
                             egui::RichText::new(format!("{:?}", x))
                                 .color(egui::Color32::LIGHT_GRAY),
