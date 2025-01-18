@@ -23,6 +23,16 @@ pub struct UiNodePayload {
     pub node_type: UiNodeType,
     pub vendor: String,
 }
+impl UiNodePayload {
+    pub fn get_type(&self) -> String {
+        match &self.node_type {
+            UiNodeType::Server(ui_server_node) => "Server",
+            UiNodeType::Client(ui_client_node) => "Client",
+            UiNodeType::Drone(ui_drone_node) => "Drone",
+        }
+        .to_string()
+    }
+}
 
 #[derive(Clone)]
 pub enum UiNodeType {

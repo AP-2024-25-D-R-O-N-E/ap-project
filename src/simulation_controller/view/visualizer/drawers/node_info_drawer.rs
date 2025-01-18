@@ -17,8 +17,12 @@ pub fn draw_node_info(ctx: &Context, node_index: NodeIndex, state: &mut State) {
         .default_height(100.0)
         .show(ctx, |ui| {
             ScrollArea::vertical().show(ui, |ui| {
+                let payload = state.graph_section.g.node(node_index).unwrap().payload();
                 let n = state.graph_section.g.node(node_index).unwrap();
-
+                ui.label(
+                    egui::RichText::new(format!("Type: {}", payload.get_type()))
+                        .color(egui::Color32::LIGHT_GRAY),
+                );
                 ui.label(format!("Vendor: {}", n.payload().vendor));
                 ui.horizontal(|ui| {
                     if ui.button("Close").clicked() {
