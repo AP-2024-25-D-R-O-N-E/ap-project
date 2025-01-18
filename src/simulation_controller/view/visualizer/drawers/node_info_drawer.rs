@@ -10,7 +10,8 @@ pub fn draw_infos_for_selected_nodes(ctx: &Context, state: &mut State) {
     }
 }
 pub fn draw_node_info(ctx: &Context, node_index: NodeIndex, state: &mut State) {
-    Window::new(format!("Node {}", node_index.index()))
+    let node_payload = state.graph_section.g.node(node_index).unwrap().payload();
+    Window::new(format!("Node {}", node_payload.wg_id))
         .collapsible(true)
         .resizable(true)
         .default_width(200.0)
@@ -39,7 +40,7 @@ pub fn draw_node_info(ctx: &Context, node_index: NodeIndex, state: &mut State) {
                                 .unwrap()
                                 .set_selected(false);
                         }
-                        if ui.button("Hide others").clicked() {
+                        if ui.button("Close others").clicked() {
                             for selected_node_index in
                                 state.graph_section.g.selected_nodes().to_owned()
                             {

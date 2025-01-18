@@ -22,6 +22,7 @@ fn get_text(ctx: &egui_graphs::DrawContext, text: String, pos: Pos2) -> Shape {
 pub struct UiNodePayload {
     pub node_type: UiNodeType,
     pub vendor: String,
+    pub wg_id: wg_2024::network::NodeId,
 }
 impl UiNodePayload {
     pub fn get_type(&self) -> String {
@@ -51,7 +52,7 @@ pub struct UiDroneNode {
 }
 impl Default for UiDroneNode {
     fn default() -> Self {
-        Self { radius: 15. }
+        Self { radius: 20. }
     }
 }
 
@@ -67,11 +68,10 @@ impl ToString for UiNodePayload {
 
 #[derive(Clone)]
 pub struct CustomNodeShape {
-    pub node_type: UiNodeType,
     pub label: String,
     pub loc: Pos2,
     pub selected: bool,
-    pub id: Option<usize>,
+    pub payload: UiNodePayload,
 
     pub size_x: f32,
     pub size_y: f32,
@@ -80,20 +80,19 @@ pub struct CustomNodeShape {
 
 impl From<NodeProps<UiNodePayload>> for CustomNodeShape {
     fn from(node_props: NodeProps<UiNodePayload>) -> Self {
-        let id = node_props
-            .label
-            .chars()
-            .filter(|c| c.is_digit(10)) // Keep only digits
-            .collect::<String>() // Collect into a String
-            .parse::<usize>()
-            .ok();
+        // let id = node_props
+        //     .label
+        //     .chars()
+        //     .filter(|c| c.is_digit(10)) // Keep only digits
+        //     .collect::<String>() // Collect into a String
+        //     .parse::<usize>()
+        //     .ok();
 
         Self {
-            node_type: node_props.payload.node_type.clone(),
             label: node_props.label.clone(),
             loc: node_props.location().clone(),
             selected: node_props.selected,
-            id,
+            payload: node_props.payload,
 
             size_x: 20.,
             size_y: 20.,
@@ -107,31 +106,12 @@ trait DrawShape {
 
 impl DrawShape for CustomNodeShape {
     fn draw_shape(&mut self, ctx: &egui_graphs::DrawContext) -> Vec<egui::Shape> {
-        // find node center location on the screen coordinates
-
         let center = ctx.meta.canvas_to_screen_pos(self.loc);
-        // let text_color = ctx.ctx.style().visuals.text_color();
-        // let backgound_color = ctx.ctx.style().visuals.extreme_bg_color;
-
-        // create label
-        // let label_bounding_box = ctx.ctx.fonts(|f| {
-        //     f.layout_no_wrap(
-        //         self.label.clone(),
-        //         FontId::new(ctx.meta.canvas_to_screen_size(10.), FontFamily::default()),
-        //         text_color,
-        //     )
-        // });
-        //
-        // let offset = Vec2::new(
-        //     -label_bounding_box.size().x / 2.,
-        //     -label_bounding_box.size().y / 2.,
-        // );
 
         self.zoom = ctx.meta.zoom;
-        // println!("{}", ctx.meta.zoom);
-        match &mut self.node_type {
+        let text = get_text(ctx, format!("Node {}", self.payload.wg_id), center);
+        match &mut self.payload.node_type {
             UiNodeType::Server(_server_node) => {
-                let text = get_text(ctx, self.label.clone(), center);
                 let rect = Rect {
                     min: Pos2::new(center.x - 20.0, center.y - 20.0),
                     max: Pos2::new(center.x + 20.0, center.y + 20.0),
@@ -160,7 +140,6 @@ impl DrawShape for CustomNodeShape {
                 }
             }
             UiNodeType::Client(_client_node) => {
-                let text = get_text(ctx, self.label.clone(), center);
                 let rect = Rect {
                     min: Pos2::new(center.x - 20.0, center.y - 20.0),
                     max: Pos2::new(center.x + 20.0, center.y + 20.0),
@@ -184,7 +163,6 @@ impl DrawShape for CustomNodeShape {
                 }
             }
             UiNodeType::Drone(drone_node) => {
-                let text = get_text(ctx, self.label.clone(), center);
                 let circle_fill =
                     Shape::circle_filled(center, drone_node.radius, Color32::from_gray(27));
                 let circle_stroke;
@@ -225,7 +203,7 @@ impl<E: Clone, Ty: EdgeType, Ix: IndexType> DisplayNode<UiNodePayload, E, Ty, Ix
     for CustomNodeShape
 {
     fn is_inside(&self, pos: Pos2) -> bool {
-        match &self.node_type {
+        match &self.payload.node_type {
             UiNodeType::Drone(drone_node) => {
                 self.loc.distance(pos) <= drone_node.radius / self.zoom
             }
