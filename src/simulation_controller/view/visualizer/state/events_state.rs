@@ -7,16 +7,16 @@ pub struct EventsState {
 
 impl EventsState {
     pub fn get_events_list(&self, display_options: DisplayOptions) -> Vec<SCEvent> {
-        self.events.clone()
-        // self.events
-        //     .clone()
-        //     .into_iter()
-        //     .filter(|e| match e {
-        //         SCEvent::ClientEvent(client_event) => display_options.clients,
-        //         SCEvent::ServerEvent(server_event) => display_options.servers,
-        //         SCEvent::DroneEvent(drone_event) => display_options.drones,
-        //     })
-        //     .collect()
+        // self.events.clone()
+        self.events
+            .clone()
+            .into_iter()
+            .filter(|e| match e {
+                SCEvent::ClientEvent(client_event) => display_options.clients,
+                SCEvent::ServerEvent(server_event) => display_options.servers,
+                SCEvent::DroneEvent(drone_event) => display_options.drones,
+            })
+            .collect()
     }
     pub fn add_with_limit(&mut self, event: SCEvent, limit: usize) {
         if self.events.len() > limit {
