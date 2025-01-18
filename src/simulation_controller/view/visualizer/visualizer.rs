@@ -12,8 +12,8 @@ use egui_graphs::events::Event;
 use wg_2024::controller::DroneEvent;
 
 use super::drawers::{
-    draw_section_console, draw_section_debug, draw_section_graph, draw_section_settings,
-    draw_section_testing,
+    draw_infos_for_selected_nodes, draw_section_console, draw_section_debug, draw_section_graph,
+    draw_section_settings, draw_section_testing,
 };
 use super::state::State;
 
@@ -365,6 +365,7 @@ impl App for SCGui {
 
         // self.sync();
         // self.update_simulation();
+        draw_infos_for_selected_nodes(ctx, &mut self.state);
         self.handle_graph_events();
         self.handle_sc_events();
         self.update_fps();
