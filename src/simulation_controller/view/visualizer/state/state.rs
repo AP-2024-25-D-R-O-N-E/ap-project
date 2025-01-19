@@ -4,8 +4,8 @@ use std::collections::HashMap;
 use crate::simulation_controller::SimulationController;
 
 use super::{
-    DebugSectionState, EventsState, GraphSectionState, SettingsSectionState, TestSectionState,
-    ToolbarSectionState,
+    DebugSectionState, EventsState, GraphSectionState, NodeInfoSectionState, SettingsSectionState,
+    TestSectionState, ToolbarSectionState,
 };
 
 pub struct State {
@@ -15,6 +15,7 @@ pub struct State {
     pub graph_section: GraphSectionState,
     pub events: EventsState,
     pub toolbar_section: ToolbarSectionState,
+    pub node_info_section: NodeInfoSectionState,
 }
 
 impl State {
@@ -41,6 +42,7 @@ impl Default for State {
             graph_section,
             events: Default::default(),
             toolbar_section: Default::default(),
+            node_info_section: Default::default(),
         }
     }
 }

@@ -8,8 +8,8 @@ pub struct ToolbarSectionState {
 impl Default for ToolbarSectionState {
     fn default() -> Self {
         Self {
-            console_open: false,
-            test_open: false,
+            console_open: true,
+            test_open: true,
             debug_open: false,
             settings_open: false,
         }

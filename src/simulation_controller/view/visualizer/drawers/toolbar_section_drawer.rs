@@ -44,7 +44,6 @@ pub fn draw_toolbar_section(ui: &mut Ui, state: &mut State) {
         }
 
         ui.separator();
-        // Group for "Close all" and "Open selected"
         // Regular button: Close all
         if ui.button("Close all").clicked() {
             // Handle "Close all" button click
@@ -53,8 +52,10 @@ pub fn draw_toolbar_section(ui: &mut Ui, state: &mut State) {
 
         // Regular button: Open selected
         if ui.button("Open selected").clicked() {
-            // Handle "Open selected" button click
-            println!("Open selected clicked");
+            let selected_nodes = state.graph_section.g.selected_nodes().to_owned();
+            for node_index in selected_nodes {
+                state.node_info_section.opened_windows.insert(node_index);
+            }
         }
     });
 }

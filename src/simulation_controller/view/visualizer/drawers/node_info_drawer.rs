@@ -4,9 +4,8 @@ use petgraph::graph::NodeIndex;
 use crate::simulation_controller::state::{DisplayOptions, State};
 
 pub fn draw_infos_for_selected_nodes(ctx: &Context, state: &mut State) {
-    let selected_nodes = state.graph_section.g.selected_nodes().to_owned();
-    for node_index in selected_nodes {
-        draw_node_info(ctx, node_index, state);
+    for node_index in state.node_info_section.opened_windows.clone().iter() {
+        draw_node_info(ctx, *node_index, state);
     }
 }
 pub fn draw_node_info(ctx: &Context, node_index: NodeIndex, state: &mut State) {
