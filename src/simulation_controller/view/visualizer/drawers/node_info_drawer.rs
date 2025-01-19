@@ -8,6 +8,7 @@ pub fn draw_infos_for_selected_nodes(ctx: &Context, state: &mut State) {
         draw_node_info(ctx, *node_index, state);
     }
 }
+
 pub fn draw_node_info(ctx: &Context, node_index: NodeIndex, state: &mut State) {
     let node_payload = state.graph_section.g.node(node_index).unwrap().payload();
     Window::new(format!("Node {}", node_payload.wg_id))

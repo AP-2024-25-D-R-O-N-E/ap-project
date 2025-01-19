@@ -1,30 +1,37 @@
 use crate::simulation_controller::{ClientEvent, SCEvent, ServerEvent};
 use petgraph::graph::NodeIndex;
-use wg_2024::controller::DroneEvent;
+use wg_2024::{controller::DroneEvent, packet::Packet};
 
 pub struct EventsState {
     pub events: Vec<SCEvent>,
 }
 
-fn get_node_index_from_event(event: &SCEvent) -> Option<u8> {
-    let packet = match event {
-        SCEvent::ClientEvent(client_event) => match client_event {
-            ClientEvent::PacketSent(packet) => packet,
-            ClientEvent::PacketDropped(packet) => packet,
-        },
-        SCEvent::ServerEvent(server_event) => match server_event {
-            ServerEvent::PacketSent(packet) => packet,
-            ServerEvent::PacketDropped(packet) => packet,
-        },
-        SCEvent::DroneEvent(drone_event) => match drone_event {
-            DroneEvent::PacketSent(packet) => packet,
-            DroneEvent::PacketDropped(packet) => packet,
-            DroneEvent::ControllerShortcut(packet) => packet,
-        },
-    };
+impl SCEvent {
+    pub fn get_sender_node_index(&self) -> Option<u8> {
+        self.get_packet().routing_header.current_hop()
+    }
 
-    packet.routing_header.current_hop()
+    pub fn get_packet(&self) -> Packet {
+        let packet = match self {
+            SCEvent::ClientEvent(client_event) => match client_event {
+                ClientEvent::PacketSent(packet) => packet,
+                ClientEvent::PacketDropped(packet) => packet,
+            },
+            SCEvent::ServerEvent(server_event) => match server_event {
+                ServerEvent::PacketSent(packet) => packet,
+                ServerEvent::PacketDropped(packet) => packet,
+            },
+            SCEvent::DroneEvent(drone_event) => match drone_event {
+                DroneEvent::PacketSent(packet) => packet,
+                DroneEvent::PacketDropped(packet) => packet,
+                DroneEvent::ControllerShortcut(packet) => packet,
+            },
+        };
+
+        packet.clone()
+    }
 }
+
 impl EventsState {
     pub fn get_events_list(&self, display_options: DisplayOptions) -> Vec<SCEvent> {
         match display_options.specific_index {
@@ -32,7 +39,7 @@ impl EventsState {
                 .events
                 .clone()
                 .into_iter()
-                .filter(|e| match get_node_index_from_event(e) {
+                .filter(|e| match e.get_sender_node_index() {
                     Some(idx) => idx == specific_index,
                     None => false,
                 })
