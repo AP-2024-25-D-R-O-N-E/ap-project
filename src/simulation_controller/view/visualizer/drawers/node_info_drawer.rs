@@ -32,26 +32,13 @@ pub fn draw_node_info(ctx: &Context, node_index: NodeIndex, state: &mut State) {
                         ui.end_row();
 
                         if ui.button("Close").clicked() {
-                            let n = state
-                                .graph_section
-                                .g
-                                .node_mut(node_index)
-                                .unwrap()
-                                .set_selected(false);
+                            state.node_info_section.opened_windows.remove(&node_index);
                         }
                         if ui.button("Close others").clicked() {
-                            for selected_node_index in
-                                state.graph_section.g.selected_nodes().to_owned()
-                            {
-                                if selected_node_index != node_index {
-                                    state
-                                        .graph_section
-                                        .g
-                                        .node_mut(selected_node_index)
-                                        .unwrap()
-                                        .set_selected(false);
-                                }
-                            }
+                            state
+                                .node_info_section
+                                .opened_windows
+                                .retain(|opened_index| *opened_index == node_index)
                         }
                         ui.end_row();
                     });
