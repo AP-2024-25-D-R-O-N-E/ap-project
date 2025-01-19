@@ -13,8 +13,6 @@ pub struct State {
     pub settings_section: SettingsSectionState,
     pub graph_section: GraphSectionState,
     pub events: EventsState,
-
-    node_id_map: HashMap<wg_2024::network::NodeId, petgraph::graph::NodeIndex>,
 }
 
 impl State {
@@ -40,7 +38,6 @@ impl Default for State {
             settings_section: Default::default(),
             graph_section,
             events: Default::default(),
-            node_id_map: map,
         }
     }
 }

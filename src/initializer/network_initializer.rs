@@ -58,7 +58,7 @@ impl NetworkInitializer {
             server_event_channels: HashMap::new(),
             server_command_channels: HashMap::new(),
             handles: HashMap::new(),
-            topology : NetworkInitializer::get_topology_from_config(&config),
+            topology: NetworkInitializer::get_topology_from_config(&config),
             config,
         }
     }
@@ -258,8 +258,7 @@ impl NetworkInitializer {
     /// Constructs graph from config file.
     pub fn get_topology_from_config(
         config: &InitConfig,
-    ) -> StableGraph<UiNodePayload, (), Undirected>
-     {
+    ) -> StableGraph<UiNodePayload, (), Undirected> {
         let mut graph = StableUnGraph::<UiNodePayload, ()>::default();
 
         let mut node_map_function: HashMap<wg_2024::network::NodeId, petgraph::graph::NodeIndex> =

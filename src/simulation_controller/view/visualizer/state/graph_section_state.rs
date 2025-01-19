@@ -1,8 +1,11 @@
+use std::collections::HashMap;
+
 use super::super::node::UiNodeType;
 use crossbeam::channel::{unbounded, Receiver, Sender};
 use egui_graphs::{events::Event, Graph};
 use petgraph::{
     csr::DefaultIx,
+    graph::NodeIndex,
     prelude::{StableGraph, StableUnGraph},
     Undirected,
 };
@@ -16,15 +19,42 @@ pub struct GraphSectionState {
 
     pub graph_event_publisher: Sender<Event>,
     pub graph_event_consumer: Receiver<Event>,
+
+    node_id_map: HashMap<wg_2024::network::NodeId, petgraph::graph::NodeIndex>,
+}
+
+fn get_node_id_map(graph: &StableGraph<UiNodePayload, (), Undirected>) -> HashMap<u8, NodeIndex> {
+    let mut map = HashMap::new();
+
+    for n in graph.node_indices() {
+        let payload = graph.node_weight(n).unwrap();
+        map.insert(payload.wg_id, n);
+    }
+    map
+}
+impl GraphSectionState {
+    fn new(graph: StableGraph<UiNodePayload, (), Undirected>) -> GraphSectionState {
+        let graph_section = GraphSectionState::default();
+        let (event_publisher, event_consumer) = unbounded();
+
+        GraphSectionState {
+            g: Graph::from(&generate_graph()),
+            graph_event_publisher: event_publisher,
+            graph_event_consumer: event_consumer,
+            node_id_map: get_node_id_map(&graph),
+        }
+    }
 }
 
 impl Default for GraphSectionState {
     fn default() -> Self {
         let (event_publisher, event_consumer) = unbounded();
+        let graph = generate_graph();
         Self {
-            g: Graph::from(&generate_graph()),
+            g: Graph::from(&graph),
             graph_event_publisher: event_publisher,
             graph_event_consumer: event_consumer,
+            node_id_map: get_node_id_map(&graph),
         }
     }
 }
