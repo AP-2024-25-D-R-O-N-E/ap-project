@@ -5,6 +5,7 @@ use crate::simulation_controller::SimulationController;
 
 use super::{
     DebugSectionState, EventsState, GraphSectionState, SettingsSectionState, TestSectionState,
+    ToolbarSectionState,
 };
 
 pub struct State {
@@ -13,6 +14,7 @@ pub struct State {
     pub settings_section: SettingsSectionState,
     pub graph_section: GraphSectionState,
     pub events: EventsState,
+    pub toolbar_section: ToolbarSectionState,
 }
 
 impl State {
@@ -38,6 +40,7 @@ impl Default for State {
             settings_section: Default::default(),
             graph_section,
             events: Default::default(),
+            toolbar_section: Default::default(),
         }
     }
 }

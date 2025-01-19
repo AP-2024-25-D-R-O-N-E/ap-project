@@ -3,6 +3,7 @@ pub mod events_state;
 pub mod settings_section_state;
 pub mod state;
 pub mod test_section_state;
+pub mod toolbar_section_state;
 
 pub mod graph_section_state;
 pub use debug_section_state::*;
@@ -11,3 +12,4 @@ pub use graph_section_state::*;
 pub use settings_section_state::*;
 pub use state::*;
 pub use test_section_state::*;
+pub use toolbar_section_state::*;

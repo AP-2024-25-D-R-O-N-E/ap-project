@@ -13,7 +13,7 @@ use wg_2024::controller::DroneEvent;
 
 use super::drawers::{
     draw_infos_for_selected_nodes, draw_section_console, draw_section_debug, draw_section_graph,
-    draw_section_settings, draw_section_testing,
+    draw_section_settings, draw_section_testing, draw_toolbar_section,
 };
 use super::state::State;
 
@@ -323,45 +323,58 @@ impl App for SCGui {
             ..Default::default()
         };
 
-        egui::TopBottomPanel::bottom("bottom_panel")
+        egui::TopBottomPanel::top("bottom_panel")
             .frame(custom_frame)
-            .resizable(true)
-            .show(ctx, |ui| draw_section_console(ui, &mut self.state));
+            .show(ctx, |ui| draw_toolbar_section(ui, &mut self.state));
+
+        if self.state.toolbar_section.console_open {
+            egui::TopBottomPanel::bottom("bottom_panel")
+                .frame(custom_frame)
+                .resizable(true)
+                .show(ctx, |ui| draw_section_console(ui, &mut self.state));
+        }
 
         egui::CentralPanel::default().show(ctx, |ui| draw_section_graph(ui, &mut self.state));
 
-        Window::new("Settings")
-            .collapsible(true)
-            .resizable(true)
-            .default_width(200.0)
-            .default_height(100.0)
-            .show(ctx, |ui| {
-                ScrollArea::vertical().show(ui, |ui| draw_section_settings(ui, &mut self.state));
-            });
-
-        Window::new("Debug")
-            .collapsible(true)
-            .resizable(true)
-            .default_width(200.0)
-            .default_height(100.0)
-            .default_open(false)
-            .show(ctx, |ui| {
-                ScrollArea::vertical().show(ui, |ui| {
-                    draw_section_debug(ui, &mut self.state);
+        if self.state.toolbar_section.settings_open {
+            Window::new("Settings")
+                .collapsible(true)
+                .resizable(true)
+                .default_width(200.0)
+                .default_height(100.0)
+                .show(ctx, |ui| {
+                    ScrollArea::vertical()
+                        .show(ui, |ui| draw_section_settings(ui, &mut self.state));
                 });
-            });
+        }
 
-        Window::new("Test")
-            .collapsible(true)
-            .resizable(true)
-            .default_width(200.0)
-            .default_height(100.0)
-            .default_open(false)
-            .show(ctx, |ui| {
-                ScrollArea::vertical().show(ui, |ui| {
-                    draw_section_testing(ui, &mut self.state, &self.simulation_controller);
+        if self.state.toolbar_section.debug_open {
+            Window::new("Debug")
+                .collapsible(true)
+                .resizable(true)
+                .default_width(200.0)
+                .default_height(100.0)
+                .default_open(true)
+                .show(ctx, |ui| {
+                    ScrollArea::vertical().show(ui, |ui| {
+                        draw_section_debug(ui, &mut self.state);
+                    });
                 });
-            });
+        }
+
+        if self.state.toolbar_section.test_open {
+            Window::new("Test")
+                .collapsible(true)
+                .resizable(true)
+                .default_width(200.0)
+                .default_height(100.0)
+                .default_open(true)
+                .show(ctx, |ui| {
+                    ScrollArea::vertical().show(ui, |ui| {
+                        draw_section_testing(ui, &mut self.state, &self.simulation_controller);
+                    });
+                });
+        }
 
         // self.sync();
         // self.update_simulation();
