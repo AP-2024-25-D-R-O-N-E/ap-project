@@ -4,7 +4,7 @@ use egui_extras::TableRow;
 use crate::simulation_controller::{state::State, SCEvent};
 
 impl SCEvent {
-    pub fn draw(&self, mut row: TableRow, state: &mut State) {
+    pub fn draw(&self, row: &mut TableRow, state: &mut State) {
         row.col(|ui| {
             ui.label(self.get_sender_type());
         });

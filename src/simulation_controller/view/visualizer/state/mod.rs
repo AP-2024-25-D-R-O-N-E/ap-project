@@ -1,3 +1,4 @@
+pub mod console_section_state;
 pub mod debug_section_state;
 pub mod events_state;
 pub mod node_info_section_state;
@@ -7,6 +8,7 @@ pub mod test_section_state;
 pub mod toolbar_section_state;
 
 pub mod graph_section_state;
+pub use console_section_state::*;
 pub use debug_section_state::*;
 pub use events_state::*;
 pub use graph_section_state::*;

@@ -10,15 +10,14 @@ pub fn draw_section_console(ui: &mut Ui, state: &mut State) {
             //TODO draw node events
             // ui.label(egui::RichText::new("This is red text!").color(egui::Color32::LIGHT_GRAY));
             let events = state.events.get_events_list(DisplayOptions::ALL);
-            // println!("{:?}", events.len());
-            //
+            let text_height = ui.text_style_height(&egui::TextStyle::Body);
             TableBuilder::new(ui)
                 .column(Column::auto().resizable(true))
                 .column(Column::auto().resizable(true))
                 .column(Column::auto().resizable(true))
                 .column(Column::remainder())
                 .striped(true)
-                .header(30.0, |mut header| {
+                .header(text_height, |mut header| {
                     header.col(|ui| {
                         ui.label("Sender");
                     });
@@ -33,11 +32,37 @@ pub fn draw_section_console(ui: &mut Ui, state: &mut State) {
                     });
                 })
                 .body(|mut body| {
-                    for event in state.events.get_events_list(DisplayOptions::ALL) {
+                    let mut hover_index = None;
+                    for (index, event) in state
+                        .events
+                        .get_events_list(DisplayOptions::ALL)
+                        .iter()
+                        .enumerate()
+                    {
                         body.row(30.0, |mut row| {
-                            event.draw(row, state);
+                            print!("{}", row.index());
+                            match state.console_section.hovered_row {
+                                Some(hovered_index) => {
+                                    if index == hovered_index {
+                                        row.set_selected(true);
+                                    }
+                                }
+                                None => row.set_selected(false),
+                            }
+
+                            event.draw(&mut row, state);
+                            if row.response().hovered {
+                                hover_index = Some(index);
+                            }
+                            // print!("{:?} ", row.response().hovered);
+                            // if row.response().hovered {
+                            //     print!("{:?} ", index);
+                            // }
+                            // println!("{:?}", state.console_section.hovered_row);
                         });
                     }
+                    state.console_section.hovered_row = hover_index;
+                    println!("");
                 });
 
             // let mut table = TableBuilder::new(ui)
