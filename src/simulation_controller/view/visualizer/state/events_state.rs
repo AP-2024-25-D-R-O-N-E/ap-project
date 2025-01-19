@@ -27,14 +27,13 @@ fn get_node_index_from_event(event: &SCEvent) -> Option<u8> {
 }
 impl EventsState {
     pub fn get_events_list(&self, display_options: DisplayOptions) -> Vec<SCEvent> {
-        // self.events.clone()
         match display_options.specific_index {
             Some(specific_index) => self
                 .events
                 .clone()
                 .into_iter()
                 .filter(|e| match get_node_index_from_event(e) {
-                    Some(idx) => idx == specific_index.index() as u8,
+                    Some(idx) => idx == specific_index,
                     None => false,
                 })
                 .collect(),
@@ -75,7 +74,7 @@ pub struct DisplayOptions {
     pub drones: bool,
     pub clients: bool,
     pub servers: bool,
-    pub specific_index: Option<NodeIndex>,
+    pub specific_index: Option<wg_2024::network::NodeId>,
 }
 
 impl DisplayOptions {
@@ -103,7 +102,7 @@ impl DisplayOptions {
         servers: true,
         specific_index: None,
     };
-    pub fn from_index(node_index: NodeIndex) -> DisplayOptions {
+    pub fn from_index(node_index: wg_2024::network::NodeId) -> DisplayOptions {
         DisplayOptions {
             drones: true,
             clients: true,

@@ -58,10 +58,9 @@ pub fn draw_node_info(ctx: &Context, node_index: NodeIndex, state: &mut State) {
                     });
                 CollapsingHeader::new("Logs").show(ui, |ui| {
                     ScrollArea::vertical().show(ui, |ui| {
-                        for x in state
-                            .events
-                            .get_events_list(DisplayOptions::from_index(node_index))
-                        {
+                        for x in state.events.get_events_list(DisplayOptions::from_index(
+                            state.graph_section.wg_id(node_index).unwrap(),
+                        )) {
                             ui.label(
                                 egui::RichText::new(format!("{:?}", x))
                                     .color(egui::Color32::LIGHT_GRAY),

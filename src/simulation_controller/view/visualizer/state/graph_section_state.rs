@@ -45,13 +45,13 @@ impl GraphSectionState {
             node_id_map: get_node_id_map(&graph),
         }
     }
-    fn wg_id(&self, index: NodeIndex) -> Option<NodeId> {
+    pub fn wg_id(&self, index: NodeIndex) -> Option<NodeId> {
         match self.g.node(index) {
             Some(node) => Some(node.payload().wg_id),
             None => None,
         }
     }
-    fn graph_id(&self, index: NodeId) -> Option<NodeIndex> {
+    pub fn graph_id(&self, index: NodeId) -> Option<NodeIndex> {
         match self.node_id_map.get(&index) {
             Some(idx) => Some(*idx),
             None => None,
