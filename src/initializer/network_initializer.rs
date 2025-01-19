@@ -42,6 +42,7 @@ pub struct NetworkInitializer {
     pub server_event_channels: HashMap<NodeId, (Sender<ServerEvent>, Receiver<ServerEvent>)>,
     pub server_command_channels: HashMap<NodeId, (Sender<ServerCommand>, Receiver<ServerCommand>)>,
     pub topology: StableGraph<UiNodePayload, (), Undirected>,
+    pub node_map_function: HashMap<wg_2024::network::NodeId, petgraph::graph::NodeIndex>,
 
     handles: HashMap<NodeId, JoinHandle<()>>,
 }
@@ -49,6 +50,7 @@ pub struct NetworkInitializer {
 impl NetworkInitializer {
     pub fn new(config_path: String) -> NetworkInitializer {
         let config = parse_config(config_path);
+        let (topology, node_map_function) = NetworkInitializer::get_topology_from_config(&config);
         NetworkInitializer {
             packet_channels: HashMap::new(), // packets
             node_event_channels: HashMap::new(),
@@ -58,7 +60,8 @@ impl NetworkInitializer {
             server_event_channels: HashMap::new(),
             server_command_channels: HashMap::new(),
             handles: HashMap::new(),
-            topology: NetworkInitializer::get_topology_from_config(&config),
+            topology,
+            node_map_function,
             config,
         }
     }
@@ -257,17 +260,21 @@ impl NetworkInitializer {
 
     pub fn get_topology_from_config(
         config: &InitConfig,
-    ) -> StableGraph<UiNodePayload, (), Undirected> {
+    ) -> (
+        StableGraph<UiNodePayload, (), Undirected>,
+        HashMap<wg_2024::network::NodeId, petgraph::graph::NodeIndex>,
+    ) {
         let mut graph = StableUnGraph::<UiNodePayload, ()>::default();
 
-        let mut nodes: HashMap<u8, petgraph::graph::NodeIndex> = HashMap::new();
+        let mut node_map_function: HashMap<wg_2024::network::NodeId, petgraph::graph::NodeIndex> =
+            HashMap::new();
         for drone in &config.drone {
             let n = graph.add_node(UiNodePayload {
                 node_type: UiNodeType::Drone(UiDroneNode::default()),
                 vendor: "unknown".to_string(),
                 wg_id: drone.id,
             });
-            nodes.insert(drone.id, n);
+            node_map_function.insert(drone.id, n);
         }
         for server in &config.server {
             let n = graph.add_node(UiNodePayload {
@@ -275,7 +282,7 @@ impl NetworkInitializer {
                 vendor: "unknown".to_string(),
                 wg_id: server.id,
             });
-            nodes.insert(server.id, n);
+            node_map_function.insert(server.id, n);
         }
         for client in &config.client {
             let n = graph.add_node(UiNodePayload {
@@ -283,13 +290,13 @@ impl NetworkInitializer {
                 vendor: "unknown".to_string(),
                 wg_id: client.id,
             });
-            nodes.insert(client.id, n);
+            node_map_function.insert(client.id, n);
         }
 
         let mut set: HashSet<(NodeIndex, NodeIndex)> = HashSet::new();
         let mut insert_if_not_duplicated = |id1, id2| {
-            let node_graph_id = *nodes.get(&id1).unwrap();
-            let node_to_graph_id = *nodes.get(id2).unwrap();
+            let node_graph_id = *node_map_function.get(&id1).unwrap();
+            let node_to_graph_id = *node_map_function.get(id2).unwrap();
 
             if !(set.contains(&(node_graph_id, node_to_graph_id))
                 || set.contains(&(node_to_graph_id, node_graph_id)))
@@ -315,6 +322,6 @@ impl NetworkInitializer {
             }
         }
 
-        graph
+        (graph, node_map_function)
     }
 }

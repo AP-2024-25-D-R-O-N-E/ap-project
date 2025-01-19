@@ -105,15 +105,8 @@ pub fn send_msg_fragment_section(ui: &mut Ui, state: &mut State) {
             let start_node = state.graph_section.g.selected_nodes()[0].clone();
             let end_node = state.graph_section.g.selected_nodes()[1].clone();
             let g = &*state.graph_section.g.g();
-            // let path = dijkstra(g, start_node, Some(end_node), |e| 1);
 
-            let path = algo::astar(
-                g,
-                start_node,        // start
-                |n| n == end_node, // is_goal
-                |e| 1,             // edge_cost
-                |_| 0,             // estimate_cost
-            );
+            let path = algo::astar(g, start_node, |n| n == end_node, |e| 1, |_| 0);
             match path {
                 Some((_, path)) => {
                     let mut new_path = String::new();
@@ -129,7 +122,6 @@ pub fn send_msg_fragment_section(ui: &mut Ui, state: &mut State) {
                 }
                 None => todo!(),
             }
-            // simple_paths::all_simple_paths(g, start_node.index(), end_node.index(), 0, None);
         }
     }
 
@@ -137,7 +129,8 @@ pub fn send_msg_fragment_section(ui: &mut Ui, state: &mut State) {
     if ui
         .add_sized(ui.available_size(), egui::Button::new("Send"))
         .clicked()
-    {}
+    {
+    }
     ui.end_row();
     match &state.test_section.status_flag {
         Some(status) => match status {
