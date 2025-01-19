@@ -42,7 +42,6 @@ pub struct NetworkInitializer {
     pub server_event_channels: HashMap<NodeId, (Sender<ServerEvent>, Receiver<ServerEvent>)>,
     pub server_command_channels: HashMap<NodeId, (Sender<ServerCommand>, Receiver<ServerCommand>)>,
     pub topology: StableGraph<UiNodePayload, (), Undirected>,
-    pub node_map_function: HashMap<wg_2024::network::NodeId, petgraph::graph::NodeIndex>,
 
     handles: HashMap<NodeId, JoinHandle<()>>,
 }
@@ -50,7 +49,6 @@ pub struct NetworkInitializer {
 impl NetworkInitializer {
     pub fn new(config_path: String) -> NetworkInitializer {
         let config = parse_config(config_path);
-        let (topology, node_map_function) = NetworkInitializer::get_topology_from_config(&config);
         NetworkInitializer {
             packet_channels: HashMap::new(), // packets
             node_event_channels: HashMap::new(),
@@ -60,8 +58,7 @@ impl NetworkInitializer {
             server_event_channels: HashMap::new(),
             server_command_channels: HashMap::new(),
             handles: HashMap::new(),
-            topology,
-            node_map_function,
+            topology : NetworkInitializer::get_topology_from_config(&config),
             config,
         }
     }
@@ -258,12 +255,11 @@ impl NetworkInitializer {
         &self.drone_command_channels[&drone_id].0
     }
 
+    /// Constructs graph from config file.
     pub fn get_topology_from_config(
         config: &InitConfig,
-    ) -> (
-        StableGraph<UiNodePayload, (), Undirected>,
-        HashMap<wg_2024::network::NodeId, petgraph::graph::NodeIndex>,
-    ) {
+    ) -> StableGraph<UiNodePayload, (), Undirected>
+     {
         let mut graph = StableUnGraph::<UiNodePayload, ()>::default();
 
         let mut node_map_function: HashMap<wg_2024::network::NodeId, petgraph::graph::NodeIndex> =
@@ -322,6 +318,6 @@ impl NetworkInitializer {
             }
         }
 
-        (graph, node_map_function)
+        graph
     }
 }

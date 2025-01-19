@@ -1,4 +1,5 @@
 use egui_graphs::Graph;
+use std::collections::HashMap;
 
 use crate::simulation_controller::SimulationController;
 
@@ -12,6 +13,8 @@ pub struct State {
     pub settings_section: SettingsSectionState,
     pub graph_section: GraphSectionState,
     pub events: EventsState,
+
+    node_id_map: HashMap<wg_2024::network::NodeId, petgraph::graph::NodeIndex>,
 }
 
 impl State {
@@ -24,12 +27,20 @@ impl State {
 
 impl Default for State {
     fn default() -> Self {
+        let graph_section = GraphSectionState::default();
+
+        let mut map = HashMap::new();
+        for n in graph_section.g.g.node_indices() {
+            map.insert(graph_section.g.node(n).unwrap().payload().wg_id, n);
+        }
+
         Self {
             test_section: Default::default(),
             debug_section: Default::default(),
             settings_section: Default::default(),
-            graph_section: Default::default(),
+            graph_section,
             events: Default::default(),
+            node_id_map: map,
         }
     }
 }
