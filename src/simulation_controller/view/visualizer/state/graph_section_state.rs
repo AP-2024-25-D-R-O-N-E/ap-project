@@ -9,6 +9,7 @@ use petgraph::{
     prelude::{StableGraph, StableUnGraph},
     Undirected,
 };
+use wg_2024::network::NodeId;
 
 use crate::simulation_controller::node::{
     CustomNodeShape, UiClientNode, UiDroneNode, UiNodePayload, UiServerNode,
@@ -42,6 +43,18 @@ impl GraphSectionState {
             graph_event_publisher: event_publisher,
             graph_event_consumer: event_consumer,
             node_id_map: get_node_id_map(&graph),
+        }
+    }
+    fn wg_id(&self, index: NodeIndex) -> Option<NodeId> {
+        match self.g.node(index) {
+            Some(node) => Some(node.payload().wg_id),
+            None => None,
+        }
+    }
+    fn graph_id(&self, index: NodeId) -> Option<NodeIndex> {
+        match self.node_id_map.get(&index) {
+            Some(idx) => Some(*idx),
+            None => None,
         }
     }
 }
