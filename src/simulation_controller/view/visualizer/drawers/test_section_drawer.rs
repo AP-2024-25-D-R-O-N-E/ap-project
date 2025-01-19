@@ -1,5 +1,5 @@
 use egui::{CollapsingHeader, Color32, RichText, Ui};
-use petgraph::algo::
+use petgraph::algo::{self, dijkstra::dijkstra};
 
 use crate::simulation_controller::{state::State, SimulationController};
 
@@ -101,8 +101,35 @@ pub fn send_msg_fragment_section(ui: &mut Ui, state: &mut State) {
         if state.graph_section.g.selected_nodes().len() != 2 {
             state.test_section.status_flag = Some(Err("Please select exactly 2 nodes".to_string()));
         } else {
-            state.test_section.status_flag = None
-                let g = state.graph_section.g.g();
+            state.test_section.status_flag = None;
+            let start_node = state.graph_section.g.selected_nodes()[0].clone();
+            let end_node = state.graph_section.g.selected_nodes()[1].clone();
+            let g = &*state.graph_section.g.g();
+            // let path = dijkstra(g, start_node, Some(end_node), |e| 1);
+
+            let path = algo::astar(
+                g,
+                start_node,        // start
+                |n| n == end_node, // is_goal
+                |e| 1,             // edge_cost
+                |_| 0,             // estimate_cost
+            );
+            match path {
+                Some((_, path)) => {
+                    let mut new_path = String::new();
+                    for n in path {
+                        let actual_node_index =
+                            state.graph_section.g.node(n).unwrap().payload().wg_id;
+                        new_path.push_str(format!("{}, ", actual_node_index).as_str());
+                    }
+                    if new_path.len() != 0 {
+                        new_path.truncate(new_path.len() - 2);
+                    }
+                    state.test_section.routing_path_string = new_path
+                }
+                None => todo!(),
+            }
+            // simple_paths::all_simple_paths(g, start_node.index(), end_node.index(), 0, None);
         }
     }
 
