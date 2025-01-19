@@ -46,8 +46,7 @@ pub fn draw_toolbar_section(ui: &mut Ui, state: &mut State) {
         ui.separator();
         // Regular button: Close all
         if ui.button("Close all").clicked() {
-            // Handle "Close all" button click
-            println!("Close all clicked");
+            state.node_info_section.opened_windows.clear();
         }
 
         // Regular button: Open selected
