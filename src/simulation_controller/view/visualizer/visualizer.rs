@@ -323,7 +323,7 @@ impl App for SCGui {
             ..Default::default()
         };
 
-        egui::TopBottomPanel::top("bottom_panel")
+        egui::TopBottomPanel::top("top_panel")
             .frame(custom_frame)
             .show(ctx, |ui| draw_toolbar_section(ui, &mut self.state));
 
