@@ -14,25 +14,32 @@ pub fn draw_section_console(ui: &mut Ui, state: &mut State) {
             //
             TableBuilder::new(ui)
                 .column(Column::auto().resizable(true))
+                .column(Column::auto().resizable(true))
+                .column(Column::auto().resizable(true))
                 .column(Column::remainder())
-                .header(20.0, |mut header| {
+                .striped(true)
+                .header(30.0, |mut header| {
                     header.col(|ui| {
-                        ui.heading("First column");
+                        ui.label("Sender");
                     });
                     header.col(|ui| {
-                        ui.heading("Second column");
+                        ui.label("Type");
+                    });
+                    header.col(|ui| {
+                        ui.label("Session id");
+                    });
+                    header.col(|ui| {
+                        ui.label("Other infos");
                     });
                 })
                 .body(|mut body| {
-                    body.row(30.0, |mut row| {
-                        row.col(|ui| {
-                            ui.label("Hello");
+                    for event in state.events.get_events_list(DisplayOptions::ALL) {
+                        body.row(30.0, |mut row| {
+                            event.draw(row, state);
                         });
-                        row.col(|ui| {
-                            ui.button("world!");
-                        });
-                    });
+                    }
                 });
+
             // let mut table = TableBuilder::new(ui)
             //     .striped(self.striped)
             //     .resizable(self.resizable)
