@@ -32,6 +32,6 @@ pub fn send_msg() {
         session_id: 1,
     };
 
-    sc.send_msg_fragment(packet, 1);
+    sc.send_msg_fragment(packet);
     sleep(Duration::from_secs(100));
 }
