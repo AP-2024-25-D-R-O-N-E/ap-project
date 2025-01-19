@@ -40,7 +40,6 @@ pub fn draw_section_console(ui: &mut Ui, state: &mut State) {
                         .enumerate()
                     {
                         body.row(30.0, |mut row| {
-                            print!("{}", row.index());
                             match state.console_section.hovered_row {
                                 Some(hovered_index) => {
                                     if index == hovered_index {
@@ -51,18 +50,12 @@ pub fn draw_section_console(ui: &mut Ui, state: &mut State) {
                             }
 
                             event.draw(&mut row, state);
-                            if row.response().hovered {
+                            if row.response().contains_pointer() {
                                 hover_index = Some(index);
                             }
-                            // print!("{:?} ", row.response().hovered);
-                            // if row.response().hovered {
-                            //     print!("{:?} ", index);
-                            // }
-                            // println!("{:?}", state.console_section.hovered_row);
                         });
                     }
                     state.console_section.hovered_row = hover_index;
-                    println!("");
                 });
 
             // let mut table = TableBuilder::new(ui)
