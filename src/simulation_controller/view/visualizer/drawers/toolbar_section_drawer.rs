@@ -56,5 +56,11 @@ pub fn draw_toolbar_section(ui: &mut Ui, state: &mut State) {
                 state.node_info_section.opened_windows.insert(node_index);
             }
         }
+
+        // if ui.button("Prints events").clicked() {
+        //     for x in state.events.events.clone() {
+        //         println!("{}", x);
+        //     }
+        // }
     });
 }

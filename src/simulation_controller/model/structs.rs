@@ -49,7 +49,7 @@ impl From<DroneEvent> for SCEvent {
 
 impl SCEvent {
     pub fn get_sender_node_index(&self) -> Option<u8> {
-        self.get_packet().routing_header.current_hop()
+        self.get_packet().routing_header.previous_hop()
     }
 
     pub fn get_packet(&self) -> Packet {
@@ -91,5 +91,11 @@ impl SCEvent {
             },
         }
         .to_string()
+    }
+}
+
+impl std::fmt::Display for SCEvent {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.get_packet())
     }
 }
