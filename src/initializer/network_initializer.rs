@@ -127,16 +127,22 @@ impl NetworkInitializer {
             let barrier_clone: Arc<Barrier> = Arc::clone(&drone_barrier);
             self.handles.insert(
                 drone_id,
-                Self::create_drone_thread(
-                    index,
-                    drone_id,
-                    command_send,
-                    command_receiver,
-                    packet_recv,
-                    packet_send,
-                    pdr,
-                    barrier_clone,
-                ),
+                thread::spawn(move || {
+                    let mut drone = Self::create_drone(
+                        index,
+                        drone_id,
+                        command_send,
+                        command_receiver,
+                        packet_recv,
+                        packet_send,
+                        pdr,
+                    );
+
+                    log::info!("{}", format!("Initialized drone {}", index).purple());
+                    barrier_clone.wait();
+                    // run function is where the logic of the drone runs.
+                    drone.run();
+                }),
             );
         }
         drone_barrier.wait();
@@ -368,8 +374,7 @@ impl NetworkInitializer {
         }
     }
 
-    //creates a thread with a new drone inside it
-    fn create_drone_thread(
+    fn create_drone(
         drone_index: usize, // index determines which implementation of drone to use
         id: NodeId,
         controller_send: Sender<DroneEvent>,
@@ -377,123 +382,81 @@ impl NetworkInitializer {
         packet_recv: Receiver<Packet>,
         packet_send: HashMap<NodeId, Sender<Packet>>,
         pdr: f32,
-        barrier_clone: Arc<Barrier>,
-    ) -> JoinHandle<()> {
+    ) -> Box<dyn Drone> {
         let final_index = drone_index % 10;
         match final_index {
-            0 => spawn_drone_thread::<RustafarianDrone>(
+            0 => Box::new(RustafarianDrone::new(
                 id,
                 controller_send,
                 controller_recv,
                 packet_recv,
                 packet_send,
                 pdr,
-                barrier_clone,
-            ),
-            1 => spawn_drone_thread::<LockheedRustin>(
+            )),
+            1 => Box::new(LockheedRustin::new(
                 id,
                 controller_send,
                 controller_recv,
                 packet_recv,
                 packet_send,
                 pdr,
-                barrier_clone,
-            ),
-            2 => spawn_drone_thread::<RustyDrone>(
+            )),
+            2 => Box::new(RustyDrone::new(
                 id,
                 controller_send,
                 controller_recv,
                 packet_recv,
                 packet_send,
                 pdr,
-                barrier_clone,
-            ),
-            3 => spawn_drone_thread::<RustBustersDrone>(
+            )),
+            3 => Box::new(RustBustersDrone::new(
                 id,
                 controller_send,
                 controller_recv,
                 packet_recv,
                 packet_send,
                 pdr,
-                barrier_clone,
-            ),
-            4 => spawn_drone_thread::<CppEnjoyersDrone>(
+            )),
+            4 => Box::new(CppEnjoyersDrone::new(
                 id,
                 controller_send,
                 controller_recv,
                 packet_recv,
                 packet_send,
                 pdr,
-                barrier_clone,
-            ),
-            5 => spawn_drone_thread::<RustezeDrone>(
+            )),
+            5 => Box::new(RustezeDrone::new(
                 id,
                 controller_send,
                 controller_recv,
                 packet_recv,
                 packet_send,
                 pdr,
-                barrier_clone,
-            ),
-            6 => spawn_drone_thread::<GetDroned>(
+            )),
+            6 => Box::new(GetDroned::new(
                 id,
                 controller_send,
                 controller_recv,
                 packet_recv,
                 packet_send,
                 pdr,
-                barrier_clone,
-            ),
-            7 => spawn_drone_thread::<RustRoveri>(
+            )),
+            7 => Box::new(RustRoveri::new(
                 id,
                 controller_send,
                 controller_recv,
                 packet_recv,
                 packet_send,
                 pdr,
-                barrier_clone,
-            ),
-            _ => spawn_drone_thread::<MyDrone>(
+            )),
+            _ => Box::new(MyDrone::new(
                 id,
                 controller_send,
                 controller_recv,
                 packet_recv,
                 packet_send,
                 pdr,
-                barrier_clone,
-            ),
+            )),
         }
     }
 }
-
-fn spawn_drone_thread<T: Drone>(
-    id: u8,
-    controller_send: Sender<DroneEvent>,
-    controller_recv: Receiver<DroneCommand>,
-    packet_recv: Receiver<Packet>,
-    packet_send: HashMap<u8, Sender<Packet>>,
-    pdr: f32,
-    barrier_clone: Arc<Barrier>,
-) -> JoinHandle<()> {
-    thread::spawn(move || {
-        let mut drone = T::new(
-            id,
-            controller_send,
-            controller_recv,
-            packet_recv,
-            packet_send,
-            pdr,
-        );
-
-        log::info!(
-            "{}",
-            format!("Initialized drone Rustafarian {}", id).purple()
-        );
-        barrier_clone.wait();
-        // run function is where the logic of the drone runs.
-        drone.run();
-    })
-}
-
-#[test]
-fn tst() {}

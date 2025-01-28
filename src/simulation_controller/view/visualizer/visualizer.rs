@@ -20,7 +20,6 @@ use super::state::State;
 const GRAPH_EVENTS_LIMIT: usize = 100;
 const MAIN_CONSOLE_SCROLLBACK_LIMIT: usize = 100;
 
-
 pub struct SCGui {
     fps: f32,
     last_update_time: Instant,
