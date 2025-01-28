@@ -10,6 +10,7 @@ pub mod toolbar_section_drawer;
 pub use console_section_drawer::*;
 pub use debug_section_drawer::*;
 pub use graph_section_drawer::*;
+
 pub use node_info_drawer::*;
 pub use sc_event_drawer::*;
 pub use settings_section_drawer::*;
