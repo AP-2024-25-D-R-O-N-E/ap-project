@@ -1,6 +1,9 @@
 pub mod server_test;
 
-use std::{collections::HashMap, fmt::{write, Debug}};
+use std::{
+    collections::HashMap,
+    fmt::{write, Debug},
+};
 
 use colored::Colorize;
 use crossbeam::channel::{select_biased, Receiver, Sender};
@@ -21,7 +24,9 @@ pub trait ServerTrait {
         sim_contr_recv: Receiver<ServerCommand>,
         packet_recv: Receiver<Packet>,
         packet_send: HashMap<NodeId, Sender<Packet>>,
-    ) -> Self where Self:Sized;
+    ) -> Self
+    where
+        Self: Sized;
 
     fn run(&mut self);
 }

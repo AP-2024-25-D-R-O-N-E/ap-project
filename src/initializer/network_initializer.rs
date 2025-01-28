@@ -17,7 +17,8 @@ use wg_2024::{
 use d_r_o_n_e_drone::MyDrone;
 
 use crate::{
-    client::{client_test::Client, client_test_2::Client2, ClientTrait}, server::{server_test::Server, ServerTrait},
+    client::{client_test::Client, client_test_2::Client2, ClientTrait},
+    server::{server_test::Server, ServerTrait},
     simulation_controller::{
         structs::{ClientCommand, ClientEvent, ServerCommand, ServerEvent},
         SimulationController,
@@ -161,7 +162,14 @@ impl NetworkInitializer {
             self.handles.insert(
                 client_id,
                 thread::spawn(move || {
-                    let mut client = Self::create_client(index as u8, command_receiver, command_send, packet_send, packet_recv, client_id);
+                    let mut client = Self::create_client(
+                        index as u8,
+                        command_receiver,
+                        command_send,
+                        packet_send,
+                        packet_recv,
+                        client_id,
+                    );
                     log::info!(
                         "{}, {:?}",
                         format!("Initialized client {}", client_id).bold().purple(),
@@ -204,7 +212,14 @@ impl NetworkInitializer {
             self.handles.insert(
                 server_id,
                 thread::spawn(move || {
-                    let mut server = Self::create_server(index as u8, command_receiver, command_send, packet_send, packet_recv, server_id);
+                    let mut server = Self::create_server(
+                        index as u8,
+                        command_receiver,
+                        command_send,
+                        packet_send,
+                        packet_recv,
+                        server_id,
+                    );
                     log::info!(
                         "{}, {:?}",
                         format!("Initialized server {}", server_id).bold().purple(),
@@ -233,7 +248,14 @@ impl NetworkInitializer {
         &self.drone_command_channels[&drone_id].0
     }
 
-    fn create_server(index: u8, command_receiver: Receiver<ServerCommand>, command_send: Sender<ServerEvent>, packet_send: HashMap<u8, Sender<Packet>>, packet_recv: Receiver<Packet>, server_id: u8) -> Box<dyn ServerTrait> {
+    fn create_server(
+        index: u8,
+        command_receiver: Receiver<ServerCommand>,
+        command_send: Sender<ServerEvent>,
+        packet_send: HashMap<u8, Sender<Packet>>,
+        packet_recv: Receiver<Packet>,
+        server_id: u8,
+    ) -> Box<dyn ServerTrait> {
         match index {
             _ => Box::new(Server::new(
                 server_id,
@@ -241,11 +263,18 @@ impl NetworkInitializer {
                 command_receiver,
                 packet_recv,
                 packet_send,
-            ))
+            )),
         }
     }
 
-    fn create_client(index: u8, command_receiver: Receiver<ClientCommand>, command_send: Sender<ClientEvent>, packet_send: HashMap<u8, Sender<Packet>>, packet_recv: Receiver<Packet>, client_id: u8) -> Box<dyn ClientTrait> {
+    fn create_client(
+        index: u8,
+        command_receiver: Receiver<ClientCommand>,
+        command_send: Sender<ClientEvent>,
+        packet_send: HashMap<u8, Sender<Packet>>,
+        packet_recv: Receiver<Packet>,
+        client_id: u8,
+    ) -> Box<dyn ClientTrait> {
         match index {
             0 => Box::new(Client::new(
                 client_id,
@@ -263,10 +292,7 @@ impl NetworkInitializer {
             )),
         }
     }
-
 }
 
-#[test] 
-fn testing() {
-
-}
+#[test]
+fn testing() {}

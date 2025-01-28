@@ -78,9 +78,7 @@ impl ServerTrait for Server {
 }
 
 impl Fragmenter for Server {
-    fn disassemble(
-        msg: Message,
-    ) -> std::collections::HashMap<u64, wg_2024::packet::Fragment> {
+    fn disassemble(msg: Message) -> std::collections::HashMap<u64, wg_2024::packet::Fragment> {
         todo!()
     }
 
@@ -90,31 +88,46 @@ impl Fragmenter for Server {
 }
 
 impl Server {
-
     fn manage_nack(&self, nack: &Nack) {
         //resend the packet
-        log::debug!("{} {} received a nack: {:?}", "↳ server".green(), self.id, nack);
+        log::debug!(
+            "{} {} received a nack: {:?}",
+            "↳ server".green(),
+            self.id,
+            nack
+        );
     }
 
     fn manage_ack(&self, ack: &Ack) {
         //free memory of message vector
-        log::debug!("{} {} received an ack: {:?}", "↳ server".green(), self.id, ack);
+        log::debug!(
+            "{} {} received an ack: {:?}",
+            "↳ server".green(),
+            self.id,
+            ack
+        );
     }
 
     fn manage_msg_fragment(&self, msg: &Fragment) {
         //call to the assembler
-        log::debug!("{} {} received a fragment: {:?}", "↳ server".green(), self.id, msg);
+        log::debug!(
+            "{} {} received a fragment: {:?}",
+            "↳ server".green(),
+            self.id,
+            msg
+        );
     }
 
     fn manage_flood_request(&self, mut packet: Packet) {
+        log::debug!(
+            "{} {} received a flood request: {:?}",
+            "↳ server".green(),
+            self.id,
+            packet.pack_type
+        );
 
-        log::debug!("{} {} received a flood request: {:?}", "↳ server".green(), self.id, packet.pack_type);
-        
         if let PacketType::FloodRequest(mut flood_request) = packet.pack_type {
-
-            flood_request
-            .path_trace
-            .push((self.id, NodeType::Server));
+            flood_request.path_trace.push((self.id, NodeType::Server));
 
             let new_flood_res = FloodResponse {
                 path_trace: flood_request.path_trace,
@@ -122,7 +135,8 @@ impl Server {
             };
 
             // creates inverted route starting from path_trace
-            let mut inverse_route: Vec<NodeId> = new_flood_res.path_trace.iter().map(|(id, _)| *id).collect();
+            let mut inverse_route: Vec<NodeId> =
+                new_flood_res.path_trace.iter().map(|(id, _)| *id).collect();
             // ignore the rare occurrances where a loop might be created as its not computationally viable to consider it
             inverse_route.reverse();
 
@@ -137,12 +151,16 @@ impl Server {
 
             self.forward_packet(packet);
         }
-
     }
 
     fn manage_flood_response(&self, fr: &FloodResponse) {
         //call to the assembler
-        log::debug!("{} {} received a flood response: {:?}", "↳ server".green(), self.id, fr);
+        log::debug!(
+            "{} {} received a flood response: {:?}",
+            "↳ server".green(),
+            self.id,
+            fr
+        );
     }
 
     fn forward_packet(&self, mut packet: Packet) {

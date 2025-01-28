@@ -24,7 +24,9 @@ pub trait ClientTrait {
         sim_contr_recv: Receiver<ClientCommand>,
         packet_recv: Receiver<Packet>,
         packet_send: HashMap<NodeId, Sender<Packet>>,
-    ) -> Self where Self:Sized;
+    ) -> Self
+    where
+        Self: Sized;
 
     fn run(&mut self);
 }

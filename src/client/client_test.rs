@@ -1,10 +1,12 @@
-
 use std::collections::HashMap;
 
 use colored::Colorize;
 use crossbeam::channel::{select_biased, Receiver, Sender};
 use egui_graphs::Edge;
-use petgraph::{prelude::{GraphMap, StableGraph}, Undirected};
+use petgraph::{
+    prelude::{GraphMap, StableGraph},
+    Undirected,
+};
 use wg_2024::{
     network::{NodeId, SourceRoutingHeader},
     packet::{Ack, FloodRequest, FloodResponse, Fragment, Nack, NodeType, Packet, PacketType},
@@ -41,7 +43,6 @@ impl ClientTrait for Client {
         packet_recv: Receiver<Packet>,
         packet_send: HashMap<NodeId, Sender<Packet>>,
     ) -> Self {
-
         let mut topology: GraphMap<(NodeId, HashableNodeType), (), Undirected> = GraphMap::new();
         topology.add_node((id, HashableNodeType::Edge));
 
@@ -51,7 +52,7 @@ impl ClientTrait for Client {
             scr: sim_contr_recv,
             pr: packet_recv,
             ps: packet_send,
-            topology
+            topology,
         }
     }
 
@@ -69,7 +70,7 @@ impl ClientTrait for Client {
                         //remember to remove the underscores when you actually start using the variable ig
                         Ok(packet) => {
                             log::debug!("{} at {} - packet: {:?}, {:?}", " <- packet received".green(), self.id, packet.session_id, packet.routing_header);
-                            
+
                             match &packet.pack_type {
                                 PacketType::Nack(nack)=>self.manage_nack(nack),
                                 PacketType::Ack(ack)=>self.manage_ack(ack),
@@ -95,9 +96,7 @@ impl ClientTrait for Client {
 }
 
 impl Fragmenter for Client {
-    fn disassemble(
-        msg: Message,
-    ) -> std::collections::HashMap<u64, wg_2024::packet::Fragment> {
+    fn disassemble(msg: Message) -> std::collections::HashMap<u64, wg_2024::packet::Fragment> {
         todo!()
     }
 
@@ -107,32 +106,46 @@ impl Fragmenter for Client {
 }
 
 impl Client {
-
     fn manage_nack(&self, nack: &Nack) {
         //resend the packet
-        log::debug!("{} {} received a nack: {:?}", "↳ client".green(), self.id, nack);
+        log::debug!(
+            "{} {} received a nack: {:?}",
+            "↳ client".green(),
+            self.id,
+            nack
+        );
     }
 
     fn manage_ack(&self, ack: &Ack) {
         //free memory of message vector
-        log::debug!("{} {} received an ack: {:?}", "↳ client".green(), self.id, ack);
+        log::debug!(
+            "{} {} received an ack: {:?}",
+            "↳ client".green(),
+            self.id,
+            ack
+        );
     }
 
     fn manage_msg_fragment(&self, msg: &Fragment) {
         //call to the assembler
-        log::debug!("{} {} received a fragment: {:?}", "↳ client".green(), self.id, msg);
+        log::debug!(
+            "{} {} received a fragment: {:?}",
+            "↳ client".green(),
+            self.id,
+            msg
+        );
     }
 
     fn manage_flood_request(&self, mut packet: Packet) {
+        log::debug!(
+            "{} {} received a flood request: {:?}",
+            "↳ client".green(),
+            self.id,
+            packet.pack_type
+        );
 
-        log::debug!("{} {} received a flood request: {:?}", "↳ client".green(), self.id, packet.pack_type);
-        
         if let PacketType::FloodRequest(mut flood_request) = packet.pack_type {
-
-            flood_request
-            .path_trace
-            .push((self.id, NodeType::Client));
-
+            flood_request.path_trace.push((self.id, NodeType::Client));
 
             let new_flood_res = FloodResponse {
                 path_trace: flood_request.path_trace,
@@ -140,7 +153,8 @@ impl Client {
             };
 
             // creates inverted route starting from path_trace
-            let mut inverse_route: Vec<NodeId> = new_flood_res.path_trace.iter().map(|(id, _)| *id).collect();
+            let mut inverse_route: Vec<NodeId> =
+                new_flood_res.path_trace.iter().map(|(id, _)| *id).collect();
             // ignore the rare occurrances where a loop might be created as its not computationally viable to consider it
             inverse_route.reverse();
 
@@ -155,16 +169,19 @@ impl Client {
 
             self.forward_packet(packet);
         }
-
     }
 
     fn manage_flood_response(&mut self, fr: &FloodResponse) {
         //call to the assembler
-        log::debug!("{} {} received a flood response: {:?}", "↳ client".green(), self.id, fr);
+        log::debug!(
+            "{} {} received a flood response: {:?}",
+            "↳ client".green(),
+            self.id,
+            fr
+        );
 
         // check that the flood response is ours
         if fr.path_trace[0].0 == self.id {
-
             let node = match fr.path_trace[0].1 {
                 NodeType::Drone => (fr.path_trace[0].0, HashableNodeType::Drone),
                 _ => (fr.path_trace[0].0, HashableNodeType::Edge),
@@ -173,7 +190,6 @@ impl Client {
             let mut current_index = self.topology.add_node(node);
 
             for value in fr.path_trace.iter().skip(1) {
-                
                 let node = match value.1 {
                     NodeType::Drone => (value.0, HashableNodeType::Drone),
                     _ => (value.0, HashableNodeType::Edge),
@@ -181,13 +197,10 @@ impl Client {
                 let new_node = self.topology.add_node(node);
                 self.topology.add_edge(current_index, new_node, ());
                 current_index = new_node;
-                
             }
-
         }
 
         log::info!("{} {:?}", "Client 1 topology: ".green(), self.topology);
-
     }
 
     fn forward_packet(&self, mut packet: Packet) {
