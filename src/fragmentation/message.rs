@@ -1,3 +1,5 @@
+use std::mem;
+
 use serde::{Deserialize, Serialize};
 use wg_2024::network::NodeId;
 
@@ -20,10 +22,20 @@ impl Message {
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub enum MessageData {
-    RegisterAsClient,
+    RegisterAsClient(NodeId), // for now lets just use NodeId, maybe in the future we allow for different ids
     RequestClients,
-    TextMessage(String),
+    TextMessage{from: NodeId, to: NodeId, text: String},
 
     ResponseClients(Vec<NodeId>),
     AcknolewdgedAsClient,
+}
+
+impl Message {
+    pub fn into_u8(&self) -> Vec<u8> {
+        bincode::serialize(&self).unwrap()
+    }
+
+    pub fn from_u8(v: Vec<u8>) -> Self {
+        bincode::deserialize(&v).unwrap()
+    }
 }
