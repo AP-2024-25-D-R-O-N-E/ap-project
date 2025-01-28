@@ -25,8 +25,3 @@ impl SCEvent {
         });
     }
 }
-
-// pub fn draw_sc_event(ui: &mut Ui, state: &mut State, event: SCEvent) {
-//      ui.label(event.get_packet().);
-//
-// }
