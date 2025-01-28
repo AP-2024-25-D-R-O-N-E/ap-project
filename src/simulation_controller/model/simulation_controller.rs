@@ -1,5 +1,8 @@
 use colored::Colorize;
-use petgraph::{prelude::StableGraph, Undirected};
+use petgraph::{
+    prelude::{StableGraph, StableUnGraph},
+    Undirected,
+};
 use std::{io, thread::sleep, time::Duration};
 use wg_2024::{
     network::SourceRoutingHeader,
@@ -15,7 +18,10 @@ use wg_2024::{
     packet::{Ack, FloodRequest, Fragment, Nack, Packet},
 };
 
-use crate::initializer::network_initializer::NetworkInitializer;
+use crate::{
+    initializer::network_initializer::NetworkInitializer,
+    simulation_controller::node::UiNodePayload,
+};
 
 use super::structs::{ClientCommand, ClientEvent, ServerCommand, ServerEvent};
 
@@ -32,11 +38,12 @@ pub struct SimulationController {
     pub default_ack: Packet,
     pub default_nack: Packet,
     pub default_flood: Packet,
-    // pub topology: StableGraph<(), (), Undirected>,
+
+    pub topology: StableGraph<UiNodePayload, (), Undirected>,
 }
 
 impl SimulationController {
-    pub fn new(network_initializer: &NetworkInitializer) -> SimulationController {
+    pub fn new(network_initializer: NetworkInitializer) -> SimulationController {
         SimulationController {
             packet_channels: network_initializer.packet_channels.clone(),
             node_event_channels: network_initializer
@@ -121,6 +128,7 @@ impl SimulationController {
                 },
                 session_id: 0,
             },
+            topology: network_initializer.topology,
         }
     }
 

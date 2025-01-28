@@ -1,42 +1,33 @@
 use std::time::Instant;
 
+use super::state::events_state;
 use crate::simulation_controller::{ClientEvent, ServerEvent, SimulationController};
 
+use super::state::EventsState;
 use eframe::{run_native, App, CreationContext, NativeOptions};
 use egui::{Context, ScrollArea, Window};
-use egui_graphs::events::Event;
 
-// use fdg::fruchterman_reingold::{FruchtermanReingold, FruchtermanReingoldConfiguration};
-// use fdg::nalgebra::{Const, OPoint};
-// use fdg::{Force, ForceGraph};
+use egui_graphs::events::Event;
 
 use wg_2024::controller::DroneEvent;
 
 use super::drawers::{
-    draw_section_console, draw_section_debug, draw_section_graph, draw_section_settings,
-    draw_section_testing,
+    draw_infos_for_selected_nodes, draw_section_console, draw_section_debug, draw_section_graph,
+    draw_section_settings, draw_section_testing, draw_toolbar_section,
 };
 use super::state::State;
 
 const GRAPH_EVENTS_LIMIT: usize = 100;
-const CLIENT_EVENTS_LIMIT: usize = 100;
-const SERVER_EVENTS_LIMIT: usize = 100;
-const NODE_EVENTS_LIMIT: usize = 100;
+const MAIN_CONSOLE_SCROLLBACK_LIMIT: usize = 100;
+
 
 pub struct SCGui {
     fps: f32,
     last_update_time: Instant,
     frames_last_time_span: usize,
-
-    node_events: Vec<DroneEvent>,
-    client_events: Vec<ClientEvent>,
-    server_events: Vec<ServerEvent>,
-
     pan: [f32; 2],
     zoom: f32,
-
     simulation_controller: SimulationController,
-
     state: State,
 }
 
@@ -47,15 +38,11 @@ impl SCGui {
             last_update_time: Instant::now(),
             frames_last_time_span: 0,
 
-            node_events: vec![],
-            client_events: vec![],
-            server_events: vec![],
-
             pan: [0., 0.],
             zoom: 0.,
 
+            state: State::from(&simulation_controller),
             simulation_controller,
-            state: State::default(),
         }
     }
 
@@ -95,28 +82,25 @@ impl SCGui {
     fn handle_sc_events(&mut self) {
         for (_, channel) in self.simulation_controller.node_event_channels.iter() {
             channel.try_iter().for_each(|e| {
-                if self.node_events.len() > NODE_EVENTS_LIMIT {
-                    self.node_events.remove(0);
-                }
-                self.node_events.push(e);
+                self.state
+                    .events
+                    .add_with_limit(e.into(), MAIN_CONSOLE_SCROLLBACK_LIMIT);
             })
         }
 
         for (_, channel) in self.simulation_controller.client_event_channels.iter() {
             channel.try_iter().for_each(|e| {
-                if self.client_events.len() > CLIENT_EVENTS_LIMIT {
-                    self.client_events.remove(0);
-                }
-                self.client_events.push(e);
+                self.state
+                    .events
+                    .add_with_limit(e.into(), MAIN_CONSOLE_SCROLLBACK_LIMIT);
             })
         }
 
         for (_, channel) in self.simulation_controller.server_event_channels.iter() {
             channel.try_iter().for_each(|e| {
-                if self.server_events.len() > SERVER_EVENTS_LIMIT {
-                    self.server_events.remove(0);
-                }
-                self.server_events.push(e);
+                self.state
+                    .events
+                    .add_with_limit(e.into(), MAIN_CONSOLE_SCROLLBACK_LIMIT);
             })
         }
     }
@@ -337,48 +321,62 @@ impl App for SCGui {
             ..Default::default()
         };
 
-        egui::TopBottomPanel::bottom("bottom_panel")
+        egui::TopBottomPanel::top("top_panel")
             .frame(custom_frame)
-            .resizable(true)
-            .show(ctx, |ui| draw_section_console(ui, &mut self.state));
+            .show(ctx, |ui| draw_toolbar_section(ui, &mut self.state));
+
+        if self.state.toolbar_section.console_open {
+            egui::TopBottomPanel::bottom("bottom_panel")
+                .frame(custom_frame)
+                .resizable(true)
+                .show(ctx, |ui| draw_section_console(ui, &mut self.state));
+        }
 
         egui::CentralPanel::default().show(ctx, |ui| draw_section_graph(ui, &mut self.state));
 
-        Window::new("Settings")
-            .collapsible(true)
-            .resizable(true)
-            .default_width(200.0)
-            .default_height(100.0)
-            .show(ctx, |ui| {
-                ScrollArea::vertical().show(ui, |ui| draw_section_settings(ui, &mut self.state));
-            });
-
-        Window::new("Debug")
-            .collapsible(true)
-            .resizable(true)
-            .default_width(200.0)
-            .default_height(100.0)
-            .default_open(false)
-            .show(ctx, |ui| {
-                ScrollArea::vertical().show(ui, |ui| {
-                    draw_section_debug(ui, &mut self.state);
+        if self.state.toolbar_section.settings_open {
+            Window::new("Settings")
+                .collapsible(true)
+                .resizable(true)
+                .default_width(200.0)
+                .default_height(100.0)
+                .show(ctx, |ui| {
+                    ScrollArea::vertical()
+                        .show(ui, |ui| draw_section_settings(ui, &mut self.state));
                 });
-            });
+        }
 
-        Window::new("Test")
-            .collapsible(true)
-            .resizable(true)
-            .default_width(200.0)
-            .default_height(100.0)
-            .default_open(false)
-            .show(ctx, |ui| {
-                ScrollArea::vertical().show(ui, |ui| {
-                    draw_section_testing(ui, &mut self.state, &self.simulation_controller);
+        if self.state.toolbar_section.debug_open {
+            Window::new("Debug")
+                .collapsible(true)
+                .resizable(true)
+                .default_width(200.0)
+                .default_height(100.0)
+                .default_open(true)
+                .show(ctx, |ui| {
+                    ScrollArea::vertical().show(ui, |ui| {
+                        draw_section_debug(ui, &mut self.state);
+                    });
                 });
-            });
+        }
+
+        if self.state.toolbar_section.test_open {
+            Window::new("Test")
+                .collapsible(true)
+                .resizable(true)
+                .default_width(200.0)
+                .default_height(100.0)
+                .default_open(true)
+                .show(ctx, |ui| {
+                    ScrollArea::vertical().show(ui, |ui| {
+                        draw_section_testing(ui, &mut self.state, &self.simulation_controller);
+                    });
+                });
+        }
 
         // self.sync();
         // self.update_simulation();
+        draw_infos_for_selected_nodes(ctx, &mut self.state);
         self.handle_graph_events();
         self.handle_sc_events();
         self.update_fps();

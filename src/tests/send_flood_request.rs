@@ -10,7 +10,7 @@ fn send_flood_request() {
     let mut network_initializer =
         NetworkInitializer::new("src/topology_configs/config.toml".to_string());
 
-    network_initializer.init_network();
+    let sc = network_initializer.init_network().unwrap();
     sleep(Duration::from_millis(100));
 
     let flood_req = FloodRequest {
@@ -28,6 +28,6 @@ fn send_flood_request() {
         session_id: 0, // it'll be whatever for now
     };
 
-    let _ = network_initializer.get_send_channel(1).send(packet);
+    sc.send_flood_request(packet, 1);
     sleep(Duration::from_secs(4));
 }

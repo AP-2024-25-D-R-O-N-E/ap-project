@@ -11,14 +11,14 @@ simple_logger = "5.0.0"
 serde = { version = "1.0", features = ["derive"] }
 log = "0.4.22"
 colored = "2.1.0"
-egui_graphs = { version = "0.22.0", features = ["events"] }
+egui_graphs = { git = "https://github.com/mattia-marini/egui_graphs.git", features = ["events"] }
 egui = "0.29"
+egui_extras = "0.29"
 eframe = "0.29"
 serde_json = "1.0"
 petgraph = "0.6"
-fdg = { git = "https://github.com/grantshandy/fdg" }
 rand = "0.8"
-d-r-o-n-e_drone = { git = "https://github.com/AP-2024-25-D-R-O-N-E/drone.git", branch = "flooding-path-trace-fix" }
+d-r-o-n-e_drone = { git = "https://github.com/AP-2024-25-D-R-O-N-E/drone.git"}
 lockheedrustin-drone = { git = "https://github.com/Lockheed-Rustin/drone.git" }
 ap2024_unitn_cppenjoyers_drone = { git = "https://github.com/Cpp-enjoyers/drone.git" }
 rusty_drones = { git = "https://github.com/rusty-drone-2024/rusty-drone.git" }

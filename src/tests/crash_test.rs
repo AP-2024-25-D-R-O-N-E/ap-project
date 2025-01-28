@@ -8,15 +8,25 @@ use wg_2024::{
 };
 
 use crate::initializer::network_initializer::NetworkInitializer;
+/*
+ TODO: test drone crashing with sc instead of network initializer
+=======
 
+>>>>>>> master
 #[test]
 fn main() {
     super::initialize();
     let mut network_initializer =
         NetworkInitializer::new("src/topology_configs/config.toml".to_string());
+<<<<<<< HEAD
+
+    let sc = network_initializer.init_network().unwrap();
+
+=======
 
     network_initializer.init_network();
 
+>>>>>>> master
     // normal send test
     let ack = Ack { fragment_index: 0 };
 
@@ -90,3 +100,4 @@ fn main() {
 
     sleep(Duration::from_secs(2));
 }
+*/

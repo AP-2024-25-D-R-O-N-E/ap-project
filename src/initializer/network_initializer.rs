@@ -2,14 +2,19 @@ use ap2024_unitn_cppenjoyers_drone::CppEnjoyersDrone;
 use colored::Colorize;
 use getdroned::GetDroned;
 use lockheedrustin_drone::LockheedRustin;
+use petgraph::{
+    graph::NodeIndex,
+    prelude::{StableGraph, StableUnGraph},
+    Undirected,
+};
+use rust_roveri::RustRoveri;
 use rustafarian_drone::RustafarianDrone;
 use rustbusters_drone::RustBustersDrone;
 use rusteze_drone::RustezeDrone;
 use rusty_drones::RustyDrone;
-use rust_roveri::RustRoveri;
 
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     sync::{Arc, Barrier},
     thread::{self, sleep, JoinHandle},
     time::Duration,
@@ -29,6 +34,7 @@ use crate::{
     client::{client_test::Client, client_test_2::Client2, ClientTrait},
     server::{server_test::Server, ServerTrait},
     simulation_controller::{
+        node::{UiClientNode, UiDroneNode, UiNodePayload, UiNodeType, UiServerNode},
         structs::{ClientCommand, ClientEvent, ServerCommand, ServerEvent},
         SimulationController,
     },
@@ -45,13 +51,15 @@ pub struct NetworkInitializer {
     pub client_command_channels: HashMap<NodeId, (Sender<ClientCommand>, Receiver<ClientCommand>)>,
     pub server_event_channels: HashMap<NodeId, (Sender<ServerEvent>, Receiver<ServerEvent>)>,
     pub server_command_channels: HashMap<NodeId, (Sender<ServerCommand>, Receiver<ServerCommand>)>,
+    pub topology: StableGraph<UiNodePayload, (), Undirected>,
+
     handles: HashMap<NodeId, JoinHandle<()>>,
 }
 
 impl NetworkInitializer {
     pub fn new(config_path: String) -> NetworkInitializer {
+        let config = parse_config(config_path);
         NetworkInitializer {
-            config: parse_config(config_path),
             packet_channels: HashMap::new(), // packets
             node_event_channels: HashMap::new(),
             drone_command_channels: HashMap::new(),
@@ -60,10 +68,12 @@ impl NetworkInitializer {
             server_event_channels: HashMap::new(),
             server_command_channels: HashMap::new(),
             handles: HashMap::new(),
+            topology: NetworkInitializer::get_topology_from_config(&config),
+            config,
         }
     }
 
-    pub fn init_network(&mut self) -> Result<SimulationController, String> {
+    pub fn init_network(mut self) -> Result<SimulationController, String> {
         //create 3 different version since we might want the simulation controller channels to depend on node type
         for drone in self.config.drone.iter() {
             //create unbounded channel for drones
@@ -246,6 +256,71 @@ impl NetworkInitializer {
 
     pub fn get_drone_command_channel(&self, drone_id: NodeId) -> &Sender<DroneCommand> {
         &self.drone_command_channels[&drone_id].0
+    }
+
+    /// Constructs graph from config file.
+    pub fn get_topology_from_config(
+        config: &InitConfig,
+    ) -> StableGraph<UiNodePayload, (), Undirected> {
+        let mut graph = StableUnGraph::<UiNodePayload, ()>::default();
+
+        let mut node_map_function: HashMap<wg_2024::network::NodeId, petgraph::graph::NodeIndex> =
+            HashMap::new();
+        for drone in &config.drone {
+            let n = graph.add_node(UiNodePayload {
+                node_type: UiNodeType::Drone(UiDroneNode::default()),
+                vendor: "unknown".to_string(),
+                wg_id: drone.id,
+            });
+            node_map_function.insert(drone.id, n);
+        }
+        for server in &config.server {
+            let n = graph.add_node(UiNodePayload {
+                node_type: UiNodeType::Server(UiServerNode {}),
+                vendor: "unknown".to_string(),
+                wg_id: server.id,
+            });
+            node_map_function.insert(server.id, n);
+        }
+        for client in &config.client {
+            let n = graph.add_node(UiNodePayload {
+                node_type: UiNodeType::Client(UiClientNode {}),
+                vendor: "unknown".to_string(),
+                wg_id: client.id,
+            });
+            node_map_function.insert(client.id, n);
+        }
+
+        let mut set: HashSet<(NodeIndex, NodeIndex)> = HashSet::new();
+        let mut insert_if_not_duplicated = |id1, id2| {
+            let node_graph_id = *node_map_function.get(&id1).unwrap();
+            let node_to_graph_id = *node_map_function.get(id2).unwrap();
+
+            if !(set.contains(&(node_graph_id, node_to_graph_id))
+                || set.contains(&(node_to_graph_id, node_graph_id)))
+            {
+                graph.add_edge(node_graph_id, node_to_graph_id, ());
+            }
+            set.insert((node_graph_id, node_to_graph_id));
+        };
+
+        for drone in &config.drone {
+            for node_to in &drone.connected_node_ids {
+                insert_if_not_duplicated(drone.id, node_to);
+            }
+        }
+        for server in &config.server {
+            for node_to in &server.connected_drone_ids {
+                insert_if_not_duplicated(server.id, node_to);
+            }
+        }
+        for client in &config.client {
+            for node_to in &client.connected_drone_ids {
+                insert_if_not_duplicated(client.id, node_to);
+            }
+        }
+
+        graph
     }
 
     fn create_server(

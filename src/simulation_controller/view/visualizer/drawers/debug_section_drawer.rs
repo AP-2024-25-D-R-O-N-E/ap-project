@@ -1,6 +1,9 @@
 use egui::{CollapsingHeader, ScrollArea, Ui};
 
-use crate::simulation_controller::state::State;
+use crate::simulation_controller::{
+    node::UiNodeType::{Client, Drone, Server},
+    state::State,
+};
 
 pub fn draw_section_debug(ui: &mut Ui, state: &mut State) {
     CollapsingHeader::new("Infos")
@@ -14,23 +17,41 @@ pub fn draw_section_debug(ui: &mut Ui, state: &mut State) {
             ui.label(format!("FPS: {:.1}", state.debug_section.fps));
         });
 
-    CollapsingHeader::new("Graph events")
-        .default_open(true)
-        .show(ui, |ui| {
-            if ui.button("clear").clicked() {
-                state.debug_section.graph_events.clear();
+    CollapsingHeader::new("Graph").show(ui, |ui| {
+        CollapsingHeader::new("Graph events")
+            .default_open(true)
+            .show(ui, |ui| {
+                if ui.button("clear").clicked() {
+                    state.debug_section.graph_events.clear();
+                }
+                ScrollArea::vertical()
+                    .auto_shrink([false, true])
+                    .show(ui, |ui| {
+                        state
+                            .debug_section
+                            .graph_events
+                            .iter()
+                            .rev()
+                            .for_each(|event| {
+                                ui.label(event);
+                            });
+                    });
+            });
+
+        CollapsingHeader::new("Selected nodes").show(ui, |ui| {
+            for x in state.graph_section.g.selected_nodes() {
+                // let x = x.index
+                let payload = state.graph_section.g.node(*x).unwrap().payload();
+
+                ui.label(format!("{}", x.index()));
+                // match &payload.node_type {
+                //     _ => format!("{}"),
+                //     // Client(client_node) => todo!(),
+                //     // Drone(drone_node) => todo!(),
+                // }
+
+                // ui.label(String::from(x.index))
             }
-            ScrollArea::vertical()
-                .auto_shrink([false, true])
-                .show(ui, |ui| {
-                    state
-                        .debug_section
-                        .graph_events
-                        .iter()
-                        .rev()
-                        .for_each(|event| {
-                            ui.label(event);
-                        });
-                });
         });
+    });
 }
