@@ -4,6 +4,8 @@ pub mod send_flood_request;
 pub mod send_msg;
 pub mod simulation;
 
+pub mod message_serialization_test;
+
 use log::*;
 use simple_logger::SimpleLogger;
 use std::sync::Once;

@@ -1,4 +1,13 @@
+use ap2024_unitn_cppenjoyers_drone::CppEnjoyersDrone;
 use colored::Colorize;
+use getdroned::GetDroned;
+use lockheedrustin_drone::LockheedRustin;
+use rustafarian_drone::RustafarianDrone;
+use rustbusters_drone::RustBustersDrone;
+use rusteze_drone::RustezeDrone;
+use rusty_drones::RustyDrone;
+use rust_roveri::RustRoveri;
+
 use std::{
     collections::HashMap,
     sync::{Arc, Barrier},
@@ -76,7 +85,7 @@ impl NetworkInitializer {
 
         // thread creations
         let drone_barrier = Arc::new(Barrier::new(self.config.drone.len() + 1));
-        for drone in self.config.drone.iter() {
+        for (index, drone) in self.config.drone.iter().enumerate() {
             //create the channels used for simulation controller communication
             let node_event_send = unbounded::<DroneEvent>();
             let drone_command_rec = unbounded::<DroneCommand>();
@@ -105,28 +114,19 @@ impl NetworkInitializer {
 
             let pdr = drone.pdr as f32;
 
-            let barrier_clone = Arc::clone(&drone_barrier);
+            let barrier_clone: Arc<Barrier> = Arc::clone(&drone_barrier);
             self.handles.insert(
                 drone_id,
-                thread::spawn(move || {
-                    let mut drone = MyDrone::new(
-                        drone_id,
-                        command_send,
-                        command_receiver,
-                        packet_recv,
-                        packet_send,
-                        pdr,
-                    );
-
-                    log::info!(
-                        "{}, {:?}",
-                        format!("Initialized drone {}", drone_id).purple(),
-                        drone,
-                    );
-                    barrier_clone.wait();
-                    // run function is where the logic of the drone runs.
-                    drone.run();
-                }),
+                Self::create_drone_thread(
+                    index,
+                    drone_id,
+                    command_send,
+                    command_receiver,
+                    packet_recv,
+                    packet_send,
+                    pdr,
+                    barrier_clone,
+                ),
             );
         }
         drone_barrier.wait();
@@ -292,7 +292,133 @@ impl NetworkInitializer {
             )),
         }
     }
+
+    //creates a thread with a new drone inside it
+    fn create_drone_thread(
+        drone_index: usize, // index determines which implementation of drone to use
+        id: NodeId,
+        controller_send: Sender<DroneEvent>,
+        controller_recv: Receiver<DroneCommand>,
+        packet_recv: Receiver<Packet>,
+        packet_send: HashMap<NodeId, Sender<Packet>>,
+        pdr: f32,
+        barrier_clone: Arc<Barrier>,
+    ) -> JoinHandle<()> {
+        let final_index = drone_index % 10;
+        match final_index {
+            0 => spawn_drone_thread::<RustafarianDrone>(
+                id,
+                controller_send,
+                controller_recv,
+                packet_recv,
+                packet_send,
+                pdr,
+                barrier_clone,
+            ),
+            1 => spawn_drone_thread::<LockheedRustin>(
+                id,
+                controller_send,
+                controller_recv,
+                packet_recv,
+                packet_send,
+                pdr,
+                barrier_clone,
+            ),
+            2 => spawn_drone_thread::<RustyDrone>(
+                id,
+                controller_send,
+                controller_recv,
+                packet_recv,
+                packet_send,
+                pdr,
+                barrier_clone,
+            ),
+            3 => spawn_drone_thread::<RustBustersDrone>(
+                id,
+                controller_send,
+                controller_recv,
+                packet_recv,
+                packet_send,
+                pdr,
+                barrier_clone,
+            ),
+            4 => spawn_drone_thread::<CppEnjoyersDrone>(
+                id,
+                controller_send,
+                controller_recv,
+                packet_recv,
+                packet_send,
+                pdr,
+                barrier_clone,
+            ),
+            5 => spawn_drone_thread::<RustezeDrone>(
+                id,
+                controller_send,
+                controller_recv,
+                packet_recv,
+                packet_send,
+                pdr,
+                barrier_clone,
+            ),
+            6 => spawn_drone_thread::<GetDroned>(
+                id,
+                controller_send,
+                controller_recv,
+                packet_recv,
+                packet_send,
+                pdr,
+                barrier_clone,
+            ),
+            7 => spawn_drone_thread::<RustRoveri>(
+                id,
+                controller_send,
+                controller_recv,
+                packet_recv,
+                packet_send,
+                pdr,
+                barrier_clone,
+            ),
+            _ => spawn_drone_thread::<MyDrone>(
+                id,
+                controller_send,
+                controller_recv,
+                packet_recv,
+                packet_send,
+                pdr,
+                barrier_clone,
+            ),
+        }
+    }
+}
+
+fn spawn_drone_thread<T: Drone>(
+    id: u8,
+    controller_send: Sender<DroneEvent>,
+    controller_recv: Receiver<DroneCommand>,
+    packet_recv: Receiver<Packet>,
+    packet_send: HashMap<u8, Sender<Packet>>,
+    pdr: f32,
+    barrier_clone: Arc<Barrier>,
+) -> JoinHandle<()> {
+    thread::spawn(move || {
+        let mut drone = T::new(
+            id,
+            controller_send,
+            controller_recv,
+            packet_recv,
+            packet_send,
+            pdr,
+        );
+
+        log::info!(
+            "{}",
+            format!("Initialized drone Rustafarian {}", id).purple()
+        );
+        barrier_clone.wait();
+        // run function is where the logic of the drone runs.
+        drone.run();
+    })
 }
 
 #[test]
-fn testing() {}
+fn tst() {}
