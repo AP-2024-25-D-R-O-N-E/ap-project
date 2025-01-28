@@ -21,7 +21,7 @@ rand = "0.8"
 d-r-o-n-e_drone = { git = "https://github.com/AP-2024-25-D-R-O-N-E/drone.git", branch = "flooding-path-trace-fix" }
 lockheedrustin-drone = { git = "https://github.com/Lockheed-Rustin/drone.git" }
 ap2024_unitn_cppenjoyers_drone = { git = "https://github.com/Cpp-enjoyers/drone.git" }
-rusty_drones = { git = "https://github.com/matteo-dinoia/rusty-drones", branch = "main" }
+rusty_drones = { git = "https://github.com/rusty-drone-2024/rusty-drone.git" }
 rust-roveri = { git = "https://github.com/RustRoveri/rust-roveri.git" }
 rustbusters-drone = { git = "https://github.com/Rustbusters/drone.git" }
 rustafarian-drone = { git = "https://github.com/Rustafarian-Unitn/rustafarian-drone"}
