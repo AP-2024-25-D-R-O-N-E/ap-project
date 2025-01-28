@@ -31,7 +31,7 @@ id = 6
 connected_node_ids = [4, 5, 7]
 pdr = 0.05
 
-[[server]]
+[[client]]
 id = 7
 connected_drone_ids = [6, 8]
 

@@ -20,7 +20,6 @@ use crate::initializer::network_initializer::NetworkInitializer;
 use super::structs::{ClientCommand, ClientEvent, ServerCommand, ServerEvent};
 
 pub struct SimulationController {
-
     pub packet_channels: HashMap<NodeId, (Sender<Packet>, Receiver<Packet>)>,
     pub node_event_channels: HashMap<NodeId, Receiver<DroneEvent>>,
     pub drone_command_channels: HashMap<NodeId, Sender<DroneCommand>>,
@@ -33,7 +32,6 @@ pub struct SimulationController {
     pub default_ack: Packet,
     pub default_nack: Packet,
     pub default_flood: Packet,
-
     // pub topology: StableGraph<(), (), Undirected>,
 }
 
@@ -187,5 +185,4 @@ impl SimulationController {
             }
         }
     }
-
 }
