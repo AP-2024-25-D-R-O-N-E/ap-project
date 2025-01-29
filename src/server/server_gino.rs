@@ -208,7 +208,7 @@ impl Server {
             }
         }
 
-        log::info!("{} {:?}", "Client 1 topology: ".green(), self.topology);
+        log::info!("{} {:?}", "Server topology: ".green(), self.topology);
     }
 
     fn forward_packet(&self, mut packet: Packet) {

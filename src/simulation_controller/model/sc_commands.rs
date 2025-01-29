@@ -3,7 +3,7 @@ use wg_2024::{
     packet::{Packet, PacketType},
 };
 
-use super::simulation_controller::SimulationController;
+use super::{simulation_controller::SimulationController, ServerCommand};
 
 impl SimulationController {
     pub fn send_default_msg_fragment(&self, node_id: NodeId) {
@@ -92,4 +92,17 @@ impl SimulationController {
             }
         }
     }
+
+    pub fn send_control_packet(&self, server_command: ServerCommand, node_id: NodeId) {
+        match &self.server_command_channels.get(&node_id) {
+            Some(channel) => {
+                channel.send(server_command);
+                log::info!("Sending to node {}", node_id)
+            }
+            None => {
+                log::error!("Specified node does not exist")
+            }
+        }
+    }
+
 }
