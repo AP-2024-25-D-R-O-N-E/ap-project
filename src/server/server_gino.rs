@@ -2,6 +2,10 @@ use std::collections::HashMap;
 
 use colored::Colorize;
 use crossbeam::channel::{select_biased, Receiver, Sender};
+use petgraph::{
+    prelude::{GraphMap, StableGraph},
+    Undirected,
+};
 use wg_2024::{
     network::{NodeId, SourceRoutingHeader},
     packet::{Ack, FloodRequest, FloodResponse, Fragment, Nack, NodeType, Packet, PacketType},
@@ -14,6 +18,13 @@ use crate::{
 
 use super::ServerTrait;
 
+#[derive(Debug, Hash, PartialEq, Eq, Clone, Copy, PartialOrd, Ord)]
+pub enum HashableNodeType {
+    Drone,
+    Server,
+    Client
+}
+
 #[derive(Debug)]
 pub struct Server {
     pub id: NodeId,
@@ -21,6 +32,8 @@ pub struct Server {
     pub scr: Receiver<ServerCommand>,
     pub pr: Receiver<Packet>,
     pub ps: HashMap<NodeId, Sender<Packet>>,
+    floods_id: u64,
+    topology: GraphMap<(NodeId, HashableNodeType), (), Undirected>,
 }
 
 impl ServerTrait for Server {
@@ -31,12 +44,17 @@ impl ServerTrait for Server {
         packet_recv: Receiver<Packet>,
         packet_send: HashMap<NodeId, Sender<Packet>>,
     ) -> Self {
+        let mut topology: GraphMap<(NodeId, HashableNodeType), (), Undirected> = GraphMap::new();
+        topology.add_node((id, HashableNodeType::Server));
+
         Server {
             id: id,
             scs: sim_contr_send,
             scr: sim_contr_recv,
             pr: packet_recv,
             ps: packet_send,
+            floods_id: 0,
+            topology,
         }
     }
 
@@ -46,6 +64,12 @@ impl ServerTrait for Server {
                 recv(self.scr) -> command_res => {
                     if let Ok(command) = command_res {
                         //here goes the handling fo the sim controller
+                        match command {
+                            ServerCommand::NetworkInitialized => {
+                                self.initiate_flood();
+                                log::debug!("{} at {} - network initialized", " <- network initialized".green(), self.id);
+                            }
+                        }
                     }
                 },
                 recv(self.pr) -> packet_res => {
@@ -153,7 +177,7 @@ impl Server {
         }
     }
 
-    fn manage_flood_response(&self, fr: &FloodResponse) {
+    fn manage_flood_response(&mut self, fr: &FloodResponse) {
         //call to the assembler
         log::debug!(
             "{} {} received a flood response: {:?}",
@@ -161,6 +185,30 @@ impl Server {
             self.id,
             fr
         );
+
+        // check that the flood response is ours
+        if fr.path_trace[0].0 == self.id {
+            let node = match fr.path_trace[0].1 {
+                NodeType::Drone => (fr.path_trace[0].0, HashableNodeType::Drone),
+                NodeType::Client => (fr.path_trace[0].0, HashableNodeType::Client),
+                NodeType::Server => (fr.path_trace[0].0, HashableNodeType::Server),
+            };
+
+            let mut current_index = self.topology.add_node(node);
+
+            for value in fr.path_trace.iter().skip(1) {
+                let node = match value.1 {
+                    NodeType::Drone => (value.0, HashableNodeType::Drone),
+                    NodeType::Client => (value.0, HashableNodeType::Client),
+                    NodeType::Server => (value.0, HashableNodeType::Server),
+                };
+                let new_node = self.topology.add_node(node);
+                self.topology.add_edge(current_index, new_node, ());
+                current_index = new_node;
+            }
+        }
+
+        log::info!("{} {:?}", "Client 1 topology: ".green(), self.topology);
     }
 
     fn forward_packet(&self, mut packet: Packet) {
@@ -185,4 +233,33 @@ impl Server {
             self.scs.send(ServerEvent::PacketSent(packet));
         }
     }
+
+    fn initiate_flood(&mut self) {
+    
+        for (id, sender) in self.ps.iter() {
+            let packet = Packet {
+                pack_type: PacketType::FloodRequest(FloodRequest {
+                    path_trace: vec![(self.id, NodeType::Server)],
+                    flood_id: self.floods_id,
+                    initiator_id: self.id,
+                }),
+                routing_header: SourceRoutingHeader {
+                    hops: vec![],
+                    hop_index: 0,
+                },
+                session_id: 0, // it'll be whatever for now
+            };
+            self.floods_id += 1;
+
+            let res = sender.send(packet.clone());
+
+            if let Err(mut packet) = res {
+                log::error!("The send inside channel gave an error, this shouldn't be happening");
+            } else {
+                self.scs.send(ServerEvent::PacketSent(packet));
+            }
+
+        }
+    }
+
 }

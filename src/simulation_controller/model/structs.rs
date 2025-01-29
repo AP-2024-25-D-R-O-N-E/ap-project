@@ -20,7 +20,9 @@ pub enum ServerEvent {
 
 /// From controller to server
 #[derive(Debug, Clone)]
-pub enum ServerCommand {}
+pub enum ServerCommand {
+    NetworkInitialized,
+}
 
 /// Common interface for events
 #[derive(Debug, Clone)]
