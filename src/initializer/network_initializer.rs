@@ -268,7 +268,7 @@ impl NetworkInitializer {
             HashMap::new();
         for drone in &config.drone {
             let n = graph.add_node(UiNodePayload {
-                node_type: UiNodeType::Drone(UiDroneNode::default()),
+                node_type: UiNodeType::Drone(UiDroneNode::new(drone.pdr)),
                 vendor: "unknown".to_string(),
                 wg_id: drone.id,
             });

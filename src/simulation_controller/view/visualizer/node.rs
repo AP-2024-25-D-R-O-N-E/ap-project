@@ -48,11 +48,20 @@ pub struct UiServerNode {}
 pub struct UiClientNode {}
 #[derive(Clone)]
 pub struct UiDroneNode {
-    radius: f32,
+    pub radius: f32,
+    pub pdr: f32,
+}
+impl UiDroneNode {
+    pub fn new(pdr: f32) -> UiDroneNode {
+        Self { radius: 25., pdr }
+    }
 }
 impl Default for UiDroneNode {
     fn default() -> Self {
-        Self { radius: 20. }
+        Self {
+            radius: 20.,
+            pdr: 0.,
+        }
     }
 }
 
@@ -60,8 +69,8 @@ impl ToString for UiNodePayload {
     fn to_string(&self) -> String {
         match &self.node_type {
             UiNodeType::Server(_server_node) => format!("Server[]"),
-            UiNodeType::Client(_client_node) => format!("Server[]"),
-            UiNodeType::Drone(_drone_node) => format!("Server[]"),
+            UiNodeType::Client(_client_node) => format!("Client[]"),
+            UiNodeType::Drone(_drone_node) => format!("Drone[]"),
         }
     }
 }
@@ -109,7 +118,8 @@ impl DrawShape for CustomNodeShape {
         let center = ctx.meta.canvas_to_screen_pos(self.loc);
 
         self.zoom = ctx.meta.zoom;
-        let text = get_text(ctx, format!("Node {}", self.payload.wg_id), center);
+        let mut text = get_text(ctx, format!("Node {}", self.payload.wg_id), center);
+
         match &mut self.payload.node_type {
             UiNodeType::Server(_server_node) => {
                 let rect = Rect {
@@ -180,6 +190,10 @@ impl DrawShape for CustomNodeShape {
                     );
                 }
 
+                let pdr_label =
+                    get_text(ctx, drone_node.pdr.to_string(), center + Vec2::new(0., 5.));
+                text.translate(Vec2::new(0., -5.));
+
                 let shadow = Shadow {
                     offset: Vec2::new(8., 8.),
                     blur: 30.,
@@ -191,7 +205,13 @@ impl DrawShape for CustomNodeShape {
                     Rounding::same(circle_fill.visual_bounding_rect().width() / 2.),
                 );
 
-                vec![Shape::from(shadow), circle_fill, circle_stroke, text]
+                vec![
+                    Shape::from(shadow),
+                    circle_fill,
+                    circle_stroke,
+                    text,
+                    pdr_label,
+                ]
             }
         }
 
