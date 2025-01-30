@@ -22,12 +22,41 @@ impl Message {
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub enum MessageData {
+    // from client to server
     RegisterAsClient(NodeId), // for now lets just use NodeId, maybe in the future we allow for different ids
-    RequestClients,
-    TextMessage{from: NodeId, to: NodeId, text: String},
+    UnregisterAsClient(NodeId),
+    RequestClients(NodeId),
+    RequestHistory {
+        requester: NodeId,
+        partner: NodeId,
+    }, //from is the client requesting, to is the chat partner
 
+    // forwarded from server to client
+    TextMessage {
+        from: NodeId,
+        to: NodeId,
+        text: String,
+    },
+    FileMessage {
+        from: NodeId,
+        to: NodeId,
+        file: Vec<u8>,
+        file_name: String,
+    }, //filename or file extension?
+
+    // from server to client
     ResponseClients(Vec<NodeId>),
     AcknolewdgedAsClient,
+    ResponseHistory {
+        partner: NodeId,
+        history: Vec<ChatMessage>,
+    },
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+pub enum ChatMessage {
+    TextMessage(String),
+    File { file: Vec<u8>, file_name: String }, //file data, file name
 }
 
 impl Message {

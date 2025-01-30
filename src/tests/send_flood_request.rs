@@ -1,6 +1,8 @@
 use std::{thread::sleep, time::Duration};
 
-use crate::{initializer::network_initializer::NetworkInitializer, simulation_controller::ServerCommand};
+use crate::{
+    initializer::network_initializer::NetworkInitializer, simulation_controller::ServerCommand,
+};
 use simple_logger::SimpleLogger;
 use wg_2024::{network::SourceRoutingHeader, packet::*};
 

@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, thread};
 
 use colored::Colorize;
 use crossbeam::channel::{select_biased, Receiver, Sender};
@@ -12,7 +12,11 @@ use wg_2024::{
 };
 
 use crate::{
-    fragmentation::{message::Message, Fragmenter},
+    fragmentation::{
+        self,
+        message::{self, Message},
+        Fragmenter,
+    },
     simulation_controller::structs::{ServerCommand, ServerEvent},
 };
 
@@ -22,7 +26,7 @@ use super::ServerTrait;
 pub enum HashableNodeType {
     Drone,
     Server,
-    Client
+    Client,
 }
 
 #[derive(Debug)]
@@ -34,6 +38,9 @@ pub struct Server {
     pub ps: HashMap<NodeId, Sender<Packet>>,
     floods_id: u64,
     topology: GraphMap<(NodeId, HashableNodeType), (), Undirected>,
+    msg_buffer: Vec<Fragment>,
+    session_id: u64,
+    client_vector: Vec<NodeId>,
 }
 
 impl ServerTrait for Server {
@@ -55,6 +62,9 @@ impl ServerTrait for Server {
             ps: packet_send,
             floods_id: 0,
             topology,
+            msg_buffer: Vec::new(),
+            session_id: 0,
+            client_vector: Vec::new(),
         }
     }
 
@@ -65,10 +75,10 @@ impl ServerTrait for Server {
                     if let Ok(command) = command_res {
                         //here goes the handling fo the sim controller
                         match command {
-                            ServerCommand::NetworkInitialized => {
-                                self.initiate_flood();
-                                log::debug!("{} at {} - network initialized", " <- network initialized".green(), self.id);
-                            }
+                            ServerCommand::NetworkInitialized=>{
+                                self.initiate_flood();log::debug!("{} at {} - network initialized"," <- network initialized".green(),self.id);}
+                            ServerCommand::AddSender(node_id, sender) => self.add_sender(node_id, sender),
+                            ServerCommand::RemoveSender(node_id) => self.remove_channel(node_id), 
                         }
                     }
                 },
@@ -79,12 +89,12 @@ impl ServerTrait for Server {
 
                             log::debug!("{} at {} - packet: {:?}, {:?}", " <- packet received".green(), self.id, packet.session_id, packet.routing_header);
 
-                            match &packet.pack_type {
+                            match packet.pack_type {
                                 PacketType::Nack(nack)=>self.manage_nack(nack),
                                 PacketType::Ack(ack)=>self.manage_ack(ack),
-                                PacketType::MsgFragment(fragment)=>self.manage_msg_fragment(fragment),
+                                PacketType::MsgFragment(fragment)=>self.manage_msg_fragment(packet.session_id, fragment),
                                 //  ...these two are jet to be defined...
-                                PacketType::FloodRequest(flood_request) => self.manage_flood_request(packet),
+                                PacketType::FloodRequest(_) => self.manage_flood_request(packet),
                                 PacketType::FloodResponse(flood_response) => self.manage_flood_response(flood_response),
                             }
                         },
@@ -112,7 +122,7 @@ impl Fragmenter for Server {
 }
 
 impl Server {
-    fn manage_nack(&self, nack: &Nack) {
+    fn manage_nack(&self, nack: Nack) {
         //resend the packet
         log::debug!(
             "{} {} received a nack: {:?}",
@@ -122,7 +132,7 @@ impl Server {
         );
     }
 
-    fn manage_ack(&self, ack: &Ack) {
+    fn manage_ack(&self, ack: Ack) {
         //free memory of message vector
         log::debug!(
             "{} {} received an ack: {:?}",
@@ -132,7 +142,7 @@ impl Server {
         );
     }
 
-    fn manage_msg_fragment(&self, msg: &Fragment) {
+    fn manage_msg_fragment(&mut self, session_id: u64, msg: Fragment) {
         //call to the assembler
         log::debug!(
             "{} {} received a fragment: {:?}",
@@ -140,7 +150,34 @@ impl Server {
             self.id,
             msg
         );
+
+        if self.session_id == 0 && self.msg_buffer.is_empty() {
+            self.session_id = session_id;
+            self.msg_buffer.reserve(msg.total_n_fragments as usize);
+        }
+
+        if session_id == self.session_id {
+            let index = msg.fragment_index as usize;
+            let total_frags = msg.total_n_fragments as usize;
+            self.msg_buffer[index] = msg;
+
+            if self.msg_buffer.len() == total_frags {
+                let message = Self::assemble(self.msg_buffer.clone());
+                //separate function in case I wanna multithread this later
+                self.manage_message(message);
+                self.msg_buffer.clear();
+                self.session_id = 0;
+            }
+        } else {
+            log::error!(
+                "{} {} received a fragment with a different session id",
+                "↳ server".red(),
+                self.id
+            );
+        }
     }
+
+    fn manage_message(&self, msg: Message) {}
 
     fn manage_flood_request(&self, mut packet: Packet) {
         log::debug!(
@@ -177,7 +214,7 @@ impl Server {
         }
     }
 
-    fn manage_flood_response(&mut self, fr: &FloodResponse) {
+    fn manage_flood_response(&mut self, fr: FloodResponse) {
         //call to the assembler
         log::debug!(
             "{} {} received a flood response: {:?}",
@@ -235,7 +272,6 @@ impl Server {
     }
 
     fn initiate_flood(&mut self) {
-    
         for (id, sender) in self.ps.iter() {
             let packet = Packet {
                 pack_type: PacketType::FloodRequest(FloodRequest {
@@ -258,8 +294,15 @@ impl Server {
             } else {
                 self.scs.send(ServerEvent::PacketSent(packet));
             }
-
         }
     }
 
+    
+    fn add_sender(&mut self, id: NodeId, sender: Sender<Packet>) {
+        self.ps.insert(id, sender);
+    }
+
+    fn remove_channel(&mut self, id: NodeId) {
+        self.ps.remove(&id);
+    }
 }

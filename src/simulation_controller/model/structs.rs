@@ -1,4 +1,6 @@
-use wg_2024::{controller::DroneEvent, packet::Packet};
+use crossbeam::channel::Sender;
+use egui::accesskit::{Node};
+use wg_2024::{controller::DroneEvent, network::NodeId, packet::Packet};
 
 /// From client to controller
 #[derive(Debug, Clone)]
@@ -15,13 +17,15 @@ pub enum ClientCommand {}
 #[derive(Debug, Clone)]
 pub enum ServerEvent {
     PacketSent(Packet),
-    PacketDropped(Packet),
+    PacketReceived(Packet),
 }
 
 /// From controller to server
 #[derive(Debug, Clone)]
 pub enum ServerCommand {
     NetworkInitialized,
+    AddSender(NodeId, Sender<Packet>),
+    RemoveSender(NodeId),
 }
 
 /// Common interface for events
@@ -62,7 +66,7 @@ impl SCEvent {
             },
             SCEvent::ServerEvent(server_event) => match server_event {
                 ServerEvent::PacketSent(packet) => packet,
-                ServerEvent::PacketDropped(packet) => packet,
+                ServerEvent::PacketReceived(packet) => packet,
             },
             SCEvent::DroneEvent(drone_event) => match drone_event {
                 DroneEvent::PacketSent(packet) => packet,
