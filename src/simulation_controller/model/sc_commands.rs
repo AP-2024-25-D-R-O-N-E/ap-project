@@ -1,3 +1,4 @@
+use crossbeam::channel::Sender;
 use wg_2024::{
     controller::*,
     network::NodeId,
@@ -116,4 +117,36 @@ impl SimulationController {
         }
     }
 
+    pub fn send_remove_sender_command(&self, node_id: NodeId, node_to_id: NodeId) {
+        match &self.drone_command_channels.get(&node_id) {
+            Some(channel) => {
+                if !self.packet_channels.contains_key(&node_to_id) {
+                    log::warn!("Removing a channel to unexisting node");
+                }
+                channel.send(DroneCommand::RemoveSender(node_to_id));
+            }
+            None => {
+                log::error!("Specified node does not exist");
+            }
+        }
+    }
+
+    pub fn send_add_sender_command(
+        &self,
+        node_id: NodeId,
+        node_to_id: NodeId,
+        packet_channel: Sender<Packet>,
+    ) {
+        match &self.drone_command_channels.get(&node_id) {
+            Some(channel) => {
+                if !self.packet_channels.contains_key(&node_to_id) {
+                    log::warn!("Trying to add a channel to unexisting node");
+                }
+                channel.send(DroneCommand::AddSender(node_to_id, packet_channel));
+            }
+            None => {
+                log::error!("Specified node does not exist");
+            }
+        }
+    }
 }
