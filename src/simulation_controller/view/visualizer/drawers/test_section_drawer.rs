@@ -145,37 +145,52 @@ pub fn send_msg_fragment_section(
     ui.end_row();
 
     // Get from nodes button
-    if ui
-        .button("Get from selection")
-        .on_hover_text("Get a random path between the two selected nodes")
-        .clicked()
-    {
-        if state.graph_section.g.selected_nodes().len() != 2 {
-            state.test_section.status_flag = Some(Err("Please select exactly 2 nodes".to_string()));
-        } else {
-            state.test_section.status_flag = None;
-            let start_node = state.graph_section.g.selected_nodes()[0].clone();
-            let end_node = state.graph_section.g.selected_nodes()[1].clone();
-            let g = &*state.graph_section.g.g();
+    ui.horizontal(|ui| {
+        if ui
+            .button("Get from selection")
+            .on_hover_text("Get a random path between the two selected nodes")
+            .clicked()
+        {
+            if state.graph_section.g.selected_nodes().len() != 2 {
+                state.test_section.status_flag =
+                    Some(Err("Please select exactly 2 nodes".to_string()));
+            } else {
+                state.test_section.status_flag = None;
+                let start_node = state.graph_section.g.selected_nodes()[0].clone();
+                let end_node = state.graph_section.g.selected_nodes()[1].clone();
+                let g = &*state.graph_section.g.g();
 
-            let path = algo::astar(g, start_node, |n| n == end_node, |e| 1, |_| 0);
-            match path {
-                Some((_, path)) => {
-                    let mut new_path = String::new();
-                    for n in path {
-                        let actual_node_index =
-                            state.graph_section.g.node(n).unwrap().payload().wg_id;
-                        new_path.push_str(format!("{}, ", actual_node_index).as_str());
+                let path = algo::astar(g, start_node, |n| n == end_node, |e| 1, |_| 0);
+                match path {
+                    Some((_, path)) => {
+                        let mut new_path = String::new();
+                        for n in path {
+                            let actual_node_index =
+                                state.graph_section.g.node(n).unwrap().payload().wg_id;
+                            new_path.push_str(format!("{}, ", actual_node_index).as_str());
+                        }
+                        if new_path.len() != 0 {
+                            new_path.truncate(new_path.len() - 2);
+                        }
+                        state.test_section.routing_path_string = new_path
                     }
-                    if new_path.len() != 0 {
-                        new_path.truncate(new_path.len() - 2);
-                    }
-                    state.test_section.routing_path_string = new_path
+                    None => todo!(),
                 }
-                None => todo!(),
             }
         }
-    }
+
+        if ui
+            .button("Invert")
+            .on_hover_text("Invert the current path")
+            .clicked()
+        {
+            let mut reversed_path = String::new();
+            for c in state.test_section.routing_path_string.chars().rev() {
+                reversed_path.push(c);
+            }
+            state.test_section.routing_path_string = reversed_path;
+        }
+    });
 
     // Send Button
     if ui
