@@ -20,7 +20,6 @@ use super::state::State;
 const GRAPH_EVENTS_LIMIT: usize = 100;
 const MAIN_CONSOLE_SCROLLBACK_LIMIT: usize = 100;
 
-
 pub struct SCGui {
     fps: f32,
     last_update_time: Instant,
@@ -376,7 +375,7 @@ impl App for SCGui {
 
         // self.sync();
         // self.update_simulation();
-        draw_infos_for_selected_nodes(ctx, &mut self.state);
+        draw_infos_for_selected_nodes(ctx, &mut self.state, &self.simulation_controller);
         self.handle_graph_events();
         self.handle_sc_events();
         self.update_fps();

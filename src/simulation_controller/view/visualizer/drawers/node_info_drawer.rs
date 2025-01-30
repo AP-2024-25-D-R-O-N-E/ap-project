@@ -2,18 +2,27 @@ use egui::{CollapsingHeader, Context, ScrollArea, Ui, Window};
 use petgraph::graph::NodeIndex;
 
 use crate::simulation_controller::{
-    node::{UiDroneNode, UiNodeType},
-    state::{DisplayOptions, State},
-    util,
+    node::{UiDroneNode, UiNodePayload, UiNodeType},
+    state::{DisplayOptions, NodeInfoSectionState, State},
+    util, SimulationController,
 };
 
-pub fn draw_infos_for_selected_nodes(ctx: &Context, state: &mut State) {
+pub fn draw_infos_for_selected_nodes(
+    ctx: &Context,
+    state: &mut State,
+    simulation_controller: &SimulationController,
+) {
     for node_index in state.node_info_section.opened_windows.clone().iter() {
-        draw_node_info(ctx, *node_index, state);
+        draw_node_info(ctx, *node_index, state, simulation_controller);
     }
 }
 
-pub fn draw_node_info(ctx: &Context, node_index: NodeIndex, state: &mut State) {
+pub fn draw_node_info(
+    ctx: &Context,
+    node_index: NodeIndex,
+    state: &mut State,
+    simulation_controller: &SimulationController,
+) {
     let node_payload = state.graph_section.g.node(node_index).unwrap().payload();
     Window::new(format!("Node {}", node_payload.wg_id))
         .collapsible(true)
@@ -60,23 +69,23 @@ pub fn draw_node_info(ctx: &Context, node_index: NodeIndex, state: &mut State) {
                             ui.spacing();
                         });
                         ui.end_row();
+
                         if let Some(graph_node) = state.graph_section.g.node_mut(node_index) {
-                            let n = &mut graph_node.payload_mut().node_type;
-                            match n {
+                            let ui_node = graph_node.payload_mut();
+                            match &ui_node.node_type {
                                 UiNodeType::Server(ui_server_node) => {}
                                 UiNodeType::Client(ui_client_node) => {}
                                 UiNodeType::Drone(ui_drone_node) => {
-                                    draw_drone_specific(ui, ui_drone_node);
+                                    draw_drone_specific(
+                                        ui,
+                                        graph_node.payload_mut(),
+                                        &mut state.node_info_section,
+                                        simulation_controller,
+                                    );
                                 }
                             }
                         }
                     });
-
-                egui::Grid::new("node_specific_infos")
-                    .num_columns(2)
-                    .spacing([40.0, 4.0])
-                    .striped(true)
-                    .show(ui, |ui| {});
 
                 CollapsingHeader::new("Logs")
                     .default_open(true)
@@ -96,9 +105,21 @@ pub fn draw_node_info(ctx: &Context, node_index: NodeIndex, state: &mut State) {
         });
 }
 
-fn draw_drone_specific(ui: &mut Ui, drone_node: &mut UiDroneNode) {
+fn draw_drone_specific(
+    ui: &mut Ui,
+    node_payload: &mut UiNodePayload,
+    node_info_state: &mut NodeInfoSectionState,
+    simulation_controller: &SimulationController,
+) {
+    let drone_node = if let UiNodeType::Drone(drone_node) = &mut node_payload.node_type {
+        drone_node
+    } else {
+        panic!("Unexpected enum variant!")
+    };
+
     if ui.button("Crash").clicked() {
         drone_node.crashed = true;
+        simulation_controller.send_crash_command(node_payload.wg_id);
     }
     if drone_node.crashed {
         ui.horizontal(|ui| {
@@ -113,21 +134,24 @@ fn draw_drone_specific(ui: &mut Ui, drone_node: &mut UiDroneNode) {
     }
     ui.end_row();
 
-    //make a slider with a value on the right that can range from 0 to 1 and has a step of 0.01
-    //if the value is changed, update the drone pdr accordingly
-    //if the drone pdr is changed, update the drone pdr in the simulation controller
-    //if the drone pdr is changed, update the drone pdr in the simulation controller
-    // write the fucking code
-    if ui
-        .add(egui::Slider::new(&mut drone_node.pdr, 0.0..=1.0).show_value(false))
-        .changed()
-    {
-        println!("Changed");
-    }
+    ui.add(egui::Slider::new(&mut drone_node.pdr, 0.0..=1.0).show_value(false))
+        .changed();
+    ui.horizontal(|ui| {
+        ui.add(
+            egui::DragValue::new(&mut drone_node.pdr)
+                .range(0.0..=1.0)
+                .speed(0.01),
+        );
 
-    ui.add(
-        egui::DragValue::new(&mut drone_node.pdr)
-            .range(0.0..=1.0)
-            .speed(0.01),
-    );
+        if ui
+            .add_enabled(
+                drone_node.last_committed_pdr != drone_node.pdr,
+                egui::Button::new("Update"),
+            )
+            .clicked()
+        {
+            drone_node.last_committed_pdr = drone_node.pdr;
+            simulation_controller.send_set_pdr_command(node_payload.wg_id, drone_node.pdr);
+        };
+    });
 }

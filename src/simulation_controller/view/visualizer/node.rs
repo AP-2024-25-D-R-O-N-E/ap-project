@@ -52,6 +52,7 @@ pub struct UiClientNode {}
 pub struct UiDroneNode {
     pub radius: f32,
     pub pdr: f32,
+    pub last_committed_pdr: f32,
     pub crashed: bool,
 }
 impl UiDroneNode {
@@ -59,6 +60,7 @@ impl UiDroneNode {
         Self {
             radius: 23.,
             pdr,
+            last_committed_pdr: pdr,
             crashed: false,
         }
     }
@@ -68,6 +70,7 @@ impl Default for UiDroneNode {
         Self {
             radius: 20.,
             pdr: 0.,
+            last_committed_pdr: 0.,
             crashed: false,
         }
     }
