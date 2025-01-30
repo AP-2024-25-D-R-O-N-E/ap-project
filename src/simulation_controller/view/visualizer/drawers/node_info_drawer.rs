@@ -4,6 +4,7 @@ use petgraph::graph::NodeIndex;
 use crate::simulation_controller::{
     node::UiNodeType,
     state::{DisplayOptions, State},
+    util,
 };
 
 pub fn draw_infos_for_selected_nodes(ctx: &Context, state: &mut State) {
@@ -60,12 +61,12 @@ pub fn draw_node_info(ctx: &Context, node_index: NodeIndex, state: &mut State) {
                                 if drone_node.crashed {
                                     ui.label(
                                         egui::RichText::new("Crashed".to_string())
-                                            .color(egui::Color32::from_rgb(130, 0, 0)),
+                                            .color(util::colors::MUTED_RED),
                                     );
                                 } else {
                                     ui.label(
                                         egui::RichText::new("Running".to_string())
-                                            .color(egui::Color32::from_rgb(0, 130, 0)),
+                                            .color(util::colors::MUTED_GREEN),
                                     );
                                 }
                             }

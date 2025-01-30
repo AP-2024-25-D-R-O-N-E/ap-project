@@ -5,6 +5,8 @@ use egui::{
 use egui_graphs::{DisplayNode, NodeProps};
 use petgraph::{stable_graph::IndexType, EdgeType};
 
+use crate::simulation_controller::util;
+
 fn get_text(ctx: &egui_graphs::DrawContext, text: String, pos: Pos2) -> Shape {
     ctx.ctx.fonts(|fonts| {
         Shape::text(
@@ -139,7 +141,8 @@ impl DrawShape for CustomNodeShape {
                     se: 10.,
                 };
 
-                let rect_fill = Shape::rect_filled(rect, rounding, Color32::from_gray(45));
+                let rect_fill =
+                    Shape::rect_filled(rect, rounding, util::colors::LIGHT_BACKGROUND_GRAY);
                 let shadow = Shadow {
                     offset: Vec2::new(8., 8.),
                     blur: 30.,
@@ -160,8 +163,11 @@ impl DrawShape for CustomNodeShape {
                     min: Pos2::new(center.x - 20.0, center.y - 20.0),
                     max: Pos2::new(center.x + 20.0, center.y + 20.0),
                 };
-                let rect_fill =
-                    Shape::rect_filled(rect, Rounding::default(), Color32::from_gray(45));
+                let rect_fill = Shape::rect_filled(
+                    rect,
+                    Rounding::default(),
+                    util::colors::LIGHT_BACKGROUND_GRAY,
+                );
                 let shadow = Shadow {
                     offset: Vec2::new(8., 8.),
                     blur: 30.,
@@ -181,10 +187,17 @@ impl DrawShape for CustomNodeShape {
             UiNodeType::Drone(drone_node) => {
                 let circle_fill;
                 if drone_node.crashed {
-                    circle_fill = Shape::circle_filled(center, drone_node.radius, Color32::from_rgb(130,0,0));
+                    circle_fill = Shape::circle_filled(
+                        center,
+                        drone_node.radius,
+                        Color32::from_rgb(130, 0, 0),
+                    );
                 } else {
-                    circle_fill =
-                        Shape::circle_filled(center, drone_node.radius, Color32::from_gray(27));
+                    circle_fill = Shape::circle_filled(
+                        center,
+                        drone_node.radius,
+                        util::colors::DARK_BACKGROUND_GRAY,
+                    );
                 }
 
                 let circle_stroke;
@@ -198,7 +211,7 @@ impl DrawShape for CustomNodeShape {
                     circle_stroke = Shape::circle_stroke(
                         center,
                         drone_node.radius,
-                        Stroke::new(1., Color32::DARK_GRAY),
+                        Stroke::new(1., util::colors::LIGHT_BACKGROUND_GRAY),
                     );
                 }
 
