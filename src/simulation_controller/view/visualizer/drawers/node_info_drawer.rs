@@ -2,7 +2,7 @@ use egui::{CollapsingHeader, Context, ScrollArea, Ui, Window};
 use petgraph::graph::NodeIndex;
 
 use crate::simulation_controller::{
-    node::UiNodeType,
+    node::{UiDroneNode, UiNodeType},
     state::{DisplayOptions, State},
     util,
 };
@@ -51,27 +51,33 @@ pub fn draw_node_info(ctx: &Context, node_index: NodeIndex, state: &mut State) {
                                 .retain(|opened_index| *opened_index == node_index)
                         }
                         ui.end_row();
-
+                        ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
+                            // ui.separator();
+                            ui.spacing();
+                        });
+                        ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
+                            // ui.separator();
+                            ui.spacing();
+                        });
+                        ui.end_row();
                         if let Some(graph_node) = state.graph_section.g.node_mut(node_index) {
                             let n = &mut graph_node.payload_mut().node_type;
-                            if let UiNodeType::Drone(drone_node) = n {
-                                if ui.button("Crash").clicked() {
-                                    drone_node.crashed = true;
-                                }
-                                if drone_node.crashed {
-                                    ui.label(
-                                        egui::RichText::new("Crashed".to_string())
-                                            .color(util::colors::MUTED_RED),
-                                    );
-                                } else {
-                                    ui.label(
-                                        egui::RichText::new("Running".to_string())
-                                            .color(util::colors::MUTED_GREEN),
-                                    );
+                            match n {
+                                UiNodeType::Server(ui_server_node) => {}
+                                UiNodeType::Client(ui_client_node) => {}
+                                UiNodeType::Drone(ui_drone_node) => {
+                                    draw_drone_specific(ui, ui_drone_node);
                                 }
                             }
                         }
                     });
+
+                egui::Grid::new("node_specific_infos")
+                    .num_columns(2)
+                    .spacing([40.0, 4.0])
+                    .striped(true)
+                    .show(ui, |ui| {});
+
                 CollapsingHeader::new("Logs")
                     .default_open(true)
                     .show(ui, |ui| {
@@ -88,4 +94,40 @@ pub fn draw_node_info(ctx: &Context, node_index: NodeIndex, state: &mut State) {
                     });
             });
         });
+}
+
+fn draw_drone_specific(ui: &mut Ui, drone_node: &mut UiDroneNode) {
+    if ui.button("Crash").clicked() {
+        drone_node.crashed = true;
+    }
+    if drone_node.crashed {
+        ui.horizontal(|ui| {
+            ui.label(egui::RichText::new("Crashed".to_string()).color(util::colors::MUTED_RED));
+            ui.add_sized(ui.available_size(), egui::Label::new("".to_string()));
+        });
+    } else {
+        ui.horizontal(|ui| {
+            ui.label(egui::RichText::new("Running".to_string()).color(util::colors::MUTED_GREEN));
+            ui.add_sized(ui.available_size(), egui::Label::new("".to_string()));
+        });
+    }
+    ui.end_row();
+
+    //make a slider with a value on the right that can range from 0 to 1 and has a step of 0.01
+    //if the value is changed, update the drone pdr accordingly
+    //if the drone pdr is changed, update the drone pdr in the simulation controller
+    //if the drone pdr is changed, update the drone pdr in the simulation controller
+    // write the fucking code
+    if ui
+        .add(egui::Slider::new(&mut drone_node.pdr, 0.0..=1.0).show_value(false))
+        .changed()
+    {
+        println!("Changed");
+    }
+
+    ui.add(
+        egui::DragValue::new(&mut drone_node.pdr)
+            .range(0.0..=1.0)
+            .speed(0.01),
+    );
 }
