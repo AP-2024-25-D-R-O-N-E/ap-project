@@ -1,4 +1,5 @@
 use wg_2024::{
+    controller::*,
     network::NodeId,
     packet::{Packet, PacketType},
 };
@@ -92,4 +93,27 @@ impl SimulationController {
             }
         }
     }
+
+    pub fn send_crash_command(&self, node_id: NodeId) {
+        match &self.drone_command_channels.get(&node_id) {
+            Some(channel) => {
+                channel.send(DroneCommand::Crash);
+            }
+            None => {
+                log::error!("Specified node does not exist");
+            }
+        }
+    }
+
+    pub fn send_set_pdr_command(&self, node_id: NodeId, new_pdr: f32) {
+        match &self.drone_command_channels.get(&node_id) {
+            Some(channel) => {
+                channel.send(DroneCommand::SetPacketDropRate(new_pdr));
+            }
+            None => {
+                log::error!("Specified node does not exist");
+            }
+        }
+    }
+
 }
