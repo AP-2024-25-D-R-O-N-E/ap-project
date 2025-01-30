@@ -50,10 +50,15 @@ pub struct UiClientNode {}
 pub struct UiDroneNode {
     pub radius: f32,
     pub pdr: f32,
+    pub crashed: bool,
 }
 impl UiDroneNode {
     pub fn new(pdr: f32) -> UiDroneNode {
-        Self { radius: 25., pdr }
+        Self {
+            radius: 23.,
+            pdr,
+            crashed: false,
+        }
     }
 }
 impl Default for UiDroneNode {
@@ -61,6 +66,7 @@ impl Default for UiDroneNode {
         Self {
             radius: 20.,
             pdr: 0.,
+            crashed: false,
         }
     }
 }
@@ -173,8 +179,14 @@ impl DrawShape for CustomNodeShape {
                 }
             }
             UiNodeType::Drone(drone_node) => {
-                let circle_fill =
-                    Shape::circle_filled(center, drone_node.radius, Color32::from_gray(27));
+                let circle_fill;
+                if drone_node.crashed {
+                    circle_fill = Shape::circle_filled(center, drone_node.radius, Color32::from_rgb(130,0,0));
+                } else {
+                    circle_fill =
+                        Shape::circle_filled(center, drone_node.radius, Color32::from_gray(27));
+                }
+
                 let circle_stroke;
                 if self.selected {
                     circle_stroke = Shape::circle_stroke(
@@ -249,6 +261,7 @@ impl<E: Clone, Ty: EdgeType, Ix: IndexType> DisplayNode<UiNodePayload, E, Ty, Ix
         self.label = state.label.clone();
         self.loc = state.location().clone();
         self.selected = state.selected;
+        self.payload = state.payload.clone();
     }
 }
 

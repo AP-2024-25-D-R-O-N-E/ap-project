@@ -1,7 +1,10 @@
 use egui::{CollapsingHeader, Context, ScrollArea, Ui, Window};
 use petgraph::graph::NodeIndex;
 
-use crate::simulation_controller::state::{DisplayOptions, State};
+use crate::simulation_controller::{
+    node::UiNodeType,
+    state::{DisplayOptions, State},
+};
 
 pub fn draw_infos_for_selected_nodes(ctx: &Context, state: &mut State) {
     for node_index in state.node_info_section.opened_windows.clone().iter() {
@@ -47,6 +50,24 @@ pub fn draw_node_info(ctx: &Context, node_index: NodeIndex, state: &mut State) {
                                 .retain(|opened_index| *opened_index == node_index)
                         }
                         ui.end_row();
+
+                        if let Some(graph_node) = state.graph_section.g.node_mut(node_index) {
+                            let n = &mut graph_node.payload_mut().node_type;
+                            if let UiNodeType::Drone(drone_node) = n {
+                                // println!("{:?}", drone_node.crashed);
+                                // drone_node.crashed = true;
+                            }
+                        }
+
+                        if ui.button("Crash").clicked() {
+                            if let Some(graph_node) = state.graph_section.g.node_mut(node_index) {
+                                let n = &mut graph_node.payload_mut().node_type;
+                                if let UiNodeType::Drone(drone_node) = n {
+                                    // println!("{:?}", drone_node.crashed);
+                                    drone_node.crashed = true;
+                                }
+                            }
+                        }
                     });
                 CollapsingHeader::new("Logs")
                     .default_open(true)
