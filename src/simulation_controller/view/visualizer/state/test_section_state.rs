@@ -7,7 +7,8 @@ pub struct TestSectionState {
     pub send_default_nack_node_id: NodeId,
     pub routing_path_string: String,
     pub msg_frag_data_string: String,
-    pub status_flag: Option<Result<String, String>>,
+    pub packet_sender_status_flag: Option<Result<String, String>>,
+    pub channel_modifier_status_flag: Option<Result<String, String>>,
 }
 
 impl Default for TestSectionState {
@@ -19,7 +20,8 @@ impl Default for TestSectionState {
             send_default_nack_node_id: 1,
             routing_path_string: String::new(),
             msg_frag_data_string: String::new(),
-            status_flag: None,
+            packet_sender_status_flag: None,
+            channel_modifier_status_flag: None,
         }
     }
 }
