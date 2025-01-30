@@ -54,17 +54,19 @@ pub fn draw_node_info(ctx: &Context, node_index: NodeIndex, state: &mut State) {
                         if let Some(graph_node) = state.graph_section.g.node_mut(node_index) {
                             let n = &mut graph_node.payload_mut().node_type;
                             if let UiNodeType::Drone(drone_node) = n {
-                                // println!("{:?}", drone_node.crashed);
-                                // drone_node.crashed = true;
-                            }
-                        }
-
-                        if ui.button("Crash").clicked() {
-                            if let Some(graph_node) = state.graph_section.g.node_mut(node_index) {
-                                let n = &mut graph_node.payload_mut().node_type;
-                                if let UiNodeType::Drone(drone_node) = n {
-                                    // println!("{:?}", drone_node.crashed);
+                                if ui.button("Crash").clicked() {
                                     drone_node.crashed = true;
+                                }
+                                if drone_node.crashed {
+                                    ui.label(
+                                        egui::RichText::new("Crashed".to_string())
+                                            .color(egui::Color32::from_rgb(130, 0, 0)),
+                                    );
+                                } else {
+                                    ui.label(
+                                        egui::RichText::new("Running".to_string())
+                                            .color(egui::Color32::from_rgb(0, 130, 0)),
+                                    );
                                 }
                             }
                         }
