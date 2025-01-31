@@ -225,4 +225,12 @@ impl Client {
             self.scs.send(ClientEvent::PacketSent(packet));
         }
     }
+
+    fn add_sender(&mut self, id: NodeId, sender: Sender<Packet>) {
+        self.ps.insert(id, sender);
+    }
+
+    fn remove_channel(&mut self, id: NodeId) {
+        self.ps.remove(&id);
+    }
 }
