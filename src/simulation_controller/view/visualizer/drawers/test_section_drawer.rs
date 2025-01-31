@@ -2,7 +2,7 @@ use egui::{CollapsingHeader, Color32, RichText, Ui};
 use petgraph::algo::{self, dijkstra::dijkstra};
 use wg_2024::network::NodeId;
 
-use crate::simulation_controller::{state::State, util::*, SimulationController};
+use crate::simulation_controller::{edge::UiEdgePayload, state::State, util::*, SimulationController};
 
 pub fn draw_section_testing(
     ui: &mut Ui,
@@ -315,7 +315,7 @@ pub fn add_remove_sender_section(
         if check_parameters(state) {
             let node1 = state.graph_section.g.selected_nodes()[0];
             let node2 = state.graph_section.g.selected_nodes()[1];
-            state.graph_section.g.add_edge(node1, node2, ());
+            state.graph_section.g.add_edge(node1, node2, UiEdgePayload::default());
             state.test_section.channel_modifier_status_flag =
                 Some(Ok("Sender added with success".to_string()));
             let node1_wg_id = state.graph_section.g.node(node1).unwrap().payload().wg_id;

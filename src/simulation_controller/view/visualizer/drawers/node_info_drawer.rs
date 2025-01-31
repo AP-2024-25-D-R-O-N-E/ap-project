@@ -78,8 +78,8 @@ pub fn draw_node_info(
                                 UiNodeType::Drone(ui_drone_node) => {
                                     draw_drone_specific(
                                         ui,
-                                        graph_node.payload_mut(),
-                                        &mut state.node_info_section,
+                                        node_index,
+                                        state,
                                         simulation_controller,
                                     );
                                 }
@@ -105,23 +105,62 @@ pub fn draw_node_info(
         });
 }
 
-fn draw_drone_specific(
-    ui: &mut Ui,
-    node_payload: &mut UiNodePayload,
-    node_info_state: &mut NodeInfoSectionState,
-    simulation_controller: &SimulationController,
-) {
-    let drone_node = if let UiNodeType::Drone(drone_node) = &mut node_payload.node_type {
+fn get_payload_mut(state: &mut State, node_index: NodeIndex) -> Option<&mut UiNodePayload> {
+    match state.graph_section.g.node_mut(node_index) {
+        Some(node) => Some(node.payload_mut()),
+        None => None,
+    }
+}
+
+fn get_payload(state: &mut State, node_index: NodeIndex) -> Option<&UiNodePayload> {
+    match state.graph_section.g.node(node_index) {
+        Some(node) => Some(node.payload()),
+        None => None,
+    }
+}
+
+fn get_drone_node(state: &mut State, node_index: NodeIndex) -> &mut UiDroneNode {
+    let drone_node = if let UiNodeType::Drone(drone_node) =
+        &mut get_payload_mut(state, node_index).unwrap().node_type
+    {
         drone_node
     } else {
         panic!("Unexpected enum variant!")
     };
+    drone_node
+}
 
+fn draw_drone_specific(
+    ui: &mut Ui,
+    node_index: NodeIndex,
+    state: &mut State,
+    simulation_controller: &SimulationController,
+) {
+    let curr_node_wg_id = get_payload(state, node_index).unwrap().wg_id;
     if ui.button("Crash").clicked() {
-        drone_node.crashed = true;
-        simulation_controller.send_crash_command(node_payload.wg_id);
+        get_drone_node(state, node_index).crashed = true;
+        simulation_controller.send_crash_command(get_payload_mut(state, node_index).unwrap().wg_id);
+        for node in state.graph_section.g.g.neighbors_undirected(node_index) {
+            match state
+                .graph_section
+                .g
+                .node(node)
+                .unwrap()
+                .payload()
+                .node_type
+            {
+                UiNodeType::Drone(_) => {
+                    simulation_controller.send_remove_sender_command(
+                        state.graph_section.g.node(node).unwrap().payload().wg_id,
+                        curr_node_wg_id,
+                    );
+                }
+                _ => {}
+            }
+        }
+        // node_payload.wg_id
     }
-    if drone_node.crashed {
+    if get_drone_node(state, node_index).crashed {
         ui.horizontal(|ui| {
             ui.label(egui::RichText::new("Crashed".to_string()).color(util::colors::MUTED_RED));
             ui.add_sized(ui.available_size(), egui::Label::new("".to_string()));
@@ -134,24 +173,31 @@ fn draw_drone_specific(
     }
     ui.end_row();
 
-    ui.add(egui::Slider::new(&mut drone_node.pdr, 0.0..=1.0).show_value(false))
-        .changed();
+    ui.add(
+        egui::Slider::new(&mut get_drone_node(state, node_index).pdr, 0.0..=1.0).show_value(false),
+    )
+    .changed();
     ui.horizontal(|ui| {
         ui.add(
-            egui::DragValue::new(&mut drone_node.pdr)
+            egui::DragValue::new(&mut get_drone_node(state, node_index).pdr)
                 .range(0.0..=1.0)
                 .speed(0.01),
         );
 
         if ui
             .add_enabled(
-                drone_node.last_committed_pdr != drone_node.pdr,
+                get_drone_node(state, node_index).last_committed_pdr
+                    != get_drone_node(state, node_index).pdr,
                 egui::Button::new("Update"),
             )
             .clicked()
         {
-            drone_node.last_committed_pdr = drone_node.pdr;
-            simulation_controller.send_set_pdr_command(node_payload.wg_id, drone_node.pdr);
+            get_drone_node(state, node_index).last_committed_pdr =
+                get_drone_node(state, node_index).pdr;
+            simulation_controller.send_set_pdr_command(
+                get_payload_mut(state, node_index).unwrap().wg_id,
+                get_drone_node(state, node_index).pdr,
+            );
         };
     });
 }

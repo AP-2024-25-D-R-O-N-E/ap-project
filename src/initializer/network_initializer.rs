@@ -34,6 +34,7 @@ use crate::{
     client::{client_test::Client, client_test_2::Client2, ClientTrait},
     server::{server_test::Server, ServerTrait},
     simulation_controller::{
+        edge::UiEdgePayload,
         node::{UiClientNode, UiDroneNode, UiNodePayload, UiNodeType, UiServerNode},
         structs::{ClientCommand, ClientEvent, ServerCommand, ServerEvent},
         SimulationController,
@@ -51,7 +52,7 @@ pub struct NetworkInitializer {
     pub client_command_channels: HashMap<NodeId, (Sender<ClientCommand>, Receiver<ClientCommand>)>,
     pub server_event_channels: HashMap<NodeId, (Sender<ServerEvent>, Receiver<ServerEvent>)>,
     pub server_command_channels: HashMap<NodeId, (Sender<ServerCommand>, Receiver<ServerCommand>)>,
-    pub topology: StableGraph<UiNodePayload, (), Undirected>,
+    pub topology: StableGraph<UiNodePayload, UiEdgePayload, Undirected>,
 
     handles: HashMap<NodeId, JoinHandle<()>>,
 }
@@ -261,8 +262,8 @@ impl NetworkInitializer {
     /// Constructs graph from config file.
     pub fn get_topology_from_config(
         config: &InitConfig,
-    ) -> StableGraph<UiNodePayload, (), Undirected> {
-        let mut graph = StableUnGraph::<UiNodePayload, ()>::default();
+    ) -> StableGraph<UiNodePayload, UiEdgePayload, Undirected> {
+        let mut graph = StableUnGraph::<UiNodePayload, UiEdgePayload>::default();
 
         let mut node_map_function: HashMap<wg_2024::network::NodeId, petgraph::graph::NodeIndex> =
             HashMap::new();
@@ -299,7 +300,7 @@ impl NetworkInitializer {
             if !(set.contains(&(node_graph_id, node_to_graph_id))
                 || set.contains(&(node_to_graph_id, node_graph_id)))
             {
-                graph.add_edge(node_graph_id, node_to_graph_id, ());
+                graph.add_edge(node_graph_id, node_to_graph_id, UiEdgePayload::default());
             }
             set.insert((node_graph_id, node_to_graph_id));
         };

@@ -20,7 +20,7 @@ use wg_2024::{
 
 use crate::{
     initializer::network_initializer::NetworkInitializer,
-    simulation_controller::node::UiNodePayload,
+    simulation_controller::{edge::UiEdgePayload, node::UiNodePayload},
 };
 
 use super::structs::{ClientCommand, ClientEvent, ServerCommand, ServerEvent};
@@ -39,7 +39,7 @@ pub struct SimulationController {
     pub default_nack: Packet,
     pub default_flood: Packet,
 
-    pub topology: StableGraph<UiNodePayload, (), Undirected>,
+    pub topology: StableGraph<UiNodePayload, UiEdgePayload, Undirected>,
 }
 
 impl SimulationController {

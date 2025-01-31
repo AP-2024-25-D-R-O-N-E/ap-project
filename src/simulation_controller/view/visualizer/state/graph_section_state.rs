@@ -11,12 +11,20 @@ use petgraph::{
 };
 use wg_2024::network::NodeId;
 
-use crate::simulation_controller::node::{
-    CustomNodeShape, UiClientNode, UiDroneNode, UiNodePayload, UiServerNode,
+use crate::simulation_controller::{
+    edge::{CustomEdgeShape, UiEdgePayload},
+    node::{CustomNodeShape, UiClientNode, UiDroneNode, UiNodePayload, UiServerNode},
 };
 
 pub struct GraphSectionState {
-    pub g: Graph<UiNodePayload, (), Undirected, DefaultIx, CustomNodeShape>,
+    pub g: Graph<
+        UiNodePayload,
+        UiEdgePayload,
+        Undirected,
+        DefaultIx,
+        CustomNodeShape,
+        CustomEdgeShape,
+    >,
 
     pub graph_event_publisher: Sender<Event>,
     pub graph_event_consumer: Receiver<Event>,
@@ -24,7 +32,9 @@ pub struct GraphSectionState {
     node_id_map: HashMap<wg_2024::network::NodeId, petgraph::graph::NodeIndex>,
 }
 
-fn get_node_id_map(graph: &StableGraph<UiNodePayload, (), Undirected>) -> HashMap<u8, NodeIndex> {
+fn get_node_id_map(
+    graph: &StableGraph<UiNodePayload, UiEdgePayload, Undirected>,
+) -> HashMap<u8, NodeIndex> {
     let mut map = HashMap::new();
 
     for n in graph.node_indices() {
@@ -34,7 +44,7 @@ fn get_node_id_map(graph: &StableGraph<UiNodePayload, (), Undirected>) -> HashMa
     map
 }
 impl GraphSectionState {
-    fn new(graph: StableGraph<UiNodePayload, (), Undirected>) -> GraphSectionState {
+    fn new(graph: StableGraph<UiNodePayload, UiEdgePayload, Undirected>) -> GraphSectionState {
         let graph_section = GraphSectionState::default();
         let (event_publisher, event_consumer) = unbounded();
 
@@ -72,8 +82,8 @@ impl Default for GraphSectionState {
     }
 }
 
-fn generate_graph() -> StableGraph<UiNodePayload, (), Undirected> {
-    let mut graph = StableUnGraph::<UiNodePayload, ()>::default();
+fn generate_graph() -> StableGraph<UiNodePayload, UiEdgePayload, Undirected> {
+    let mut graph = StableUnGraph::<UiNodePayload, UiEdgePayload>::default();
 
     let a = graph.add_node(UiNodePayload {
         node_type: UiNodeType::Client(UiClientNode {}),
@@ -121,25 +131,25 @@ fn generate_graph() -> StableGraph<UiNodePayload, (), Undirected> {
         wg_id: 8,
     });
 
-    graph.add_edge(a, b, ());
+    graph.add_edge(a, b, UiEdgePayload::default());
 
-    graph.add_edge(b, c, ());
-    graph.add_edge(b, e, ());
+    graph.add_edge(b, c, UiEdgePayload::default());
+    graph.add_edge(b, e, UiEdgePayload::default());
 
-    graph.add_edge(e, c, ());
-    graph.add_edge(e, f, ());
-    graph.add_edge(e, g, ());
-    graph.add_edge(e, i, ());
+    graph.add_edge(e, c, UiEdgePayload::default());
+    graph.add_edge(e, f, UiEdgePayload::default());
+    graph.add_edge(e, g, UiEdgePayload::default());
+    graph.add_edge(e, i, UiEdgePayload::default());
 
-    graph.add_edge(g, h, ());
-    graph.add_edge(g, f, ());
+    graph.add_edge(g, h, UiEdgePayload::default());
+    graph.add_edge(g, f, UiEdgePayload::default());
 
-    graph.add_edge(i, h, ());
+    graph.add_edge(i, h, UiEdgePayload::default());
 
-    graph.add_edge(f, c, ());
-    graph.add_edge(f, d, ());
+    graph.add_edge(f, c, UiEdgePayload::default());
+    graph.add_edge(f, d, UiEdgePayload::default());
 
-    graph.add_edge(c, d, ());
+    graph.add_edge(c, d, UiEdgePayload::default());
 
     graph
 }
