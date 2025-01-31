@@ -1,17 +1,20 @@
-use ap2024_unitn_cppenjoyers_drone::CppEnjoyersDrone;
 use colored::Colorize;
-use getdroned::GetDroned;
-use lockheedrustin_drone::LockheedRustin;
 use petgraph::{
     graph::NodeIndex,
     prelude::{StableGraph, StableUnGraph},
     Undirected,
 };
+use ap2024_unitn_cppenjoyers_drone::CppEnjoyersDrone;
+use getdroned::GetDroned;
+use lockheedrustin_drone::LockheedRustin;
 use rust_roveri::RustRoveri;
 use rustafarian_drone::RustafarianDrone;
 use rustbusters_drone::RustBustersDrone;
 use rusteze_drone::RustezeDrone;
 use rusty_drones::RustyDrone;
+use skylink::SkyLinkDrone;
+use LeDron_James::Drone as LeDron_JamesDrone;
+
 
 use std::{
     collections::{HashMap, HashSet},
@@ -442,6 +445,22 @@ impl NetworkInitializer {
                 pdr,
             )),
             7 => Box::new(RustRoveri::new(
+                id,
+                controller_send,
+                controller_recv,
+                packet_recv,
+                packet_send,
+                pdr,
+            )),
+            8 => Box::new(SkyLinkDrone::new(
+                id,
+                controller_send,
+                controller_recv,
+                packet_recv,
+                packet_send,
+                pdr,
+            )),
+            9 => Box::new(LeDron_JamesDrone::new(
                 id,
                 controller_send,
                 controller_recv,

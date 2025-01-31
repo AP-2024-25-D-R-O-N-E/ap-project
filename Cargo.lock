@@ -231,6 +231,7 @@ dependencies = [
  "serde",
  "serde_json",
  "simple_logger",
+ "skylink",
  "toml",
  "wg_2024",
 ]
@@ -3380,6 +3381,16 @@ dependencies = [
  "log",
  "time",
  "windows-sys 0.48.0",
+]
+
+[[package]]
+name = "skylink"
+version = "0.1.0"
+source = "git+https://github.com/Suge42/Skylink_drone.git#c11d0e0e641eaaaa54bab3d5671110a63a2229a9"
+dependencies = [
+ "crossbeam-channel",
+ "fastrand",
+ "wg_2024",
 ]
 
 [[package]]
