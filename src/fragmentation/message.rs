@@ -51,6 +51,11 @@ pub enum MessageData {
         partner: NodeId,
         history: Vec<ChatMessage>,
     },
+    UnregisteredSenderError,
+    UnregisteredRecipientError,
+    
+    UnsupportedMessageTypeError, // for example when a client sends response clients to the server
+
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
