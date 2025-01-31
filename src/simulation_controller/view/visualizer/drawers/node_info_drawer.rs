@@ -1,5 +1,5 @@
 use egui::{CollapsingHeader, Context, ScrollArea, Ui, Window};
-use petgraph::graph::NodeIndex;
+use petgraph::graph::{EdgeIndex, NodeIndex};
 
 use crate::simulation_controller::{
     node::{UiDroneNode, UiNodePayload, UiNodeType},
@@ -140,7 +140,31 @@ fn draw_drone_specific(
     if ui.button("Crash").clicked() {
         get_drone_node(state, node_index).crashed = true;
         simulation_controller.send_crash_command(get_payload_mut(state, node_index).unwrap().wg_id);
-        for node in state.graph_section.g.g.neighbors_undirected(node_index) {
+        let neighbors: Vec<NodeIndex> = state
+            .graph_section
+            .g
+            .g
+            .neighbors_undirected(node_index)
+            .collect();
+        for node in neighbors {
+            let node_to = state.graph_section.g.node(node).unwrap().payload().wg_id;
+
+            let edges: Vec<EdgeIndex> = state
+                .graph_section
+                .g
+                .edges_connecting(node_index, node)
+                .map(|e| e.0)
+                .collect();
+            for edge in edges {
+                state
+                    .graph_section
+                    .g
+                    .edge_mut(edge)
+                    .unwrap()
+                    .payload_mut()
+                    .is_active = false;
+            }
+
             match state
                 .graph_section
                 .g
@@ -150,10 +174,7 @@ fn draw_drone_specific(
                 .node_type
             {
                 UiNodeType::Drone(_) => {
-                    simulation_controller.send_remove_sender_command(
-                        state.graph_section.g.node(node).unwrap().payload().wg_id,
-                        curr_node_wg_id,
-                    );
+                    simulation_controller.send_remove_sender_command(node_to, curr_node_wg_id);
                 }
                 _ => {}
             }

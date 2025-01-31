@@ -1,7 +1,9 @@
 // use egui::epaint::*;
-use egui::{Color32, Pos2, Shape};
+use egui::{epaint::PathStroke, Color32, Pos2, Shape, Stroke};
 use egui_graphs::{DefaultEdgeShape, DisplayEdge, DisplayNode, DrawContext, EdgeProps, Node};
 use petgraph::{stable_graph::IndexType, EdgeType};
+
+use super::util::colors;
 
 #[derive(Clone)]
 pub struct UiEdgePayload {
@@ -39,11 +41,29 @@ impl<N: Clone, Ty: EdgeType, Ix: IndexType, D: DisplayNode<N, UiEdgePayload, Ty,
     ) -> Vec<egui::Shape> {
         let (start, end) = (start.location(), end.location());
         let points = [start, end].map(|p| ctx.meta.canvas_to_screen_pos(p));
-        let dotted_line = Shape::dotted_line(&points, Color32::WHITE, 10., 2.);
-        dotted_line
+
+        let line;
+        let stroke_width = ctx.meta.canvas_to_screen_size(self.default_impl.width / 2.);
+        if self.payload.is_active {
+            line = vec![Shape::line_segment(
+                points,
+                Stroke::new(stroke_width, colors::OFF_WHITE),
+            )];
+        } else {
+            line = Shape::dashed_line(
+                &points,
+                Stroke::new(stroke_width, colors::GRAY_WHITE),
+                10.,
+                5.,
+            );
+        }
+
+        line
     }
 
-    fn update(&mut self, _: &egui_graphs::EdgeProps<UiEdgePayload>) {}
+    fn update(&mut self, props: &egui_graphs::EdgeProps<UiEdgePayload>) {
+        self.payload = props.payload.clone()
+    }
 
     fn is_inside(
         &self,
