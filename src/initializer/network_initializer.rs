@@ -32,7 +32,7 @@ use d_r_o_n_e_drone::MyDrone;
 
 use crate::{
     client::{client_test::Client, client_test_2::Client2, ClientTrait},
-    server::{server_test::Server, ServerTrait},
+    server::{server_gino::Server, ServerTrait},
     simulation_controller::{
         node::{UiClientNode, UiDroneNode, UiNodePayload, UiNodeType, UiServerNode},
         structs::{ClientCommand, ClientEvent, ServerCommand, ServerEvent},
