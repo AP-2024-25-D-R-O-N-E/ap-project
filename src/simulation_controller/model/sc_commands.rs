@@ -119,11 +119,12 @@ impl SimulationController {
 
     pub fn send_remove_sender_command(&self, node_id: NodeId, node_to_id: NodeId) {
         match &self.drone_command_channels.get(&node_id) {
-            Some(channel) => {
+            Some(command_channel) => {
                 if !self.packet_channels.contains_key(&node_to_id) {
                     log::warn!("Removing a channel to unexisting node");
+                } else {
+                    command_channel.send(DroneCommand::RemoveSender(node_to_id));
                 }
-                channel.send(DroneCommand::RemoveSender(node_to_id));
             }
             None => {
                 log::error!("Specified node does not exist");
@@ -131,19 +132,19 @@ impl SimulationController {
         }
     }
 
-    pub fn send_add_sender_command(
-        &self,
-        node_id: NodeId,
-        node_to_id: NodeId,
-        packet_channel: Sender<Packet>,
-    ) {
+    pub fn send_add_sender_command(&self, node_id: NodeId, node_to_id: NodeId) {
         match &self.drone_command_channels.get(&node_id) {
-            Some(channel) => {
-                if !self.packet_channels.contains_key(&node_to_id) {
+            Some(command_channel) => match self.packet_channels.get(&node_to_id) {
+                Some(packet_channel) => {
+                    command_channel.send(DroneCommand::AddSender(
+                        node_to_id,
+                        packet_channel.0.clone(),
+                    ));
+                }
+                None => {
                     log::warn!("Trying to add a channel to unexisting node");
                 }
-                channel.send(DroneCommand::AddSender(node_to_id, packet_channel));
-            }
+            },
             None => {
                 log::error!("Specified node does not exist");
             }

@@ -1,8 +1,26 @@
 use egui::{CollapsingHeader, Color32, RichText, Ui};
-use petgraph::algo::{self, dijkstra::dijkstra};
+use egui_graphs::{Edge, Node};
+use petgraph::{
+    algo::{self, connected_components, dijkstra::dijkstra},
+    csr::DefaultIx,
+    graph::NodeIndex,
+    prelude::StableGraph,
+    visit::{IntoEdges, Visitable},
+    Undirected,
+};
+use std::{
+    collections::{HashSet, VecDeque},
+    hash::Hash,
+};
 use wg_2024::network::NodeId;
 
-use crate::simulation_controller::{edge::UiEdgePayload, state::State, util::*, SimulationController};
+use crate::simulation_controller::{
+    edge::{CustomEdgeShape, UiEdgePayload},
+    node::{CustomNodeShape, UiNodePayload},
+    state::State,
+    util::*,
+    SimulationController,
+};
 
 pub fn draw_section_testing(
     ui: &mut Ui,
@@ -295,6 +313,51 @@ pub fn send_msg_fragment_section(
     ui.end_row();
 }
 
+fn bfs_with_disabled_edges<N>(
+    graph: &StableGraph<
+        N,
+        // Node<UiNodePayload, UiEdgePayload, Undirected, DefaultIx, CustomNodeShape>,
+        Edge<UiNodePayload, UiEdgePayload, Undirected, DefaultIx, CustomNodeShape, CustomEdgeShape>,
+        Undirected,
+    >,
+    start: NodeIndex,
+) -> usize
+where
+{
+    let mut queue = VecDeque::new();
+    let mut visited = HashSet::new();
+    let mut visited_count = 0;
+    queue.push_back(start);
+
+    while (!queue.is_empty()) {
+        let curr_node = queue.pop_front().unwrap();
+
+        if (visited.contains(&curr_node)) {
+            continue;
+        }
+
+        for neighbor in graph.neighbors_undirected(curr_node) {
+            let mut has_active_edge = false;
+            for edge in graph.edges_connecting(curr_node, neighbor) {
+                if (edge.weight().payload().is_active) {
+                    has_active_edge = true;
+                    break;
+                }
+            }
+
+            if !visited.contains(&neighbor) && has_active_edge {
+                queue.push_back(neighbor);
+                visited_count += 1;
+            }
+        }
+
+        visited.insert(curr_node);
+    }
+
+    println!("Visited count: {}", visited_count);
+    visited_count
+}
+
 pub fn add_remove_sender_section(
     ui: &mut Ui,
     state: &mut State,
@@ -315,18 +378,23 @@ pub fn add_remove_sender_section(
         if check_parameters(state) {
             let node1 = state.graph_section.g.selected_nodes()[0];
             let node2 = state.graph_section.g.selected_nodes()[1];
-            state.graph_section.g.add_edge(node1, node2, UiEdgePayload::default());
+            state
+                .graph_section
+                .g
+                .add_edge(node1, node2, UiEdgePayload::default());
             state.test_section.channel_modifier_status_flag =
                 Some(Ok("Sender added with success".to_string()));
             let node1_wg_id = state.graph_section.g.node(node1).unwrap().payload().wg_id;
             let node2_wg_id = state.graph_section.g.node(node1).unwrap().payload().wg_id;
-            match simulation_controller.packet_channels.get(&node1_wg_id) {
-                Some(sender_channel) => simulation_controller.send_add_sender_command(
-                    node1_wg_id,
-                    node2_wg_id,
-                    sender_channel.0.clone(),
-                ),
-                None => {
+            match (
+                simulation_controller.packet_channels.get(&node1_wg_id),
+                simulation_controller.packet_channels.get(&node2_wg_id),
+            ) {
+                (Some(sender_channel_1), Some(sender_channel_2)) => {
+                    simulation_controller.send_add_sender_command(node1_wg_id, node2_wg_id);
+                    simulation_controller.send_add_sender_command(node2_wg_id, node1_wg_id);
+                }
+                _ => {
                     state.test_section.channel_modifier_status_flag =
                         Some(Err("The specified channel coul not be found".to_string()));
                 }
@@ -335,17 +403,50 @@ pub fn add_remove_sender_section(
     }
 
     if (ui.button("Remove sender").clicked()) {
-        if check_parameters(state) {
-            let node1 = state.graph_section.g.selected_nodes()[0];
-            let node2 = state.graph_section.g.selected_nodes()[1];
-            state.graph_section.g.remove_edges_between(node1, node2);
-            state.test_section.channel_modifier_status_flag =
-                Some(Ok("Sender removed with success".to_string()));
-            simulation_controller.send_remove_sender_command(
-                state.graph_section.g.node(node1).unwrap().payload().wg_id,
-                state.graph_section.g.node(node2).unwrap().payload().wg_id,
-            );
-        }
+        bfs_with_disabled_edges(
+            &state.graph_section.g.g,
+            state.graph_section.g.selected_nodes()[0],
+        );
+
+        let x = &state.graph_section.g.g;
+        // if check_parameters(state) {
+        //     let node1 = state.graph_section.g.selected_nodes()[0];
+        //     let node2 = state.graph_section.g.selected_nodes()[1];
+        //
+        //     // let old_edge_payload = state.graph_section.g.
+        //     let mut payloads = vec![];
+        //     for (edge_index, edge) in state.graph_section.g.edges_connecting(node1, node2) {
+        //         payloads.push(edge.payload().clone())
+        //     }
+        //
+        //
+        //
+        //     state.graph_section.g.remove_edges_between(node1, node2);
+        //     let g = &state.graph_section.g.g;
+        //     let would_disconnect = dijkstra(g, node1, None, |_| 1).len() != g.node_count();
+        //     for payload in payloads {
+        //         state
+        //             .graph_section
+        //             .g
+        //             .add_edge(node1, node2, payload.clone());
+        //     }
+        //
+        //     if would_disconnect {
+        //         state.test_section.channel_modifier_status_flag = Some(Err(
+        //             "Removing this edge would cause the graph to be disconnected".to_string(),
+        //         ));
+        //     } else {
+        //         state.graph_section.g.remove_edges_between(node1, node2);
+        //         state.test_section.channel_modifier_status_flag =
+        //             Some(Ok("Sender removed with success".to_string()));
+        //
+        //         let node1_wg_id = state.graph_section.g.node(node1).unwrap().payload().wg_id;
+        //         let node2_wg_id = state.graph_section.g.node(node2).unwrap().payload().wg_id;
+        //
+        //         simulation_controller.send_remove_sender_command(node1_wg_id, node2_wg_id);
+        //         simulation_controller.send_remove_sender_command(node2_wg_id, node1_wg_id);
+        //     }
+        // }
     }
 
     ui.end_row();

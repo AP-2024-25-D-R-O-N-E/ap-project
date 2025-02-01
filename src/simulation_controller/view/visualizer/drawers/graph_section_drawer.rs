@@ -3,7 +3,7 @@ use egui_graphs::{
     GraphView, LayoutHierarchical, LayoutRandom, LayoutStateHierarchical, LayoutStateRandom,
 };
 
-use crate::simulation_controller::state::State;
+use crate::simulation_controller::{edge::UiEdgePayload, node::UiNodePayload, state::State};
 
 pub fn draw_section_graph(ui: &mut Ui, state: &mut State) {
     let settings_interaction = &egui_graphs::SettingsInteraction::new()
@@ -61,7 +61,7 @@ pub fn draw_section_graph(ui: &mut Ui, state: &mut State) {
     let settings_style = &egui_graphs::SettingsStyle::new()
         .with_labels_always(state.settings_section.style_settings.labels_always);
     ui.add(
-        &mut GraphView::<_, _, _, _, _, _, LayoutStateRandom, LayoutRandom>::new(
+        &mut GraphView::<UiNodePayload, UiEdgePayload, _, _, _, _, LayoutStateRandom, LayoutRandom>::new(
             &mut state.graph_section.g,
         )
         .with_interactions(settings_interaction)
