@@ -59,8 +59,17 @@ pub enum MessageData {
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub enum ChatMessage {
-    TextMessage(String),
-    File { file: Vec<u8>, file_name: String }, //file data, file name
+    TextMessage {
+        from: NodeId,
+        to: NodeId,
+        text: String,
+    },
+    FileMessage {
+        from: NodeId,
+        to: NodeId,
+        file: Vec<u8>,
+        file_name: String,
+    }, //file data, file name
 }
 
 impl Message {

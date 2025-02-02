@@ -1,6 +1,6 @@
 use std::{
     cell::RefCell,
-    collections::{HashMap, VecDeque},
+    collections::{HashMap, HashSet, VecDeque},
     sync::{Arc, Condvar, Mutex, RwLock},
     thread::{self, JoinHandle},
 };
@@ -25,6 +25,7 @@ use wg_2024::{
 };
 
 use crate::{
+    client,
     fragmentation::{
         self,
         message::{self, ChatMessage, Message, MessageData},
@@ -46,6 +47,7 @@ pub struct ChatServer {
     fragment_buffers: Arc<RwLock<HashMap<(NodeId, u64), Vec<Fragment>>>>, // stores fragments until they're ready to be assembled
     ack_packet_buffer: Arc<Mutex<HashMap<(NodeId, u64, u64), Packet>>>, // stores packets that need to await an ack. The tuple is (destination, session_id, frag_index)
     topology_modified: Arc<Mutex<bool>>, // flag to check if the topology has been modified
+    edge_nodes: Arc<RwLock<HashSet<NodeId>>>, // stores the edge nodes that can't be used in a route
 }
 
 impl ServerTrait for ChatServer {
@@ -66,7 +68,7 @@ impl ServerTrait for ChatServer {
         // thread handles for all threads spawned by this server
         let mut threads: Vec<JoinHandle<()>> = Vec::new();
 
-        // spawn the sender thread
+        // spawn the sender thread, clone all the necessary channels for thread spawn
         let packet_sender = self.packet_send.clone();
         let sim_contr_sender = self.sim_contr_send.clone();
 
@@ -84,6 +86,8 @@ impl ServerTrait for ChatServer {
 
         let topology_modified = self.topology_modified.clone();
 
+        let edge_nodes = self.edge_nodes.clone();
+
         threads.push(thread::spawn(move || {
             ChatServer::sender_thread(
                 id,
@@ -95,6 +99,7 @@ impl ServerTrait for ChatServer {
                 ack_packet_buffer,
                 topology,
                 topology_modified,
+                edge_nodes,
             );
         }));
 
@@ -104,8 +109,10 @@ impl ServerTrait for ChatServer {
         // ready channel to start the assembly of the fragments
         let (ready_send, ready_recv) = unbounded::<(NodeId, u64)>();
 
+        let id = self.id;
+
         threads.push(thread::spawn(move || {
-            ChatServer::message_handler_thread(fragment_buffers, ready_recv, fragment_send);
+            ChatServer::message_handler_thread(id, fragment_buffers, ready_recv, fragment_send);
         }));
 
         // at the end call the receiver thread (which is this one)
@@ -165,6 +172,7 @@ impl ChatServer {
         ack_packet_buffer: Arc<Mutex<HashMap<(NodeId, u64, u64), Packet>>>,
         topology: Arc<RwLock<GraphMap<NodeId, (), Undirected>>>,
         topology_modified: Arc<Mutex<bool>>,
+        edge_nodes: Arc<RwLock<HashSet<NodeId>>>,
     ) {
         // records the routing table for the server (this is only updated when an update to the topology is made)
         let mut routing_table: HashMap<NodeId, Vec<NodeId>> = HashMap::new();
@@ -187,7 +195,7 @@ impl ChatServer {
                         let mut topology_modified_lock = topology_modified.lock().unwrap();
 
                         if *topology_modified_lock {
-                            Self::find_route(id, destination, &mut routing_table, topology.clone());
+                            Self::find_route(id, destination, &mut routing_table, topology.clone(), edge_nodes.clone());
                             *topology_modified_lock = false;
                         }
 
@@ -215,7 +223,7 @@ impl ChatServer {
                         // choose the route for the packet
                         if routing_table.get(&destination).is_none() {
                             // if the routing table doesn't have the next hop, then we need to update the routing table
-                            Self::find_route(id, destination, &mut routing_table, topology.clone());
+                            Self::find_route(id, destination, &mut routing_table, topology.clone(), edge_nodes.clone());
                         }
 
                         let fragment_index = fragment.fragment_index;
@@ -238,11 +246,14 @@ impl ChatServer {
     }
 
     fn message_handler_thread(
+        id: NodeId,
         fragment_buffers: Arc<RwLock<HashMap<(NodeId, u64), Vec<Fragment>>>>,
         ready_recv: Receiver<(NodeId, u64)>,
         fragment_send: Sender<(NodeId, u64, Fragment)>,
     ) {
-        let mut client_table: HashMap<NodeId, NodeType> = HashMap::new();
+        let mut client_table: HashSet<NodeId> = HashSet::new();
+        // history has the nodes ordered in ascending order, i.e. the first NodeId is lower than the second
+        let mut history_table: HashMap<(NodeId, NodeId), Vec<ChatMessage>> = HashMap::new();
 
         // basically infinite loop waiting for ready signal from the receiver thread
         while let Ok((source, msg_id)) = ready_recv.recv() {
@@ -254,11 +265,19 @@ impl ChatServer {
 
                 // check the message type and act accordingly
                 let mut resp_message: Option<Message> = match message.message_data {
-                    MessageData::RegisterAsClient(_) => todo!(),
-                    MessageData::UnregisterAsClient(_) => todo!(),
-                    MessageData::RequestClients(_) => todo!(),
+                    MessageData::RegisterAsClient(client) => {
+                        Self::register_client(&mut client_table, client, id)
+                    }
+                    MessageData::UnregisterAsClient(client) => {
+                        Self::unregister_client(&mut client_table, client)
+                    }
+                    MessageData::RequestClients(destination) => {
+                        Self::request_clients(&client_table, id, destination)
+                    }
                     MessageData::RequestHistory { requester, partner } => todo!(),
-                    MessageData::TextMessage { from, to, text } => todo!(),
+                    MessageData::TextMessage { from, to, text } => {
+                        Self::text_message(from, to, text, id, &mut history_table)
+                    }
                     MessageData::FileMessage {
                         from,
                         to,
@@ -336,11 +355,22 @@ impl ChatServer {
         // check that the flood response is ours
         if fr.path_trace[0].0 == self.id {
             let mut topology_lock = self.topology.write().unwrap();
+            let mut edge_nodes_lock = self.edge_nodes.write().unwrap();
 
             let mut current_index = topology_lock.add_node(self.id);
 
             for (node_id, node_type) in fr.path_trace.iter().skip(1) {
                 let next_index = topology_lock.add_node(*node_id);
+                // add the edge nodes to the edge_nodes set
+                match node_type {
+                    NodeType::Client => {
+                        edge_nodes_lock.insert(*node_id);
+                    }
+                    NodeType::Drone => {}
+                    NodeType::Server => {
+                        edge_nodes_lock.insert(*node_id);
+                    }
+                }
 
                 topology_lock.add_edge(current_index, next_index, ());
                 current_index = next_index;
@@ -434,6 +464,7 @@ impl ChatServer {
         destination: NodeId,
         routing_table: &mut HashMap<NodeId, Vec<NodeId>>,
         topology: Arc<RwLock<GraphMap<NodeId, (), Undirected>>>,
+        edge_nodes: Arc<RwLock<HashSet<NodeId>>>,
     ) {
         let topology_lock = topology.read().unwrap();
 
@@ -442,7 +473,18 @@ impl ChatServer {
             &*topology_lock,
             id,
             |finish| finish == destination,
-            |_| 1,
+            |(a, b, _)| {
+                if destination == a || destination == b {
+                    return 1;
+                }
+                // if a node is an edge node, then the weight should be "infinite" as it can't be used
+                let edge_nodes_lock = edge_nodes.read().unwrap();
+                if edge_nodes_lock.contains(&b) || edge_nodes_lock.contains(&a) {
+                    topology_lock.edge_count()
+                } else {
+                    1
+                }
+            },
             |_| 0,
         );
 
@@ -478,4 +520,65 @@ impl ChatServer {
 }
 
 // Message handler thread functions
-impl ChatServer {}
+impl ChatServer {
+    fn register_client(
+        client_table: &mut HashSet<NodeId>,
+        client: NodeId,
+        id: NodeId,
+    ) -> Option<Message> {
+        client_table.insert(client);
+
+        Some(Message::new(id, client, MessageData::AcknolewdgedAsClient))
+    }
+
+    fn unregister_client(client_table: &mut HashSet<NodeId>, client: NodeId) -> Option<Message> {
+        client_table.remove(&client);
+        None
+    }
+
+    fn request_clients(
+        client_table: &HashSet<NodeId>,
+        id: NodeId,
+        destination: NodeId,
+    ) -> Option<Message> {
+        let clients: Vec<NodeId> = client_table.iter().cloned().collect();
+
+        Some(Message::new(
+            id,
+            destination,
+            MessageData::ResponseClients(clients),
+        ))
+    }
+
+    fn text_message(
+        from: NodeId,
+        to: NodeId,
+        text: String,
+        id: NodeId,
+        history_table: &mut HashMap<(NodeId, NodeId), Vec<ChatMessage>>,
+    ) -> Option<Message> {
+        let message = Message::new(
+            id,
+            to,
+            MessageData::TextMessage {
+                from,
+                to,
+                text: text.clone(),
+            },
+        );
+
+        // order the nodes in ascending order to keep the history consistent
+        let mut key_tuple: (NodeId, NodeId) = (from, to);
+        if to < from {
+            key_tuple = (to, from);
+        }
+
+        // add the message to the history table
+        history_table
+            .entry(key_tuple)
+            .or_insert_with(Vec::new)
+            .push(ChatMessage::TextMessage { from, to, text });
+
+        Some(message)
+    }
+}
