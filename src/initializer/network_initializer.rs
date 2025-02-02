@@ -35,7 +35,7 @@ use d_r_o_n_e_drone::MyDrone;
 
 use crate::{
     client::{client_test::Client, client_test_2::Client2, ClientTrait},
-    server::{server_gino::Server, ServerTrait},
+    server::{server_gino::ChatServer, server_old::Server, ServerTrait},
     simulation_controller::{
         node::{UiClientNode, UiDroneNode, UiNodePayload, UiNodeType, UiServerNode},
         structs::{ClientCommand, ClientEvent, ServerCommand, ServerEvent},
@@ -341,7 +341,7 @@ impl NetworkInitializer {
         server_id: u8,
     ) -> Box<dyn ServerTrait> {
         match index {
-            _ => Box::new(Server::new(
+            _ => Box::new(ChatServer::new(
                 server_id,
                 command_send,
                 command_receiver,

@@ -1,20 +1,21 @@
-use std::{collections::HashMap, thread};
+use std::{cell::RefCell, collections::HashMap, sync::{Arc, RwLock}, thread::{self, JoinHandle}};
 
+use bincode::de::read;
 use colored::Colorize;
-use crossbeam::channel::{select_biased, Receiver, Sender};
+use crossbeam::{channel::{select_biased, unbounded, Receiver, Sender}, select};
 use petgraph::{
     prelude::{GraphMap, StableGraph},
     Undirected,
 };
 use wg_2024::{
     network::{NodeId, SourceRoutingHeader},
-    packet::{Ack, FloodRequest, FloodResponse, Fragment, Nack, NodeType, Packet, PacketType},
+    packet::{self, Ack, FloodRequest, FloodResponse, Fragment, Nack, NodeType, Packet, PacketType},
 };
 
 use crate::{
     fragmentation::{
         self,
-        message::{self, Message},
+        message::{self, ChatMessage, Message, MessageData},
         Fragmenter,
     },
     simulation_controller::structs::{ServerCommand, ServerEvent},
@@ -22,162 +23,118 @@ use crate::{
 
 use super::ServerTrait;
 
-#[derive(Debug, Hash, PartialEq, Eq, Clone, Copy, PartialOrd, Ord)]
-pub enum HashableNodeType {
-    Drone,
-    Server,
-    Client,
+pub struct ChatServer {
+    id: NodeId,
+    sim_contr_send: Sender<ServerEvent>,
+    sim_contr_recv: Receiver<ServerCommand>,
+    packet_recv: Receiver<Packet>,
+    packet_send: Arc<RwLock<HashMap<NodeId, Sender<Packet>>>>,
+    flood_id: u64, // keeps track of the current flood index
+    topology: Arc<RwLock<GraphMap<NodeId, (), Undirected>>>, // nodes don't register type, as they're instead inside the client_table
+    fragment_buffers: Arc<RwLock<HashMap<u64, Vec<Fragment>>>>, // stores fragments until they're ready to be assembled
 }
 
-#[derive(Debug)]
-pub struct Server {
-    pub id: NodeId,
-    pub scs: Sender<ServerEvent>,
-    pub scr: Receiver<ServerCommand>,
-    pub pr: Receiver<Packet>,
-    pub ps: HashMap<NodeId, Sender<Packet>>,
-    floods_id: u64,
-    topology: GraphMap<(NodeId, HashableNodeType), (), Undirected>,
-    msg_buffer: Vec<Fragment>,
-    session_id: u64,
-    client_vector: Vec<NodeId>,
-}
-
-impl ServerTrait for Server {
+impl ServerTrait for ChatServer {
     fn new(
         id: NodeId,
         sim_contr_send: Sender<ServerEvent>,
         sim_contr_recv: Receiver<ServerCommand>,
         packet_recv: Receiver<Packet>,
         packet_send: HashMap<NodeId, Sender<Packet>>,
-    ) -> Self {
-        let mut topology: GraphMap<(NodeId, HashableNodeType), (), Undirected> = GraphMap::new();
-        topology.add_node((id, HashableNodeType::Server));
-
-        Server {
-            id: id,
-            scs: sim_contr_send,
-            scr: sim_contr_recv,
-            pr: packet_recv,
-            ps: packet_send,
-            floods_id: 0,
-            topology,
-            msg_buffer: Vec::new(),
-            session_id: 0,
-            client_vector: Vec::new(),
-        }
+    ) -> Self
+    where
+        Self: Sized {
+        todo!()
     }
 
     fn run(&mut self) {
+
+        // thread handles for all threads spawned by this server
+        let mut threads: Vec<JoinHandle<()>> = Vec::new();
+
+        // spawn the sender thread
+        let packet_sender = self.packet_send.clone();
+        let sim_contr_sender = self.sim_contr_send.clone();
+
+        threads.push(thread::spawn(move || {
+            ChatServer::sender_thread(packet_sender, sim_contr_sender);
+        }));
+
+        // spawn the message handling thread
+
+        let fragment_buffers = self.fragment_buffers.clone();
+        let (ready_send, ready_recv) = unbounded::<NodeId>();
+
+        threads.push(thread::spawn(move || {
+            ChatServer::message_handler_thread(fragment_buffers, ready_recv);
+        }));
+
+
+        // at the end call the receiver thread (which is this one)
+        self.receiver_thread(ready_send);
+
+    }
+}
+
+impl Fragmenter for ChatServer {
+    fn disassemble(msg: Message) -> HashMap<u64, Fragment> {
+        todo!()
+    }
+
+    fn assemble(fragments: Vec<Fragment>) -> Message {
+        todo!()
+    }
+}
+
+impl ChatServer {
+
+    fn receiver_thread(&mut self, ready_send: Sender<NodeId>) {
+
         loop {
-            select_biased! {
-                recv(self.scr) -> command_res => {
-                    if let Ok(command) = command_res {
-                        //here goes the handling fo the sim controller
+            select_biased!(
+                recv(self.sim_contr_recv) -> cmd => {
+                    if let Ok(command) = cmd {
                         match command {
-                            ServerCommand::NetworkInitialized=>{
-                                self.initiate_flood();log::debug!("{} at {} - network initialized"," <- network initialized".green(),self.id);}
-                            ServerCommand::AddSender(node_id, sender) => self.add_sender(node_id, sender),
-                            ServerCommand::RemoveSender(node_id) => self.remove_channel(node_id), 
+                            ServerCommand::NetworkInitialized => todo!(),
+                            ServerCommand::AddSender(_, sender) => todo!(),
+                            ServerCommand::RemoveSender(_) => todo!(),
                         }
                     }
                 },
-                recv(self.pr) -> packet_res => {
-                    match packet_res {
-                        //remember to remove the underscores when you actually start using the variable ig
-                        Ok(packet) => {
-
-                            log::debug!("{} at {} - packet: {:?}, {:?}", " <- packet received".green(), self.id, packet.session_id, packet.routing_header);
-
-                            match packet.pack_type {
-                                PacketType::Nack(nack)=>self.manage_nack(nack),
-                                PacketType::Ack(ack)=>self.manage_ack(ack),
-                                PacketType::MsgFragment(fragment)=>self.manage_msg_fragment(packet.session_id, fragment),
-                                //  ...these two are jet to be defined...
-                                PacketType::FloodRequest(_) => self.manage_flood_request(packet),
-                                PacketType::FloodResponse(flood_response) => self.manage_flood_response(flood_response),
-                            }
-                        },
-                        Err(error) => {
-                            log::info!("Necessary error at program end: {}", error);
-                            return;
-                        },
+                recv(self.packet_recv) -> res => {
+                    if let Ok(mut packet) = res {
+                        match packet.pack_type {
+                            PacketType::MsgFragment(_) => self.manage_msg_fragment(packet, ready_send.clone()),
+                            PacketType::Ack(ack) => todo!(),
+                            PacketType::Nack(nack) => todo!(),
+                            PacketType::FloodRequest(_) => self.manage_flood_request(packet),
+                            PacketType::FloodResponse(flood_response) => self.manage_flood_response(flood_response),
+                        }
                     }
-
-                },
-
-            }
+                }
+            )
         }
+        
+
+
     }
+
+
+    fn sender_thread(packet_sender: Arc<RwLock<HashMap<u8, Sender<Packet>>>>, sim_contr_send: Sender<ServerEvent>) {
+
+    }
+
+    fn message_handler_thread(fragment_buffers: Arc<RwLock<HashMap<u64, Vec<Fragment>>>>, ready_recv: Receiver<NodeId>) {
+        let mut client_table: HashMap<NodeId, NodeType> = HashMap::new();
+
+
+
+    }
+
 }
 
-impl Fragmenter for Server {
-    fn disassemble(msg: Message) -> std::collections::HashMap<u64, wg_2024::packet::Fragment> {
-        todo!()
-    }
-
-    fn assemble(fragments: Vec<wg_2024::packet::Fragment>) -> Message {
-        todo!()
-    }
-}
-
-impl Server {
-    fn manage_nack(&self, nack: Nack) {
-        //resend the packet
-        log::debug!(
-            "{} {} received a nack: {:?}",
-            "↳ server".green(),
-            self.id,
-            nack
-        );
-    }
-
-    fn manage_ack(&self, ack: Ack) {
-        //free memory of message vector
-        log::debug!(
-            "{} {} received an ack: {:?}",
-            "↳ server".green(),
-            self.id,
-            ack
-        );
-    }
-
-    fn manage_msg_fragment(&mut self, session_id: u64, msg: Fragment) {
-        //call to the assembler
-        log::debug!(
-            "{} {} received a fragment: {:?}",
-            "↳ server".green(),
-            self.id,
-            msg
-        );
-
-        if self.session_id == 0 && self.msg_buffer.is_empty() {
-            self.session_id = session_id;
-            self.msg_buffer.reserve(msg.total_n_fragments as usize);
-        }
-
-        if session_id == self.session_id {
-            let index = msg.fragment_index as usize;
-            let total_frags = msg.total_n_fragments as usize;
-            self.msg_buffer[index] = msg;
-
-            if self.msg_buffer.len() == total_frags {
-                let message = Self::assemble(self.msg_buffer.clone());
-                //separate function in case I wanna multithread this later
-                self.manage_message(message);
-                self.msg_buffer.clear();
-                self.session_id = 0;
-            }
-        } else {
-            log::error!(
-                "{} {} received a fragment with a different session id",
-                "↳ server".red(),
-                self.id
-            );
-        }
-    }
-
-    fn manage_message(&self, msg: Message) {}
+// Receiver thread functions    
+impl ChatServer {
 
     fn manage_flood_request(&self, mut packet: Packet) {
         log::debug!(
@@ -205,17 +162,32 @@ impl Server {
                 pack_type: PacketType::FloodResponse(new_flood_res),
                 routing_header: SourceRoutingHeader {
                     hops: inverse_route,
-                    hop_index: 0,
+                    hop_index: 1,
                 },
                 session_id: 0, // it'll be whatever for now
             };
 
-            self.forward_packet(packet);
+            let next_node = packet.routing_header.hops[packet.routing_header.hop_index];
+            let send_channel = &self.packet_send.read().unwrap()[&next_node];
+
+            log::debug!(
+                "{} from {} - packet: {}",
+                " -> packet sent ".blue(),
+                self.id,
+                packet
+            );
+
+            let res = send_channel.send(packet.clone());
+
+            if let Err(mut packet) = res {
+                log::error!("The send inside channel gave an error, this shouldn't be happening");
+            } else {
+                self.sim_contr_send.send(ServerEvent::PacketSent(packet));
+            }
         }
     }
 
-    fn manage_flood_response(&mut self, fr: FloodResponse) {
-        //call to the assembler
+    fn manage_flood_response(&self, fr: FloodResponse) {
         log::debug!(
             "{} {} received a flood response: {:?}",
             "↳ server".green(),
@@ -225,84 +197,42 @@ impl Server {
 
         // check that the flood response is ours
         if fr.path_trace[0].0 == self.id {
-            let node = match fr.path_trace[0].1 {
-                NodeType::Drone => (fr.path_trace[0].0, HashableNodeType::Drone),
-                NodeType::Client => (fr.path_trace[0].0, HashableNodeType::Client),
-                NodeType::Server => (fr.path_trace[0].0, HashableNodeType::Server),
-            };
 
-            let mut current_index = self.topology.add_node(node);
+            let mut topology_lock = self.topology.write().unwrap();
 
-            for value in fr.path_trace.iter().skip(1) {
-                let node = match value.1 {
-                    NodeType::Drone => (value.0, HashableNodeType::Drone),
-                    NodeType::Client => (value.0, HashableNodeType::Client),
-                    NodeType::Server => (value.0, HashableNodeType::Server),
-                };
-                let new_node = self.topology.add_node(node);
-                self.topology.add_edge(current_index, new_node, ());
-                current_index = new_node;
+            let mut current_index = topology_lock.add_node(self.id);
+
+            for (node_id, node_type) in fr.path_trace.iter().skip(1) {
+                let next_index = topology_lock.add_node(*node_id);
+
+                topology_lock.add_edge(current_index, next_index, ());
+                current_index = next_index;
             }
         }
 
         log::info!("{} {:?}", "Server topology: ".green(), self.topology);
     }
 
-    fn forward_packet(&self, mut packet: Packet) {
-        packet.routing_header.hop_index += 1;
-        let next_node = packet.routing_header.hops[packet.routing_header.hop_index];
-
-        // finds the channel corresponding to the next node without any checks, since they were done previously
-        let send_channel = &self.ps[&next_node];
-
+    fn manage_msg_fragment(&self, packet: Packet, ready_send: Sender<NodeId>) {
         log::debug!(
-            "{} from {} - packet: {}",
-            " -> packet sent ".blue(),
+            "{} {} received a message fragment: {:?}",
+            "↳ server".green(),
             self.id,
-            packet
+            packet.pack_type
         );
 
-        let res = send_channel.send(packet.clone());
+        if let PacketType::MsgFragment(fragment) = packet.pack_type {
+            let fragment_buffers_lock = self.fragment_buffers.write().unwrap();
 
-        if let Err(mut packet) = res {
-            log::error!("The send inside channel gave an error, this shouldn't be happening");
-        } else {
-            self.scs.send(ServerEvent::PacketSent(packet));
         }
+        
     }
 
-    fn initiate_flood(&mut self) {
-        for (id, sender) in self.ps.iter() {
-            let packet = Packet {
-                pack_type: PacketType::FloodRequest(FloodRequest {
-                    path_trace: vec![(self.id, NodeType::Server)],
-                    flood_id: self.floods_id,
-                    initiator_id: self.id,
-                }),
-                routing_header: SourceRoutingHeader {
-                    hops: vec![],
-                    hop_index: 0,
-                },
-                session_id: 0, // it'll be whatever for now
-            };
-            self.floods_id += 1;
+}
 
-            let res = sender.send(packet.clone());
+// Sender thread functions
 
-            if let Err(mut packet) = res {
-                log::error!("The send inside channel gave an error, this shouldn't be happening");
-            } else {
-                self.scs.send(ServerEvent::PacketSent(packet));
-            }
-        }
-    }
+// Message handler thread functions
+impl ChatServer {
 
-    
-    fn add_sender(&mut self, id: NodeId, sender: Sender<Packet>) {
-        self.ps.insert(id, sender);
-    }
-
-    fn remove_channel(&mut self, id: NodeId) {
-        self.ps.remove(&id);
-    }
 }
