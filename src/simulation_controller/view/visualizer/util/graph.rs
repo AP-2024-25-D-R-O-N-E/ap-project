@@ -6,9 +6,6 @@ use petgraph::{
     Undirected,
 };
 use std::collections::{HashSet, VecDeque};
-type UiGraph =
-    Graph<UiNodePayload, UiEdgePayload, Undirected, DefaultIx, CustomNodeShape, CustomEdgeShape>;
-type StatusFlag = Option<Result<String, String>>;
 
 use crate::simulation_controller::{
     edge::{CustomEdgeShape, UiEdgePayload},
