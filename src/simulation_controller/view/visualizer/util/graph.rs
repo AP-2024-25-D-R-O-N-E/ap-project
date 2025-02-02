@@ -75,7 +75,7 @@ pub fn check_edge_removal(
     if edges.is_empty() {
         *status_flag = Some(Err(format!(
             "No channel between {} and {}",
-            node1_payload.wg_id, node1_payload.wg_id
+            node1_payload.wg_id, node2_payload.wg_id
         )));
         return false;
     }
@@ -92,7 +92,7 @@ pub fn check_edge_removal(
             crate::simulation_controller::node::UiNodeType::Drone(_),
             crate::simulation_controller::node::UiNodeType::Server(_),
         ) => {
-            let neighbors: Vec<NodeIndex> = graph.g.neighbors_undirected(node2).collect();
+            let neighbors: Vec<NodeIndex> = get_neigbors_with_disabled_edges(&graph.g, node2);
             if neighbors.len() == 2 {
                 false
             } else {
@@ -103,7 +103,7 @@ pub fn check_edge_removal(
             crate::simulation_controller::node::UiNodeType::Server(_),
             crate::simulation_controller::node::UiNodeType::Drone(_),
         ) => {
-            let neighbors: Vec<NodeIndex> = graph.g.neighbors_undirected(node1).collect();
+            let neighbors: Vec<NodeIndex> = get_neigbors_with_disabled_edges(&graph.g, node1);
             if neighbors.len() == 2 {
                 false
             } else {
@@ -167,7 +167,7 @@ pub fn check_edge_addition(
         status_flag: &mut StatusFlag,
         client: NodeIndex,
     ) -> bool {
-        let neighbors: Vec<NodeIndex> = graph.g.neighbors_undirected(client).collect();
+        let neighbors: Vec<NodeIndex> = get_neigbors_with_disabled_edges(&graph.g, client);
         if neighbors.len() >= 2 {
             *status_flag = Some(Err("Client nodes can have at most 2 neighbors".to_string()));
             return false;
@@ -241,7 +241,7 @@ pub fn check_node_removal(
     status_flag: &mut StatusFlag,
     node: NodeIndex,
 ) -> bool {
-    let neighbors: Vec<NodeIndex> = graph.g.neighbors_undirected(node).collect();
+    let neighbors: Vec<NodeIndex> = get_neigbors_with_disabled_edges(&graph.g, node);
     for neighbor in neighbors {
         if !check_edge_removal(graph, status_flag, node, neighbor) {
             return false;
@@ -359,6 +359,30 @@ where
     visited.len() == graph.node_count()
 }
 
+pub fn get_neigbors_with_disabled_edges<N>(
+    graph: &StableGraph<
+        N,
+        Edge<UiNodePayload, UiEdgePayload, Undirected, DefaultIx, CustomNodeShape, CustomEdgeShape>,
+        Undirected,
+    >,
+    node: NodeIndex,
+) -> Vec<NodeIndex> {
+    let neighbors: Vec<NodeIndex> = graph.neighbors_undirected(node).collect();
+    neighbors
+        .into_iter()
+        .filter(|neighbor| {
+            let mut has_active_edge = false;
+            for edge in graph.edges_connecting(node, *neighbor) {
+                if edge.weight().payload().is_active {
+                    has_active_edge = true;
+                    break;
+                }
+            }
+            has_active_edge
+        })
+        .collect()
+}
+
 pub fn is_well_formed(
     graph: &StableGraph<
         Node<UiNodePayload, UiEdgePayload, Undirected, DefaultIx, CustomNodeShape>,
@@ -371,14 +395,13 @@ pub fn is_well_formed(
         return false;
     }
 
-    
     // Clients have [1,2] neighbors
     // Servers have [2,inf] neighbors
     for node in graph.node_indices() {
         let node_payload = graph.node_weight(node).unwrap().payload();
         if !match &node_payload.node_type {
             UiNodeType::Server(ui_server_node) => {
-                let neighbors: Vec<NodeIndex> = graph.neighbors_undirected(node).collect();
+                let neighbors: Vec<NodeIndex> = get_neigbors_with_disabled_edges(graph, node);
                 if neighbors.len() < 2 {
                     false
                 } else {
@@ -386,7 +409,7 @@ pub fn is_well_formed(
                 }
             }
             UiNodeType::Client(ui_client_node) => {
-                let neighbors: Vec<NodeIndex> = graph.neighbors_undirected(node).collect();
+                let neighbors: Vec<NodeIndex> = get_neigbors_with_disabled_edges(graph, node);
                 if neighbors.len() > 2 {
                     false
                 } else {
