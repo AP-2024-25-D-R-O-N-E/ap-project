@@ -347,7 +347,12 @@ pub fn add_remove_sender_section(
             let node1 = state.graph_section.g.selected_nodes()[0];
             let node2 = state.graph_section.g.selected_nodes()[1];
 
-            if (check_edge_removal(state, node1, node2)) {
+            if (check_edge_removal(
+                &mut state.test_section.channel_modifier_status_flag,
+                &mut state.graph_section.g,
+                node1,
+                node2,
+            )) {
                 remove_edges_between(state, node1, node2, simulation_controller);
             }
         }

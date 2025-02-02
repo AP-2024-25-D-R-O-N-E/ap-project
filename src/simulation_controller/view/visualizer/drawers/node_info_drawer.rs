@@ -141,6 +141,7 @@ fn draw_drone_specific(
 
 
 
+
         // get_drone_node(state, node_index).crashed = true;
         // simulation_controller.send_crash_command(get_payload_mut(state, node_index).unwrap().wg_id);
         // let neighbors: Vec<NodeIndex> = state

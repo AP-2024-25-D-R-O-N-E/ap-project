@@ -1,4 +1,4 @@
-use egui_graphs::{Edge, Node};
+use egui_graphs::{Edge, Graph, Node};
 use petgraph::{
     csr::DefaultIx,
     graph::{EdgeIndex, NodeIndex},
@@ -15,27 +15,38 @@ use crate::simulation_controller::{
     SimulationController,
 };
 
-pub fn check_edge_removal(state: &mut State, node1: NodeIndex, node2: NodeIndex) -> bool {
-    let g = &state.graph_section.g.g;
+pub fn check_edge_removal(
+    status_flag: &mut Option<Result<String, String>>,
+    graph: &mut Graph<
+        UiNodePayload,
+        UiEdgePayload,
+        Undirected,
+        DefaultIx,
+        CustomNodeShape,
+        CustomEdgeShape,
+    >,
+    node1: NodeIndex,
+    node2: NodeIndex,
+) -> bool {
     let mut edges = HashSet::new();
-    for (edge_index, edge) in state.graph_section.g.edges_connecting(node1, node2) {
+    for (edge_index, edge) in graph.edges_connecting(node1, node2) {
         edges.insert(edge_index);
     }
 
-    let node1_payload = state.graph_section.g.node(node1).unwrap().payload().clone();
-    let node2_payload = state.graph_section.g.node(node2).unwrap().payload().clone();
+    let node1_payload = graph.node(node1).unwrap().payload().clone();
+    let node2_payload = graph.node(node2).unwrap().payload().clone();
 
     // Check if an edge exists between the two nodes
     if edges.is_empty() {
-        state.test_section.channel_modifier_status_flag = Some(Err(format!(
+        *status_flag = Some(Err(format!(
             "No channel between {} and {}",
             node1_payload.wg_id, node1_payload.wg_id
         )));
         return false;
     }
     // Check if removing this edge would disconnect the graph
-    else if !is_connected_without_edge_set(g, edges) {
-        state.test_section.channel_modifier_status_flag = Some(Err(
+    else if !is_connected_without_edge_set(&graph.g, edges) {
+        *status_flag = Some(Err(
             "Removing this edge would cause the graph to be disconnected".to_string(),
         ));
         return false;
@@ -46,7 +57,7 @@ pub fn check_edge_removal(state: &mut State, node1: NodeIndex, node2: NodeIndex)
             crate::simulation_controller::node::UiNodeType::Drone(_),
             crate::simulation_controller::node::UiNodeType::Server(_),
         ) => {
-            let neighbors: Vec<NodeIndex> = g.neighbors_undirected(node2).collect();
+            let neighbors: Vec<NodeIndex> = graph.g.neighbors_undirected(node2).collect();
             if neighbors.len() == 2 {
                 false
             } else {
@@ -57,7 +68,7 @@ pub fn check_edge_removal(state: &mut State, node1: NodeIndex, node2: NodeIndex)
             crate::simulation_controller::node::UiNodeType::Server(_),
             crate::simulation_controller::node::UiNodeType::Drone(_),
         ) => {
-            let neighbors: Vec<NodeIndex> = g.neighbors_undirected(node1).collect();
+            let neighbors: Vec<NodeIndex> = graph.g.neighbors_undirected(node1).collect();
             if neighbors.len() == 2 {
                 false
             } else {
@@ -66,7 +77,7 @@ pub fn check_edge_removal(state: &mut State, node1: NodeIndex, node2: NodeIndex)
         }
         _ => true,
     } {
-        state.test_section.channel_modifier_status_flag = Some(Err(
+        *status_flag = Some(Err(
             "Cannot remove edge: each server should be connected to at least 2 nodes".to_string(),
         ));
         return false;
