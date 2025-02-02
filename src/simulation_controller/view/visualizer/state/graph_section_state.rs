@@ -14,6 +14,7 @@ use wg_2024::network::NodeId;
 use crate::simulation_controller::{
     edge::{CustomEdgeShape, UiEdgePayload},
     node::{CustomNodeShape, UiClientNode, UiDroneNode, UiNodePayload, UiServerNode},
+    util::is_well_formed,
 };
 
 pub struct GraphSectionState {
@@ -28,6 +29,7 @@ pub struct GraphSectionState {
 
     pub graph_event_publisher: Sender<Event>,
     pub graph_event_consumer: Receiver<Event>,
+    pub is_well_formed: bool,
 
     node_id_map: HashMap<wg_2024::network::NodeId, petgraph::graph::NodeIndex>,
 }
@@ -47,20 +49,25 @@ impl GraphSectionState {
     fn new(graph: StableGraph<UiNodePayload, UiEdgePayload, Undirected>) -> GraphSectionState {
         let graph_section = GraphSectionState::default();
         let (event_publisher, event_consumer) = unbounded();
+        let ui_graph = Graph::from(&graph);
+        let is_well_formed = is_well_formed(&ui_graph.g);
 
         GraphSectionState {
-            g: Graph::from(&generate_graph()),
+            g: ui_graph,
             graph_event_publisher: event_publisher,
             graph_event_consumer: event_consumer,
             node_id_map: get_node_id_map(&graph),
+            is_well_formed,
         }
     }
+
     pub fn wg_id(&self, index: NodeIndex) -> Option<NodeId> {
         match self.g.node(index) {
             Some(node) => Some(node.payload().wg_id),
             None => None,
         }
     }
+
     pub fn graph_id(&self, index: NodeId) -> Option<NodeIndex> {
         match self.node_id_map.get(&index) {
             Some(idx) => Some(*idx),
@@ -78,6 +85,7 @@ impl Default for GraphSectionState {
             graph_event_publisher: event_publisher,
             graph_event_consumer: event_consumer,
             node_id_map: get_node_id_map(&graph),
+            is_well_formed: true,
         }
     }
 }

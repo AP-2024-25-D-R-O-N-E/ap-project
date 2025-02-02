@@ -15,6 +15,8 @@ use crate::simulation_controller::{
     SimulationController,
 };
 
+// TODO take into account the disabled edges and crashed drones
+
 pub fn get_payload_mut(graph: &mut UiGraph, node_index: NodeIndex) -> Option<&mut UiNodePayload> {
     match graph.node_mut(node_index) {
         Some(node) => Some(node.payload_mut()),
@@ -355,4 +357,47 @@ where
     }
 
     visited.len() == graph.node_count()
+}
+
+pub fn is_well_formed(
+    graph: &StableGraph<
+        Node<UiNodePayload, UiEdgePayload, Undirected, DefaultIx, CustomNodeShape>,
+        Edge<UiNodePayload, UiEdgePayload, Undirected, DefaultIx, CustomNodeShape, CustomEdgeShape>,
+        Undirected,
+    >,
+) -> bool {
+    // Connected
+    if !is_connected_without_edge_set(&graph, HashSet::new()) {
+        return false;
+    }
+
+    
+    // Clients have [1,2] neighbors
+    // Servers have [2,inf] neighbors
+    for node in graph.node_indices() {
+        let node_payload = graph.node_weight(node).unwrap().payload();
+        if !match &node_payload.node_type {
+            UiNodeType::Server(ui_server_node) => {
+                let neighbors: Vec<NodeIndex> = graph.neighbors_undirected(node).collect();
+                if neighbors.len() < 2 {
+                    false
+                } else {
+                    true
+                }
+            }
+            UiNodeType::Client(ui_client_node) => {
+                let neighbors: Vec<NodeIndex> = graph.neighbors_undirected(node).collect();
+                if neighbors.len() > 2 {
+                    false
+                } else {
+                    true
+                }
+            }
+            UiNodeType::Drone(_) => true,
+        } {
+            return false;
+        }
+    }
+
+    true
 }
