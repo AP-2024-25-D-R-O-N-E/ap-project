@@ -9,6 +9,7 @@ use egui::{Context, ScrollArea, Window};
 
 use egui_graphs::events::Event;
 
+use petgraph::graph::NodeIndex;
 use wg_2024::controller::DroneEvent;
 
 use super::drawers::{
@@ -74,9 +75,23 @@ impl SCGui {
                     Event::Pan(payload) => self.pan = payload.new_pan,
                     Event::Zoom(payload) => self.zoom = payload.new_zoom,
                     Event::NodeDoubleClick(double_click) => {
+                        let node_index = NodeIndex::new(double_click.id);
+                        self.state
+                            .graph_section
+                            .g
+                            .node_mut(node_index)
+                            .unwrap()
+                            .set_selected(true);
+
                         for node in self.state.graph_section.g.selected_nodes() {
+                            print!("{:?} ", node);
                             self.state.node_info_section.opened_windows.insert(*node);
                         }
+                        self.state
+                            .node_info_section
+                            .opened_windows
+                            .insert(node_index);
+                        println!("");
                     }
                     _ => {}
                 }
