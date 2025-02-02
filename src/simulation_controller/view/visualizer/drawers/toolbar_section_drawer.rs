@@ -1,8 +1,9 @@
-use egui::Ui;
+use egui::{Layout, Ui};
 
 use crate::simulation_controller::{
     node::{UiDroneNode, UiNodePayload},
     state::State,
+    util,
 };
 
 //Emojis 🧪📋🛠️❌📂
@@ -80,10 +81,26 @@ pub fn draw_toolbar_section(ui: &mut Ui, state: &mut State) {
             // }
         }
 
-        // if ui.button("Prints events").clicked() {
-        //     for x in state.events.events.clone() {
-        //         println!("{}", x);
-        //     }
-        // }
+        if state.graph_section.is_well_formed {
+            add_right_aligned_label(
+                ui,
+                egui::RichText::new("Ok".to_string()).color(util::colors::MUTED_GREEN),
+            );
+        } else {
+            add_right_aligned_label(
+                ui,
+                egui::RichText::new("Malformed topology".to_string())
+                    .color(util::colors::MUTED_RED),
+            );
+        }
     });
+}
+
+fn add_right_aligned_label(ui: &mut Ui, text: egui::RichText) {
+    let label1 = egui::Label::new(text.clone());
+    let label2 = egui::Label::new(text);
+    let res = label1.layout_in_ui(ui).2;
+    let label_width = res.intrinsic_size.unwrap().x;
+    ui.add_space(ui.available_size().x - label_width);
+    ui.add(label2);
 }
