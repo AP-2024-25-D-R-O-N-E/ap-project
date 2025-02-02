@@ -3,7 +3,7 @@ use egui_graphs::{Edge, Node};
 use petgraph::{
     algo::{self, connected_components, dijkstra::dijkstra},
     csr::DefaultIx,
-    graph::NodeIndex,
+    graph::{EdgeIndex, NodeIndex},
     prelude::StableGraph,
     visit::{IntoEdges, Visitable},
     Undirected,
@@ -326,7 +326,6 @@ where
 {
     let mut queue = VecDeque::new();
     let mut visited = HashSet::new();
-    let mut visited_count = 0;
     queue.push_back(start);
 
     while (!queue.is_empty()) {
@@ -347,15 +346,62 @@ where
 
             if !visited.contains(&neighbor) && has_active_edge {
                 queue.push_back(neighbor);
-                visited_count += 1;
             }
         }
 
         visited.insert(curr_node);
     }
 
-    println!("Visited count: {}", visited_count);
-    visited_count
+    // println!("Visited count: {}", visited_count);
+    visited.len()
+}
+
+fn is_connected_without_edge_set<N>(
+    graph: &StableGraph<
+        N,
+        Edge<UiNodePayload, UiEdgePayload, Undirected, DefaultIx, CustomNodeShape, CustomEdgeShape>,
+        Undirected,
+    >,
+    excluded_edges: HashSet<EdgeIndex>,
+) -> bool
+where
+{
+    let mut queue = VecDeque::new();
+    let mut visited = HashSet::new();
+    let first_node;
+    match graph.node_indices().next() {
+        Some(first_node_unwrapped) => first_node = first_node_unwrapped,
+        None => return true,
+    }
+    queue.push_back(first_node);
+
+    while (!queue.is_empty()) {
+        let curr_node = queue.pop_front().unwrap();
+
+        if (visited.contains(&curr_node)) {
+            continue;
+        }
+
+        for neighbor in graph.neighbors_undirected(curr_node) {
+            let mut has_active_edge = false;
+            for edge in graph.edges_connecting(curr_node, neighbor) {
+                if edge.weight().payload().is_active
+                    && !excluded_edges.contains(&edge.weight().id())
+                {
+                    has_active_edge = true;
+                    break;
+                }
+            }
+
+            if !visited.contains(&neighbor) && has_active_edge {
+                queue.push_back(neighbor);
+            }
+        }
+
+        visited.insert(curr_node);
+    }
+
+    visited.len() == graph.node_count()
 }
 
 pub fn add_remove_sender_section(
@@ -403,50 +449,92 @@ pub fn add_remove_sender_section(
     }
 
     if (ui.button("Remove sender").clicked()) {
-        bfs_with_disabled_edges(
-            &state.graph_section.g.g,
-            state.graph_section.g.selected_nodes()[0],
-        );
+        if check_parameters(state) {
+            let node1 = state.graph_section.g.selected_nodes()[0];
+            let node2 = state.graph_section.g.selected_nodes()[1];
 
-        let x = &state.graph_section.g.g;
-        // if check_parameters(state) {
-        //     let node1 = state.graph_section.g.selected_nodes()[0];
-        //     let node2 = state.graph_section.g.selected_nodes()[1];
-        //
-        //     // let old_edge_payload = state.graph_section.g.
-        //     let mut payloads = vec![];
-        //     for (edge_index, edge) in state.graph_section.g.edges_connecting(node1, node2) {
-        //         payloads.push(edge.payload().clone())
-        //     }
-        //
-        //
-        //
-        //     state.graph_section.g.remove_edges_between(node1, node2);
-        //     let g = &state.graph_section.g.g;
-        //     let would_disconnect = dijkstra(g, node1, None, |_| 1).len() != g.node_count();
-        //     for payload in payloads {
-        //         state
-        //             .graph_section
-        //             .g
-        //             .add_edge(node1, node2, payload.clone());
-        //     }
-        //
-        //     if would_disconnect {
-        //         state.test_section.channel_modifier_status_flag = Some(Err(
-        //             "Removing this edge would cause the graph to be disconnected".to_string(),
-        //         ));
-        //     } else {
-        //         state.graph_section.g.remove_edges_between(node1, node2);
-        //         state.test_section.channel_modifier_status_flag =
-        //             Some(Ok("Sender removed with success".to_string()));
-        //
-        //         let node1_wg_id = state.graph_section.g.node(node1).unwrap().payload().wg_id;
-        //         let node2_wg_id = state.graph_section.g.node(node2).unwrap().payload().wg_id;
-        //
-        //         simulation_controller.send_remove_sender_command(node1_wg_id, node2_wg_id);
-        //         simulation_controller.send_remove_sender_command(node2_wg_id, node1_wg_id);
-        //     }
-        // }
+            let node1_payload = state.graph_section.g.node(node1).unwrap().payload().clone();
+            let node2_payload = state.graph_section.g.node(node2).unwrap().payload().clone();
+
+            let g = &state.graph_section.g.g;
+            let mut edges = HashSet::new();
+            for (edge_index, edge) in state.graph_section.g.edges_connecting(node1, node2) {
+                edges.insert(edge_index);
+            }
+
+            // Check if an edge exists between the two nodes
+            if edges.is_empty() {
+                state.test_section.channel_modifier_status_flag = Some(Err(format!(
+                    "No channel between {} and {}",
+                    node1_payload.wg_id, node1_payload.wg_id
+                )));
+            }
+            // Check if removing this edge would disconnect the graph
+            else if !is_connected_without_edge_set(g, edges) {
+                state.test_section.channel_modifier_status_flag = Some(Err(
+                    "Removing this edge would cause the graph to be disconnected".to_string(),
+                ));
+            }
+            // Check if the server has at least 2 connections
+            else if !match (node1_payload.node_type, node2_payload.node_type) {
+                (
+                    crate::simulation_controller::node::UiNodeType::Drone(_),
+                    crate::simulation_controller::node::UiNodeType::Server(_),
+                ) => {
+                    let neighbors: Vec<NodeIndex> = g.neighbors_undirected(node2).collect();
+                    if neighbors.len() == 2 {
+                        false
+                    } else {
+                        true
+                    }
+                }
+                (
+                    crate::simulation_controller::node::UiNodeType::Server(_),
+                    crate::simulation_controller::node::UiNodeType::Drone(_),
+                ) => {
+                    let neighbors: Vec<NodeIndex> = g.neighbors_undirected(node1).collect();
+                    if neighbors.len() == 2 {
+                        false
+                    } else {
+                        true
+                    }
+                }
+                _ => true,
+            } {
+                state.test_section.channel_modifier_status_flag = Some(Err(
+                    "Cannot remove edge: each server should be connected to at least 2 nodes"
+                        .to_string(),
+                ));
+            }
+            // Can remove the edge
+            else {
+                state.graph_section.g.remove_edges_between(node1, node2);
+                state.test_section.channel_modifier_status_flag =
+                    Some(Ok("Sender removed with success".to_string()));
+
+                let node1_wg_id = state.graph_section.g.node(node1).unwrap().payload().wg_id;
+                let node2_wg_id = state.graph_section.g.node(node2).unwrap().payload().wg_id;
+
+                simulation_controller.send_remove_sender_command(node1_wg_id, node2_wg_id);
+                simulation_controller.send_remove_sender_command(node2_wg_id, node1_wg_id);
+            }
+
+            // if would_disconnect {
+            //     state.test_section.channel_modifier_status_flag = Some(Err(
+            //         "Removing this edge would cause the graph to be disconnected".to_string(),
+            //     ));
+            // } else {
+            //     state.graph_section.g.remove_edges_between(node1, node2);
+            //     state.test_section.channel_modifier_status_flag =
+            //         Some(Ok("Sender removed with success".to_string()));
+            //
+            //     let node1_wg_id = state.graph_section.g.node(node1).unwrap().payload().wg_id;
+            //     let node2_wg_id = state.graph_section.g.node(node2).unwrap().payload().wg_id;
+            //
+            //     simulation_controller.send_remove_sender_command(node1_wg_id, node2_wg_id);
+            //     simulation_controller.send_remove_sender_command(node2_wg_id, node1_wg_id);
+            // }
+        }
     }
 
     ui.end_row();
