@@ -61,7 +61,19 @@ impl ServerTrait for ChatServer {
     where
         Self: Sized,
     {
-        todo!()
+        Self {
+            id,
+            sim_contr_send,
+            sim_contr_recv,
+            packet_recv,
+            packet_send: Arc::new(RwLock::new(packet_send)),
+            flood_id: 0,
+            topology: Arc::new(RwLock::new(GraphMap::new())),
+            fragment_buffers: Arc::new(RwLock::new(HashMap::new())),
+            ack_packet_buffer: Arc::new(Mutex::new(HashMap::new())),
+            topology_modified: Arc::new(Mutex::new(false)),
+            edge_nodes: Arc::new(RwLock::new(HashSet::new())),
+        }
     }
 
     fn run(&mut self) {
@@ -121,12 +133,42 @@ impl ServerTrait for ChatServer {
 }
 
 impl Fragmenter for ChatServer {
-    fn assemble(fragments: Vec<Fragment>) -> Message {
-        todo!()
+    fn assemble(mut fragments: Vec<Fragment>) -> Message {
+        // sort fragments by index before assembling
+        fragments.sort_by(|a, b| a.fragment_index.cmp(&b.fragment_index));
+
+        let mut message_data: Vec<u8> = Vec::new();
+        for fragment in fragments {
+            message_data.extend(fragment.data);
+        }
+
+        Message::from_u8(message_data)
     }
 
     fn disassemble(msg: Message) -> std::collections::VecDeque<Fragment> {
-        todo!()
+        let mut message_data = msg.into_u8();
+
+        let mut fragments: VecDeque<Fragment> = VecDeque::new();
+        for i in 0..message_data.len() {
+            let mut fragment_data: [u8; 128] = [0; 128];
+            let mut lenght: u8 = 0;
+            for index in 0..128 {
+                if let Some(byte) = message_data.pop() {
+                    fragment_data[index] = byte;
+                    lenght += 1;
+                } else {
+                    break;
+                }
+            }
+
+            fragments.push_back(Fragment {
+                fragment_index: i as u64,
+                total_n_fragments: message_data.len() as u64,
+                length: lenght,
+                data: fragment_data,
+            });
+        }
+        fragments
     }
 }
 
@@ -141,9 +183,9 @@ impl ChatServer {
                 recv(self.sim_contr_recv) -> cmd => {
                     if let Ok(command) = cmd {
                         match command {
-                            ServerCommand::NetworkInitialized => todo!(),
-                            ServerCommand::AddSender(_, sender) => todo!(),
-                            ServerCommand::RemoveSender(_) => todo!(),
+                            ServerCommand::NetworkInitialized => self.initiate_flood(),
+                            ServerCommand::AddSender(id, sender) => self.add_sender(id, sender),
+                            ServerCommand::RemoveSender(id) => self.remove_sender(id),
                         }
                     }
                 },
@@ -151,8 +193,8 @@ impl ChatServer {
                     if let Ok(mut packet) = res {
                         match packet.pack_type {
                             PacketType::MsgFragment(_) => self.manage_msg_fragment(packet, ready_send.clone()),
-                            PacketType::Ack(ack) => todo!(),
-                            PacketType::Nack(nack) => todo!(),
+                            PacketType::Ack(ack) => self.manage_ack(packet.routing_header.hops[0], packet.session_id, ack),
+                            PacketType::Nack(nack) => self.manage_nack(packet.routing_header.hops[0], packet.session_id, nack, nack_send.clone()),
                             PacketType::FloodRequest(_) => self.manage_flood_request(packet),
                             PacketType::FloodResponse(flood_response) => self.manage_flood_response(flood_response),
                         }
@@ -254,6 +296,8 @@ impl ChatServer {
         let mut client_table: HashSet<NodeId> = HashSet::new();
         // history has the nodes ordered in ascending order, i.e. the first NodeId is lower than the second
         let mut history_table: HashMap<(NodeId, NodeId), Vec<ChatMessage>> = HashMap::new();
+        // stores the latest session id for each node
+        let mut msg_session_ids: HashMap<NodeId, u64> = HashMap::new();
 
         // basically infinite loop waiting for ready signal from the receiver thread
         while let Ok((source, msg_id)) = ready_recv.recv() {
@@ -274,33 +318,58 @@ impl ChatServer {
                     MessageData::RequestClients(destination) => {
                         Self::request_clients(&client_table, id, destination)
                     }
-                    MessageData::RequestHistory { requester, partner } => todo!(),
+                    MessageData::RequestHistory { requester, partner } => {
+                        Self::request_history(requester, partner, id, &history_table)
+                    }
                     MessageData::TextMessage { from, to, text } => {
-                        Self::text_message(from, to, text, id, &mut history_table)
+                        if !client_table.contains(&to) {
+                            Self::error_msg(id, from, MessageData::UnregisteredRecipientError)
+                        } else if !client_table.contains(&from) {
+                            Self::error_msg(id, from, MessageData::UnregisteredSenderError)
+                        } else {
+                            Self::text_message(from, to, text, id, &mut history_table)
+                        }
                     }
                     MessageData::FileMessage {
                         from,
                         to,
                         file,
                         file_name,
-                    } => todo!(),
-                    MessageData::ResponseClients(items) => todo!(),
-                    MessageData::AcknolewdgedAsClient => todo!(),
-                    MessageData::ResponseHistory { partner, history } => todo!(),
-                    MessageData::UnregisteredSenderError => todo!(),
-                    MessageData::UnregisteredRecipientError => todo!(),
-                    MessageData::UnsupportedMessageTypeError => todo!(),
+                    } => {
+                        if !client_table.contains(&to) {
+                            Self::error_msg(id, from, MessageData::UnregisteredRecipientError)
+                        } else if !client_table.contains(&from) {
+                            Self::error_msg(id, from, MessageData::UnregisteredSenderError)
+                        } else {
+                            Self::file_message(from, to, file, file_name, id, &mut history_table)
+                        }
+                    }
+                    MessageData::ResponseClients(items) => {
+                        Self::error_msg(id, source, MessageData::UnsupportedMessageTypeError)
+                    }
+                    MessageData::AcknolewdgedAsClient => {
+                        Self::error_msg(id, source, MessageData::UnsupportedMessageTypeError)
+                    }
+                    MessageData::ResponseHistory { partner, history } => {
+                        Self::error_msg(id, source, MessageData::UnsupportedMessageTypeError)
+                    }
+                    MessageData::UnregisteredSenderError => None,
+                    MessageData::UnregisteredRecipientError => None,
+                    MessageData::UnsupportedMessageTypeError => None,
                 };
 
                 if let Some(msg) = resp_message {
                     let destination_id: NodeId = msg.destination_id;
                     let fragments = Self::disassemble(msg);
+                    let mut session_id = msg_session_ids.get(&destination_id).unwrap_or(&0);
 
                     for fragment in fragments {
                         // send the fragments to the sender thread
-
-                        fragment_send.send((destination_id, todo!(), fragment));
+                        fragment_send.send((destination_id, *session_id, fragment));
                     }
+
+                    // insert updated session id
+                    msg_session_ids.insert(destination_id, session_id + 1);
                 }
             }
         }
@@ -356,6 +425,7 @@ impl ChatServer {
         if fr.path_trace[0].0 == self.id {
             let mut topology_lock = self.topology.write().unwrap();
             let mut edge_nodes_lock = self.edge_nodes.write().unwrap();
+            let mut topology_modified_lock = self.topology_modified.lock().unwrap();
 
             let mut current_index = topology_lock.add_node(self.id);
 
@@ -375,6 +445,7 @@ impl ChatServer {
                 topology_lock.add_edge(current_index, next_index, ());
                 current_index = next_index;
             }
+            *topology_modified_lock = true;
         }
 
         log::info!("{} {:?}", "Server topology: ".green(), self.topology);
@@ -436,6 +507,69 @@ impl ChatServer {
         }
     }
 
+    fn manage_ack(&self, origin: NodeId, session_id: u64, ack: Ack) {
+        log::debug!(
+            "{} {} received an ack: {:?}",
+            "↳ server".green(),
+            self.id,
+            ack
+        );
+
+        let ack_key = (origin, session_id, ack.fragment_index);
+
+        let mut ack_packet_buffer_lock = self.ack_packet_buffer.lock().unwrap();
+
+        if let Some(packet) = ack_packet_buffer_lock.remove(&ack_key) {
+            log::debug!(
+                "{} {} removed packet from ack buffer: {:?}",
+                "↳ server".green(),
+                self.id,
+                packet
+            );
+        }
+    }
+
+    fn manage_nack(
+        &self,
+        origin: NodeId,
+        session_id: u64,
+        nack: Nack,
+        nack_send: Sender<(NodeId, u64, Fragment)>,
+    ) {
+        log::debug!(
+            "{} {} received a nack: {:?}",
+            "↳ server".green(),
+            self.id,
+            nack
+        );
+
+        match &nack.nack_type {
+            packet::NackType::ErrorInRouting(node) => {
+                self.topology.write().unwrap().remove_node(*node);
+                *self.topology_modified.lock().unwrap() = true;
+            }
+            packet::NackType::DestinationIsDrone => {
+                panic!("The destination is a drone, this shouldn't be happening")
+            }
+            packet::NackType::Dropped => {
+                // do nothing for now, maybe in the future update the edge weights
+            }
+            packet::NackType::UnexpectedRecipient(_) => {
+                panic!("The recipient is not the expected one, this shouldn't be happening")
+            }
+        }
+
+        let ack_key = (origin, session_id, nack.fragment_index);
+
+        let mut ack_packet_buffer_lock = self.ack_packet_buffer.lock().unwrap();
+
+        if let Some(packet) = ack_packet_buffer_lock.remove(&ack_key) {
+            if let PacketType::MsgFragment(fragment) = packet.pack_type {
+                nack_send.send((origin, session_id, fragment));
+            }
+        }
+    }
+
     fn send_packet(&self, packet: Packet) {
         let next_node = packet.routing_header.hops[packet.routing_header.hop_index];
         let send_channel = &self.packet_send.read().unwrap()[&next_node];
@@ -454,6 +588,40 @@ impl ChatServer {
         } else {
             self.sim_contr_send.send(ServerEvent::PacketSent(packet));
         }
+    }
+
+    fn initiate_flood(&mut self) {
+        for (id, sender) in self.packet_send.read().unwrap().iter() {
+            let packet = Packet {
+                pack_type: PacketType::FloodRequest(FloodRequest {
+                    path_trace: vec![(self.id, NodeType::Server)],
+                    flood_id: self.flood_id,
+                    initiator_id: self.id,
+                }),
+                routing_header: SourceRoutingHeader {
+                    hops: vec![],
+                    hop_index: 0,
+                },
+                session_id: 0, // it'll be whatever for now
+            };
+            self.flood_id += 1;
+
+            let res = sender.send(packet.clone());
+
+            if let Err(mut packet) = res {
+                log::error!("The send inside channel gave an error, this shouldn't be happening");
+            } else {
+                self.sim_contr_send.send(ServerEvent::PacketSent(packet));
+            }
+        }
+    }
+
+    fn add_sender(&mut self, id: NodeId, sender: Sender<Packet>) {
+        self.packet_send.write().unwrap().insert(id, sender);
+    }
+
+    fn remove_sender(&mut self, id: NodeId) {
+        self.packet_send.write().unwrap().remove(&id);
     }
 }
 
@@ -550,6 +718,27 @@ impl ChatServer {
         ))
     }
 
+    fn request_history(
+        requester: NodeId,
+        partner: NodeId,
+        id: NodeId,
+        history_table: &HashMap<(NodeId, NodeId), Vec<ChatMessage>>,
+    ) -> Option<Message> {
+        // order the nodes in ascending order to keep the history consistent
+        let mut key_tuple: (NodeId, NodeId) = (requester, partner);
+        if partner < requester {
+            key_tuple = (partner, requester);
+        }
+
+        let history = history_table.get(&key_tuple)?.clone();
+
+        Some(Message::new(
+            id,
+            requester,
+            MessageData::ResponseHistory { partner, history },
+        ))
+    }
+
     fn text_message(
         from: NodeId,
         to: NodeId,
@@ -580,5 +769,48 @@ impl ChatServer {
             .push(ChatMessage::TextMessage { from, to, text });
 
         Some(message)
+    }
+
+    fn file_message(
+        from: NodeId,
+        to: NodeId,
+        file: Vec<u8>,
+        file_name: String,
+        id: NodeId,
+        history_table: &mut HashMap<(NodeId, NodeId), Vec<ChatMessage>>,
+    ) -> Option<Message> {
+        let message = Message::new(
+            id,
+            to,
+            MessageData::FileMessage {
+                from,
+                to,
+                file: file.clone(),
+                file_name: file_name.clone(),
+            },
+        );
+
+        // order the nodes in ascending order to keep the history consistent
+        let mut key_tuple: (NodeId, NodeId) = (from, to);
+        if to < from {
+            key_tuple = (to, from);
+        }
+
+        // add the message to the history table
+        history_table
+            .entry(key_tuple)
+            .or_insert_with(Vec::new)
+            .push(ChatMessage::FileMessage {
+                from,
+                to,
+                file,
+                file_name,
+            });
+
+        Some(message)
+    }
+
+    fn error_msg(id: NodeId, destination: NodeId, error_type: MessageData) -> Option<Message> {
+        Some(Message::new(id, destination, error_type))
     }
 }

@@ -57,7 +57,7 @@ pub enum MessageData {
     UnsupportedMessageTypeError, // for example when a client sends response clients to the server
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum ChatMessage {
     TextMessage {
         from: NodeId,
