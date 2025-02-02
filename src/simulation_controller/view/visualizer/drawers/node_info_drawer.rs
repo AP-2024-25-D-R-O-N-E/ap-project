@@ -132,7 +132,6 @@ fn draw_drone_specific(
                 .crash_status_flag,
             node_index,
         ) {
-            println!("Debugf");
             remove_node(
                 &mut state.graph_section.g,
                 &mut state
@@ -142,8 +141,8 @@ fn draw_drone_specific(
                     .unwrap()
                     .crash_status_flag,
                 node_index,
+                &simulation_controller,
             );
-            simulation_controller.send_crash_command(curr_node_wg_id);
         }
 
         // get_drone_node_from_state(state, node_index).crashed = true;

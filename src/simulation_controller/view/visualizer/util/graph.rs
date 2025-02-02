@@ -248,7 +248,12 @@ pub fn check_node_removal(
     true
 }
 
-pub fn remove_node(graph: &mut UiGraph, status_flag: &mut StatusFlag, node: NodeIndex) {
+pub fn remove_node(
+    graph: &mut UiGraph,
+    status_flag: &mut StatusFlag,
+    node: NodeIndex,
+    simulation_controller: &SimulationController,
+) {
     let edges: Vec<EdgeIndex> = graph
         .g
         .edges_directed(node, petgraph::Direction::Outgoing)
@@ -258,6 +263,7 @@ pub fn remove_node(graph: &mut UiGraph, status_flag: &mut StatusFlag, node: Node
         graph.edge_mut(edge).unwrap().payload_mut().is_active = false;
     }
     get_drone_node(graph, node).crashed = true;
+    simulation_controller.send_crash_command(graph.node(node).unwrap().payload().wg_id);
 }
 
 pub fn bfs_with_disabled_edges<N>(
