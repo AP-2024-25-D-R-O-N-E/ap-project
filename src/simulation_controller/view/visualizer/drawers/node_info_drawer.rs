@@ -56,6 +56,10 @@ pub fn draw_node_info(
                         ui.end_row();
 
                         if ui.button("Close").clicked() {
+                            println!(
+                                "closing {:?} of {:?}",
+                                node_index, state.node_info_section.opened_windows
+                            );
                             state.node_info_section.opened_windows.remove(&node_index);
                         }
                         if ui.button("Close others").clicked() {
@@ -197,20 +201,17 @@ fn draw_drone_specific(
         });
     }
     ui.end_row();
-    match &state
-        .node_info_section
-        .opened_windows
-        .get(&node_index)
-        .unwrap()
-        .crash_status_flag
-    {
-        Some(status) => match status {
-            Ok(s) => {
-                ui.label(RichText::new(s).color(colors::MUTED_GREEN));
-            }
-            Err(s) => {
-                ui.label(RichText::new(s).color(colors::MUTED_RED));
-            }
+    match &state.node_info_section.opened_windows.get(&node_index) {
+        Some(node_state) => match &node_state.crash_status_flag {
+            Some(status) => match status {
+                Ok(s) => {
+                    ui.label(RichText::new(s).color(colors::MUTED_GREEN));
+                }
+                Err(s) => {
+                    ui.label(RichText::new(s).color(colors::MUTED_RED));
+                }
+            },
+            None => (),
         },
         None => (),
     }
