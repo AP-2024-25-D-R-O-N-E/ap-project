@@ -6,6 +6,9 @@ use petgraph::{
     Undirected,
 };
 use std::collections::{HashSet, VecDeque};
+type UiGraph =
+    Graph<UiNodePayload, UiEdgePayload, Undirected, DefaultIx, CustomNodeShape, CustomEdgeShape>;
+type StatusFlag = Option<Result<String, String>>;
 
 use crate::simulation_controller::{
     edge::{CustomEdgeShape, UiEdgePayload},
@@ -87,69 +90,67 @@ pub fn check_edge_removal(
 }
 
 pub fn remove_edges_between(
-    state: &mut State,
+    graph: &mut UiGraph,
+    status_flag: &mut StatusFlag,
     node1: NodeIndex,
     node2: NodeIndex,
     simulation_controller: &SimulationController,
 ) {
-    state.graph_section.g.remove_edges_between(node1, node2);
-    state.test_section.channel_modifier_status_flag =
-        Some(Ok("Sender removed with success".to_string()));
+    graph.remove_edges_between(node1, node2);
+    *status_flag = Some(Ok("Sender removed with success".to_string()));
 
-    let node1_wg_id = state.graph_section.g.node(node1).unwrap().payload().wg_id;
-    let node2_wg_id = state.graph_section.g.node(node2).unwrap().payload().wg_id;
+    let node1_wg_id = graph.node(node1).unwrap().payload().wg_id;
+    let node2_wg_id = graph.node(node2).unwrap().payload().wg_id;
 
     simulation_controller.send_remove_sender_command(node1_wg_id, node2_wg_id);
     simulation_controller.send_remove_sender_command(node2_wg_id, node1_wg_id);
 }
 
-pub fn check_edge_addition(state: &mut State, node1: NodeIndex, node2: NodeIndex) -> bool {
-    let g = &state.graph_section.g.g;
-
+pub fn check_edge_addition(
+    graph: &mut UiGraph,
+    status_flag: &mut StatusFlag,
+    node1: NodeIndex,
+    node2: NodeIndex,
+) -> bool {
     // Ensure channel does not already exist
-    let edges: HashSet<_> = state
-        .graph_section
-        .g
+    let edges: HashSet<_> = graph
         .edges_connecting(node1, node2)
         .map(|(edge_index, _)| edge_index)
         .collect();
     if edges.len() > 0 {
-        state.test_section.channel_modifier_status_flag = Some(Err(
-            "Channel already exists between the two nodes".to_string(),
+        *status_flag = Some(Err(
+            "Channel already exists between the two nodes".to_string()
         ));
         return false;
     }
 
     // Helper function to validate client connection
-    fn check_drone_client(state: &mut State, client: NodeIndex) -> bool {
-        let neighbors: Vec<NodeIndex> = state
-            .graph_section
-            .g
-            .g
-            .neighbors_undirected(client)
-            .collect();
+    fn check_drone_client(
+        graph: &mut UiGraph,
+        status_flag: &mut StatusFlag,
+        client: NodeIndex,
+    ) -> bool {
+        let neighbors: Vec<NodeIndex> = graph.g.neighbors_undirected(client).collect();
         if neighbors.len() >= 2 {
-            state.test_section.channel_modifier_status_flag =
-                Some(Err("Client nodes can have at most 2 neighbors".to_string()));
+            *status_flag = Some(Err("Client nodes can have at most 2 neighbors".to_string()));
             return false;
         }
         true
     }
 
     // Helper function to handle non-drone connections
-    fn check_non_drone(state: &mut State) -> bool {
-        state.test_section.channel_modifier_status_flag =
-            Some(Err("Cannot have link between two non-drones".to_string()));
+    fn check_non_drone(status_flag: &mut Option<Result<String, String>>) -> bool {
+        *status_flag = Some(Err("Cannot have link between two non-drones".to_string()));
         false
     }
 
     // Check client contraints
-    let node1_payload = match state.graph_section.g.node(node1) {
+    let node1_payload = match graph.node(node1) {
         Some(node) => node.payload().clone(),
         None => return false, // Early return if node1 is invalid
     };
 
-    let node2_payload = match state.graph_section.g.node(node2) {
+    let node2_payload = match graph.node(node2) {
         Some(node) => node.payload().clone(),
         None => return false, // Early return if node2 is invalid
     };
@@ -157,11 +158,11 @@ pub fn check_edge_addition(state: &mut State, node1: NodeIndex, node2: NodeIndex
         (
             crate::simulation_controller::node::UiNodeType::Drone(_),
             crate::simulation_controller::node::UiNodeType::Client(_),
-        ) => check_drone_client(state, node2),
+        ) => check_drone_client(graph, status_flag, node2),
         (
             crate::simulation_controller::node::UiNodeType::Client(_),
             crate::simulation_controller::node::UiNodeType::Drone(_),
-        ) => check_drone_client(state, node1),
+        ) => check_drone_client(graph, status_flag, node1),
         (
             crate::simulation_controller::node::UiNodeType::Server(_),
             crate::simulation_controller::node::UiNodeType::Client(_),
@@ -177,25 +178,22 @@ pub fn check_edge_addition(state: &mut State, node1: NodeIndex, node2: NodeIndex
         | (
             crate::simulation_controller::node::UiNodeType::Server(_),
             crate::simulation_controller::node::UiNodeType::Server(_),
-        ) => check_non_drone(state),
+        ) => check_non_drone(status_flag),
         _ => true,
     }
 }
 
 pub fn add_edge_between(
-    state: &mut State,
+    graph: &mut UiGraph,
+    status_flag: &mut StatusFlag,
     node1: NodeIndex,
     node2: NodeIndex,
     simulation_controller: &SimulationController,
 ) {
-    state
-        .graph_section
-        .g
-        .add_edge(node1, node2, UiEdgePayload::default());
-    state.test_section.channel_modifier_status_flag =
-        Some(Ok("Sender added with success".to_string()));
-    let node1_wg_id = state.graph_section.g.node(node1).unwrap().payload().wg_id;
-    let node2_wg_id = state.graph_section.g.node(node1).unwrap().payload().wg_id;
+    graph.add_edge(node1, node2, UiEdgePayload::default());
+    *status_flag = Some(Ok("Sender added with success".to_string()));
+    let node1_wg_id = graph.node(node1).unwrap().payload().wg_id;
+    let node2_wg_id = graph.node(node1).unwrap().payload().wg_id;
 
     simulation_controller.send_add_sender_command(node1_wg_id, node2_wg_id);
     simulation_controller.send_add_sender_command(node2_wg_id, node1_wg_id);

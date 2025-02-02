@@ -336,8 +336,19 @@ pub fn add_remove_sender_section(
             let node1 = state.graph_section.g.selected_nodes()[0];
             let node2 = state.graph_section.g.selected_nodes()[1];
 
-            if check_edge_addition(state, node1, node2) {
-                add_edge_between(state, node1, node2, simulation_controller);
+            if check_edge_addition(
+                &mut state.graph_section.g,
+                &mut state.test_section.channel_modifier_status_flag,
+                node1,
+                node2,
+            ) {
+                add_edge_between(
+                    &mut state.graph_section.g,
+                    &mut state.test_section.channel_modifier_status_flag,
+                    node1,
+                    node2,
+                    simulation_controller,
+                );
             }
         }
     }
@@ -353,7 +364,13 @@ pub fn add_remove_sender_section(
                 node1,
                 node2,
             )) {
-                remove_edges_between(state, node1, node2, simulation_controller);
+                remove_edges_between(
+                    &mut state.graph_section.g,
+                    &mut state.test_section.channel_modifier_status_flag,
+                    node1,
+                    node2,
+                    simulation_controller,
+                );
             }
         }
     }
