@@ -73,6 +73,11 @@ impl SCGui {
                 match e {
                     Event::Pan(payload) => self.pan = payload.new_pan,
                     Event::Zoom(payload) => self.zoom = payload.new_zoom,
+                    Event::NodeDoubleClick(double_click) => {
+                        for node in self.state.graph_section.g.selected_nodes() {
+                            self.state.node_info_section.opened_windows.insert(*node);
+                        }
+                    }
                     _ => {}
                 }
             });
