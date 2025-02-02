@@ -45,7 +45,7 @@ pub struct ChatServer {
     flood_id: u64, // keeps track of the current flood index
     topology: Arc<RwLock<GraphMap<NodeId, (), Undirected>>>, // nodes don't register type, as they're instead inside the client_table
     fragment_buffers: Arc<RwLock<HashMap<(NodeId, u64), Vec<Fragment>>>>, // stores fragments until they're ready to be assembled
-    ack_packet_buffer: Arc<Mutex<HashMap<(NodeId, u64, u64), Packet>>>, // stores packets that need to await an ack. The tuple is (destination, session_id, frag_index)
+    ack_packet_buffer: Arc<Mutex<HashMap<(u64, u64), Packet>>>, // stores packets that need to await an ack. The tuple is (session_id, frag_index)
     topology_modified: Arc<Mutex<bool>>, // flag to check if the topology has been modified
     edge_nodes: Arc<RwLock<HashSet<NodeId>>>, // stores the edge nodes that can't be used in a route
 }
@@ -84,7 +84,7 @@ impl ServerTrait for ChatServer {
         let packet_sender = self.packet_send.clone();
         let sim_contr_sender = self.sim_contr_send.clone();
 
-        let (nack_send, nack_recv) = unbounded::<(NodeId, u64, Fragment)>();
+        let (nack_send, nack_recv) = unbounded::<Packet>();
 
         let (fragment_send, fragment_recv) = unbounded::<(NodeId, u64, Fragment)>();
 
@@ -139,7 +139,11 @@ impl Fragmenter for ChatServer {
 
         let mut message_data: Vec<u8> = Vec::new();
         for fragment in fragments {
-            message_data.extend(fragment.data);
+            if fragment.length < 128 {
+                message_data.extend(&fragment.data[0..fragment.length as usize]);
+            } else {
+                message_data.extend(&fragment.data);
+            }
         }
 
         Message::from_u8(message_data)
@@ -148,8 +152,12 @@ impl Fragmenter for ChatServer {
     fn disassemble(msg: Message) -> std::collections::VecDeque<Fragment> {
         let mut message_data = msg.into_u8();
 
+        message_data.reverse();
+
         let mut fragments: VecDeque<Fragment> = VecDeque::new();
-        for i in 0..message_data.len() {
+        let frag_numbers = (message_data.len() as f64 / 128.0).ceil() as u64;
+    
+        for i in 0..frag_numbers {
             let mut fragment_data: [u8; 128] = [0; 128];
             let mut lenght: u8 = 0;
             for index in 0..128 {
@@ -163,7 +171,7 @@ impl Fragmenter for ChatServer {
 
             fragments.push_back(Fragment {
                 fragment_index: i as u64,
-                total_n_fragments: message_data.len() as u64,
+                total_n_fragments: frag_numbers,
                 length: lenght,
                 data: fragment_data,
             });
@@ -176,7 +184,7 @@ impl ChatServer {
     fn receiver_thread(
         &mut self,
         ready_send: Sender<(NodeId, u64)>,
-        nack_send: Sender<(NodeId, u64, Fragment)>,
+        nack_send: Sender<Packet>,
     ) {
         loop {
             select_biased!(
@@ -193,8 +201,8 @@ impl ChatServer {
                     if let Ok(mut packet) = res {
                         match packet.pack_type {
                             PacketType::MsgFragment(_) => self.manage_msg_fragment(packet, ready_send.clone()),
-                            PacketType::Ack(ack) => self.manage_ack(packet.routing_header.hops[0], packet.session_id, ack),
-                            PacketType::Nack(nack) => self.manage_nack(packet.routing_header.hops[0], packet.session_id, nack, nack_send.clone()),
+                            PacketType::Ack(ack) => self.manage_ack(packet.session_id, ack),
+                            PacketType::Nack(nack) => self.manage_nack(packet.session_id, nack, nack_send.clone()),
                             PacketType::FloodRequest(_) => self.manage_flood_request(packet),
                             PacketType::FloodResponse(flood_response) => self.manage_flood_response(flood_response),
                         }
@@ -209,9 +217,9 @@ impl ChatServer {
         packet_sender: Arc<RwLock<HashMap<u8, Sender<Packet>>>>,
         sim_contr_send: Sender<ServerEvent>,
         fragment_recv: Receiver<(NodeId, u64, Fragment)>,
-        nack_recv: Receiver<(NodeId, u64, Fragment)>,
+        nack_recv: Receiver<Packet>,
         condv: Condvar,
-        ack_packet_buffer: Arc<Mutex<HashMap<(NodeId, u64, u64), Packet>>>,
+        ack_packet_buffer: Arc<Mutex<HashMap<(u64, u64), Packet>>>,
         topology: Arc<RwLock<GraphMap<NodeId, (), Undirected>>>,
         topology_modified: Arc<Mutex<bool>>,
         edge_nodes: Arc<RwLock<HashSet<NodeId>>>,
@@ -223,35 +231,31 @@ impl ChatServer {
         const MAX_OUTPUT_BUFFER: usize = 10;
 
         loop {
-            // get the ack_buffer through mutex and on condition
-            let mut ack_buff = condv
-                .wait_while(ack_packet_buffer.lock().unwrap(), |buff| {
-                    buff.len() >= MAX_OUTPUT_BUFFER
-                })
-                .unwrap();
-
             select_biased!(
                 recv(nack_recv) -> nack_res => {
-                    if let Ok((destination, session_id, fragment)) = nack_res {
+                    if let Ok(mut packet) = nack_res {
                         // recalculate route if topology was modified
                         let mut topology_modified_lock = topology_modified.lock().unwrap();
+
+                        let destination = packet.routing_header.hops.last().unwrap().clone();
 
                         if *topology_modified_lock {
                             Self::find_route(id, destination, &mut routing_table, topology.clone(), edge_nodes.clone());
                             *topology_modified_lock = false;
                         }
 
-                        let fragment_index = fragment.fragment_index;
+                        packet.routing_header.hops = routing_table.get(&destination).unwrap().clone();
 
-                        let mut packet = Packet {
-                            routing_header: SourceRoutingHeader {
-                                hops: routing_table.get(&destination).unwrap().clone(),
-                                hop_index: 1
-                            },
-                            session_id,
-                            pack_type: PacketType::MsgFragment(fragment) };
+                        // get the ack_buffer through mutex and on condition
+                        let mut ack_buff = condv
+                        .wait_while(ack_packet_buffer.lock().unwrap(), |buff| {
+                            buff.len() + nack_recv.len() >= MAX_OUTPUT_BUFFER
+                        })
+                        .unwrap();
 
-                        ack_buff.insert((destination, session_id, fragment_index), packet.clone());
+                        if let PacketType::MsgFragment(fragment) = &packet.pack_type {
+                            ack_buff.insert((packet.session_id, fragment.fragment_index), packet.clone());
+                        }
 
                         Self::send_msg_packet(id, packet_sender.clone(), sim_contr_send.clone(), packet);
 
@@ -278,7 +282,14 @@ impl ChatServer {
                             session_id,
                             pack_type: PacketType::MsgFragment(fragment) };
 
-                        ack_buff.insert((destination, session_id, fragment_index), packet.clone());
+                        // get the ack_buffer through mutex and on condition
+                        let mut ack_buff = condv
+                        .wait_while(ack_packet_buffer.lock().unwrap(), |buff| {
+                            buff.len() + nack_recv.len() >= MAX_OUTPUT_BUFFER
+                        })
+                        .unwrap();
+                        
+                        ack_buff.insert((session_id, fragment_index), packet.clone());
 
                         Self::send_msg_packet(id, packet_sender.clone(), sim_contr_send.clone(), packet);
                     }
@@ -296,8 +307,8 @@ impl ChatServer {
         let mut client_table: HashSet<NodeId> = HashSet::new();
         // history has the nodes ordered in ascending order, i.e. the first NodeId is lower than the second
         let mut history_table: HashMap<(NodeId, NodeId), Vec<ChatMessage>> = HashMap::new();
-        // stores the latest session id for each node
-        let mut msg_session_ids: HashMap<NodeId, u64> = HashMap::new();
+        // stores the latest session id
+        let mut session_id = 1;
 
         // basically infinite loop waiting for ready signal from the receiver thread
         while let Ok((source, msg_id)) = ready_recv.recv() {
@@ -361,15 +372,12 @@ impl ChatServer {
                 if let Some(msg) = resp_message {
                     let destination_id: NodeId = msg.destination_id;
                     let fragments = Self::disassemble(msg);
-                    let mut session_id = msg_session_ids.get(&destination_id).unwrap_or(&0);
 
                     for fragment in fragments {
                         // send the fragments to the sender thread
-                        fragment_send.send((destination_id, *session_id, fragment));
+                        fragment_send.send((destination_id, session_id, fragment));
                     }
-
-                    // insert updated session id
-                    msg_session_ids.insert(destination_id, session_id + 1);
+                    session_id += 1;
                 }
             }
         }
@@ -453,10 +461,10 @@ impl ChatServer {
 
     fn manage_msg_fragment(&self, packet: Packet, ready_send: Sender<(NodeId, u64)>) {
         log::debug!(
-            "{} {} received a message fragment: {:?}",
+            "{} {} received a message fragment: {}",
             "↳ server".green(),
             self.id,
-            packet.pack_type
+            packet
         );
 
         let packet_source = packet.routing_header.hops[0];
@@ -507,7 +515,7 @@ impl ChatServer {
         }
     }
 
-    fn manage_ack(&self, origin: NodeId, session_id: u64, ack: Ack) {
+    fn manage_ack(&self, session_id: u64, ack: Ack) {
         log::debug!(
             "{} {} received an ack: {:?}",
             "↳ server".green(),
@@ -515,7 +523,7 @@ impl ChatServer {
             ack
         );
 
-        let ack_key = (origin, session_id, ack.fragment_index);
+        let ack_key = (session_id, ack.fragment_index);
 
         let mut ack_packet_buffer_lock = self.ack_packet_buffer.lock().unwrap();
 
@@ -531,10 +539,9 @@ impl ChatServer {
 
     fn manage_nack(
         &self,
-        origin: NodeId,
         session_id: u64,
         nack: Nack,
-        nack_send: Sender<(NodeId, u64, Fragment)>,
+        nack_send: Sender<Packet>,
     ) {
         log::debug!(
             "{} {} received a nack: {:?}",
@@ -559,14 +566,14 @@ impl ChatServer {
             }
         }
 
-        let ack_key = (origin, session_id, nack.fragment_index);
+        let ack_key = (session_id, nack.fragment_index);
 
         let mut ack_packet_buffer_lock = self.ack_packet_buffer.lock().unwrap();
 
         if let Some(packet) = ack_packet_buffer_lock.remove(&ack_key) {
-            if let PacketType::MsgFragment(fragment) = packet.pack_type {
-                nack_send.send((origin, session_id, fragment));
-            }
+            nack_send.send(packet);
+        } else {
+            log::error!("The packet was not found in the ack buffer, this shouldn't be happening");
         }
     }
 
@@ -658,6 +665,8 @@ impl ChatServer {
 
         if let Some((_, route)) = path {
             routing_table.insert(destination, route);
+        } else {
+            log::error!("No route found to destination {}", destination);
         }
     }
 

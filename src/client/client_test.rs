@@ -96,8 +96,20 @@ impl ClientTrait for Client {
 }
 
 impl Fragmenter for Client {
-    fn assemble(fragments: Vec<wg_2024::packet::Fragment>) -> Message {
-        todo!()
+    fn assemble(mut fragments: Vec<Fragment>) -> Message {
+        // sort fragments by index before assembling
+        fragments.sort_by(|a, b| a.fragment_index.cmp(&b.fragment_index));
+
+        let mut message_data: Vec<u8> = Vec::new();
+        for fragment in fragments {
+            if fragment.length < 128 {
+                message_data.extend(&fragment.data[0..fragment.length as usize]);
+            } else {
+                message_data.extend(&fragment.data);
+            }
+        }
+
+        Message::from_u8(message_data)
     }
 
     fn disassemble(msg: Message) -> std::collections::VecDeque<Fragment> {
@@ -128,12 +140,25 @@ impl Client {
 
     fn manage_msg_fragment(&self, msg: &Fragment) {
         //call to the assembler
-        log::debug!(
-            "{} {} received a fragment: {:?}",
-            "↳ client".green(),
-            self.id,
-            msg
-        );
+        // log::debug!(
+        //     "{} {} received a fragment: {:?}",
+        //     "↳ client".green(),
+        //     self.id,
+        //     msg
+        // );
+
+        // this is 100% a test function and shouldn't be used like this
+        if msg.total_n_fragments == 1 {
+            log::debug!("{} {} {:?}", "↳ client".green(), self.id, Self::assemble(vec![msg.clone()]));
+        } else {
+            log::debug!(
+                "{} {} received a fragment: {:?}",
+                "↳ client".green(),
+                self.id,
+                msg
+            );
+        }
+
     }
 
     fn manage_flood_request(&self, mut packet: Packet) {
