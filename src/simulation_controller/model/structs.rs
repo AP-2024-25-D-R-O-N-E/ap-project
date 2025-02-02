@@ -1,5 +1,5 @@
 use crossbeam::channel::Sender;
-use egui::accesskit::{Node};
+use egui::accesskit::Node;
 use wg_2024::{controller::DroneEvent, network::NodeId, packet::Packet};
 
 /// From client to controller

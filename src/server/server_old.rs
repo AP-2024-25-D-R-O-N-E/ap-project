@@ -1,7 +1,10 @@
 use std::{collections::HashMap, thread};
 
 use colored::Colorize;
-use crossbeam::{channel::{select_biased, unbounded, Receiver, Sender}, select};
+use crossbeam::{
+    channel::{select_biased, unbounded, Receiver, Sender},
+    select,
+};
 use petgraph::{
     prelude::{GraphMap, StableGraph},
     Undirected,
@@ -45,7 +48,6 @@ pub struct Server {
     threads: Vec<thread::JoinHandle<()>>,
 }
 
-
 impl ServerTrait for Server {
     fn new(
         id: NodeId,
@@ -86,24 +88,18 @@ impl ServerTrait for Server {
         let mut packet_send_channel = unbounded::<PacketType>();
 
         // message handling thread
-        self.threads.push(thread::spawn(move || {
+        self.threads.push(thread::spawn(move || loop {
+            select! {
+                recv(message_handling_channel.1) -> fragment_res => {
+                    if let Ok((origin_id, session_id, fragment)) = fragment_res {
 
 
 
-            loop {
-                select! {
-                    recv(message_handling_channel.1) -> fragment_res => {
-                        if let Ok((origin_id, session_id, fragment)) = fragment_res {
-                            
 
-
-
-                        }
-                    },
-                }
+                    }
+                },
             }
         }));
-
 
         loop {
             select_biased! {
@@ -114,7 +110,7 @@ impl ServerTrait for Server {
                             ServerCommand::NetworkInitialized=>{
                                 self.initiate_flood();log::debug!("{} at {} - network initialized"," <- network initialized".green(),self.id);}
                             ServerCommand::AddSender(node_id, sender) => self.add_sender(node_id, sender),
-                            ServerCommand::RemoveSender(node_id) => self.remove_channel(node_id), 
+                            ServerCommand::RemoveSender(node_id) => self.remove_channel(node_id),
                         }
                     }
                 },
@@ -148,11 +144,11 @@ impl ServerTrait for Server {
 }
 
 impl Fragmenter for Server {
-    fn disassemble(msg: Message) -> std::collections::HashMap<u64, wg_2024::packet::Fragment> {
+    fn assemble(fragments: Vec<wg_2024::packet::Fragment>) -> Message {
         todo!()
     }
 
-    fn assemble(fragments: Vec<wg_2024::packet::Fragment>) -> Message {
+    fn disassemble(msg: Message) -> std::collections::VecDeque<Fragment> {
         todo!()
     }
 }
@@ -188,14 +184,13 @@ impl Server {
         );
 
         if self.client_vector.contains(&origin_id) {
-            
             let message = Message::new(self.id, origin_id, MessageData::UnregisteredSenderError);
 
             // send message
 
             return;
         }
-        
+
         let client_buffer = self.msg_buffer.get_mut(&origin_id).unwrap();
 
         if self.session_id == 0 && client_buffer.is_empty() {
@@ -229,16 +224,21 @@ impl Server {
             message::MessageData::RegisterAsClient(id) => {
                 self.client_vector.push(id);
                 todo!();
-            },
+            }
             message::MessageData::UnregisterAsClient(id) => {
                 self.client_vector.retain(|&x| x != id);
-            },
+            }
             message::MessageData::RequestClients(id) => {
                 todo!()
-            },
+            }
             message::MessageData::RequestHistory { requester, partner } => todo!(),
             message::MessageData::TextMessage { from, to, text } => todo!(),
-            message::MessageData::FileMessage { from, to, file, file_name } => todo!(),
+            message::MessageData::FileMessage {
+                from,
+                to,
+                file,
+                file_name,
+            } => todo!(),
             message::MessageData::ResponseClients(items) => todo!(),
             message::MessageData::AcknolewdgedAsClient => todo!(),
             message::MessageData::ResponseHistory { partner, history } => todo!(),
@@ -371,16 +371,14 @@ impl Server {
     }
 
     fn find_route(&self, destination_id: NodeId) -> SourceRoutingHeader {
-        
         // do stuff
-        
+
         SourceRoutingHeader {
             hops: vec![],
             hop_index: 0,
         }
     }
 
-    
     fn add_sender(&mut self, id: NodeId, sender: Sender<Packet>) {
         self.ps.insert(id, sender);
     }

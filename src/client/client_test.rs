@@ -96,11 +96,11 @@ impl ClientTrait for Client {
 }
 
 impl Fragmenter for Client {
-    fn disassemble(msg: Message) -> std::collections::HashMap<u64, wg_2024::packet::Fragment> {
+    fn assemble(fragments: Vec<wg_2024::packet::Fragment>) -> Message {
         todo!()
     }
 
-    fn assemble(fragments: Vec<wg_2024::packet::Fragment>) -> Message {
+    fn disassemble(msg: Message) -> std::collections::VecDeque<Fragment> {
         todo!()
     }
 }

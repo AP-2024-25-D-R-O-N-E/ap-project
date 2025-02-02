@@ -82,11 +82,11 @@ impl ClientTrait for Client2 {
 }
 
 impl Fragmenter for Client2 {
-    fn disassemble(msg: Message) -> std::collections::HashMap<u64, wg_2024::packet::Fragment> {
+    fn disassemble(msg: Message) -> std::collections::VecDeque<Fragment> {
         todo!()
     }
 
-    fn assemble(fragments: Vec<wg_2024::packet::Fragment>) -> Message {
+    fn assemble(fragments: Vec<Fragment>) -> Message {
         todo!()
     }
 }
