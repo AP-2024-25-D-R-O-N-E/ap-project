@@ -456,84 +456,9 @@ pub fn add_remove_sender_section(
             let node1_payload = state.graph_section.g.node(node1).unwrap().payload().clone();
             let node2_payload = state.graph_section.g.node(node2).unwrap().payload().clone();
 
-            let g = &state.graph_section.g.g;
-            let mut edges = HashSet::new();
-            for (edge_index, edge) in state.graph_section.g.edges_connecting(node1, node2) {
-                edges.insert(edge_index);
+            if (check_edge_removal(state, node1, node2)) {
+                remove_edges_between(state, node1, node2, simulation_controller);
             }
-
-            // Check if an edge exists between the two nodes
-            if edges.is_empty() {
-                state.test_section.channel_modifier_status_flag = Some(Err(format!(
-                    "No channel between {} and {}",
-                    node1_payload.wg_id, node1_payload.wg_id
-                )));
-            }
-            // Check if removing this edge would disconnect the graph
-            else if !is_connected_without_edge_set(g, edges) {
-                state.test_section.channel_modifier_status_flag = Some(Err(
-                    "Removing this edge would cause the graph to be disconnected".to_string(),
-                ));
-            }
-            // Check if the server has at least 2 connections
-            else if !match (node1_payload.node_type, node2_payload.node_type) {
-                (
-                    crate::simulation_controller::node::UiNodeType::Drone(_),
-                    crate::simulation_controller::node::UiNodeType::Server(_),
-                ) => {
-                    let neighbors: Vec<NodeIndex> = g.neighbors_undirected(node2).collect();
-                    if neighbors.len() == 2 {
-                        false
-                    } else {
-                        true
-                    }
-                }
-                (
-                    crate::simulation_controller::node::UiNodeType::Server(_),
-                    crate::simulation_controller::node::UiNodeType::Drone(_),
-                ) => {
-                    let neighbors: Vec<NodeIndex> = g.neighbors_undirected(node1).collect();
-                    if neighbors.len() == 2 {
-                        false
-                    } else {
-                        true
-                    }
-                }
-                _ => true,
-            } {
-                state.test_section.channel_modifier_status_flag = Some(Err(
-                    "Cannot remove edge: each server should be connected to at least 2 nodes"
-                        .to_string(),
-                ));
-            }
-            // Can remove the edge
-            else {
-                state.graph_section.g.remove_edges_between(node1, node2);
-                state.test_section.channel_modifier_status_flag =
-                    Some(Ok("Sender removed with success".to_string()));
-
-                let node1_wg_id = state.graph_section.g.node(node1).unwrap().payload().wg_id;
-                let node2_wg_id = state.graph_section.g.node(node2).unwrap().payload().wg_id;
-
-                simulation_controller.send_remove_sender_command(node1_wg_id, node2_wg_id);
-                simulation_controller.send_remove_sender_command(node2_wg_id, node1_wg_id);
-            }
-
-            // if would_disconnect {
-            //     state.test_section.channel_modifier_status_flag = Some(Err(
-            //         "Removing this edge would cause the graph to be disconnected".to_string(),
-            //     ));
-            // } else {
-            //     state.graph_section.g.remove_edges_between(node1, node2);
-            //     state.test_section.channel_modifier_status_flag =
-            //         Some(Ok("Sender removed with success".to_string()));
-            //
-            //     let node1_wg_id = state.graph_section.g.node(node1).unwrap().payload().wg_id;
-            //     let node2_wg_id = state.graph_section.g.node(node2).unwrap().payload().wg_id;
-            //
-            //     simulation_controller.send_remove_sender_command(node1_wg_id, node2_wg_id);
-            //     simulation_controller.send_remove_sender_command(node2_wg_id, node1_wg_id);
-            // }
         }
     }
 
@@ -550,4 +475,81 @@ pub fn add_remove_sender_section(
         },
         None => (),
     }
+}
+
+fn check_edge_removal(state: &mut State, node1: NodeIndex, node2: NodeIndex) -> bool {
+    let g = &state.graph_section.g.g;
+    let mut edges = HashSet::new();
+    for (edge_index, edge) in state.graph_section.g.edges_connecting(node1, node2) {
+        edges.insert(edge_index);
+    }
+
+    let node1_payload = state.graph_section.g.node(node1).unwrap().payload().clone();
+    let node2_payload = state.graph_section.g.node(node2).unwrap().payload().clone();
+
+    // Check if an edge exists between the two nodes
+    if edges.is_empty() {
+        state.test_section.channel_modifier_status_flag = Some(Err(format!(
+            "No channel between {} and {}",
+            node1_payload.wg_id, node1_payload.wg_id
+        )));
+        return false;
+    }
+    // Check if removing this edge would disconnect the graph
+    else if !is_connected_without_edge_set(g, edges) {
+        state.test_section.channel_modifier_status_flag = Some(Err(
+            "Removing this edge would cause the graph to be disconnected".to_string(),
+        ));
+        return false;
+    }
+    // Check if the server has at least 2 connections
+    else if !match (node1_payload.node_type, node2_payload.node_type) {
+        (
+            crate::simulation_controller::node::UiNodeType::Drone(_),
+            crate::simulation_controller::node::UiNodeType::Server(_),
+        ) => {
+            let neighbors: Vec<NodeIndex> = g.neighbors_undirected(node2).collect();
+            if neighbors.len() == 2 {
+                false
+            } else {
+                true
+            }
+        }
+        (
+            crate::simulation_controller::node::UiNodeType::Server(_),
+            crate::simulation_controller::node::UiNodeType::Drone(_),
+        ) => {
+            let neighbors: Vec<NodeIndex> = g.neighbors_undirected(node1).collect();
+            if neighbors.len() == 2 {
+                false
+            } else {
+                true
+            }
+        }
+        _ => true,
+    } {
+        state.test_section.channel_modifier_status_flag = Some(Err(
+            "Cannot remove edge: each server should be connected to at least 2 nodes".to_string(),
+        ));
+        return false;
+    }
+
+    true
+}
+
+fn remove_edges_between(
+    state: &mut State,
+    node1: NodeIndex,
+    node2: NodeIndex,
+    simulation_controller: &SimulationController,
+) {
+    state.graph_section.g.remove_edges_between(node1, node2);
+    state.test_section.channel_modifier_status_flag =
+        Some(Ok("Sender removed with success".to_string()));
+
+    let node1_wg_id = state.graph_section.g.node(node1).unwrap().payload().wg_id;
+    let node2_wg_id = state.graph_section.g.node(node2).unwrap().payload().wg_id;
+
+    simulation_controller.send_remove_sender_command(node1_wg_id, node2_wg_id);
+    simulation_controller.send_remove_sender_command(node2_wg_id, node1_wg_id);
 }
