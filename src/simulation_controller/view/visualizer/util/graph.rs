@@ -142,7 +142,12 @@ pub fn check_edge_addition(
     node1: NodeIndex,
     node2: NodeIndex,
 ) -> bool {
-    // Ensure channel does not already exist
+    // Check that either drone is not crashed
+    if get_drone_node(graph, node1).crashed || get_drone_node(graph, node2).crashed {
+        *status_flag = Some(Err("Cannot add link to crashed drone".to_string()));
+        return false;
+    }
+
     let edges: HashSet<_> = graph
         .edges_connecting(node1, node2)
         .map(|(edge_index, _)| edge_index)
