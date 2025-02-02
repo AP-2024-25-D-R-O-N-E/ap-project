@@ -85,12 +85,9 @@ impl SCGui {
 
                         for node in self.state.graph_section.g.selected_nodes() {
                             print!("{:?} ", node);
-                            self.state.node_info_section.opened_windows.insert(*node);
+                            self.state.node_info_section.open_window(*node);
                         }
-                        self.state
-                            .node_info_section
-                            .opened_windows
-                            .insert(node_index);
+                        self.state.node_info_section.open_window(node_index);
                         println!("");
                     }
                     _ => {}

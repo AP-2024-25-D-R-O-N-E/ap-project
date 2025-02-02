@@ -53,7 +53,7 @@ pub fn draw_toolbar_section(ui: &mut Ui, state: &mut State) {
         if ui.button("Open selected").clicked() {
             let selected_nodes = state.graph_section.g.selected_nodes().to_owned();
             for node_index in selected_nodes {
-                state.node_info_section.opened_windows.insert(node_index);
+                state.node_info_section.opened_windows.insert(node_index, Default::default() );
             }
         }
 

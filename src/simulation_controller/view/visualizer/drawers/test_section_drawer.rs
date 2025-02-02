@@ -359,8 +359,8 @@ pub fn add_remove_sender_section(
             let node2 = state.graph_section.g.selected_nodes()[1];
 
             if (check_edge_removal(
-                &mut state.test_section.channel_modifier_status_flag,
                 &mut state.graph_section.g,
+                &mut state.test_section.channel_modifier_status_flag,
                 node1,
                 node2,
             )) {

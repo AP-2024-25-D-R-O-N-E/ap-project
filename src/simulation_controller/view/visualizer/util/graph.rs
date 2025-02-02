@@ -9,22 +9,55 @@ use std::collections::{HashSet, VecDeque};
 
 use crate::simulation_controller::{
     edge::{CustomEdgeShape, UiEdgePayload},
-    node::{CustomNodeShape, UiNodePayload, UiNodeType},
+    node::{CustomNodeShape, UiDroneNode, UiNodePayload, UiNodeType},
     state::State,
     util::*,
     SimulationController,
 };
 
+pub fn get_payload_mut(graph: &mut UiGraph, node_index: NodeIndex) -> Option<&mut UiNodePayload> {
+    match graph.node_mut(node_index) {
+        Some(node) => Some(node.payload_mut()),
+        None => None,
+    }
+}
+
+pub fn get_payload(graph: &mut UiGraph, node_index: NodeIndex) -> Option<&UiNodePayload> {
+    match graph.node(node_index) {
+        Some(node) => Some(node.payload()),
+        None => None,
+    }
+}
+
+pub fn get_drone_node(graph: &mut UiGraph, node_index: NodeIndex) -> &mut UiDroneNode {
+    let drone_node = if let UiNodeType::Drone(drone_node) =
+        &mut get_payload_mut(graph, node_index).unwrap().node_type
+    {
+        drone_node
+    } else {
+        panic!("Unexpected enum variant!")
+    };
+    drone_node
+}
+
+pub fn get_payload_mut_from_state(
+    state: &mut State,
+    node_index: NodeIndex,
+) -> Option<&mut UiNodePayload> {
+    get_payload_mut(&mut state.graph_section.g, node_index)
+}
+
+pub fn get_payload_from_state(state: &mut State, node_index: NodeIndex) -> Option<&UiNodePayload> {
+    get_payload(&mut state.graph_section.g, node_index)
+}
+
+pub fn get_drone_node_from_state(state: &mut State, node_index: NodeIndex) -> &mut UiDroneNode {
+    get_drone_node(&mut state.graph_section.g, node_index)
+}
+
 pub fn check_edge_removal(
-    status_flag: &mut Option<Result<String, String>>,
-    graph: &mut Graph<
-        UiNodePayload,
-        UiEdgePayload,
-        Undirected,
-        DefaultIx,
-        CustomNodeShape,
-        CustomEdgeShape,
-    >,
+    graph: &mut UiGraph,
+    status_flag: &mut StatusFlag,
     node1: NodeIndex,
     node2: NodeIndex,
 ) -> bool {
@@ -194,6 +227,32 @@ pub fn add_edge_between(
 
     simulation_controller.send_add_sender_command(node1_wg_id, node2_wg_id);
     simulation_controller.send_add_sender_command(node2_wg_id, node1_wg_id);
+}
+
+pub fn check_node_removal(
+    graph: &mut UiGraph,
+    status_flag: &mut StatusFlag,
+    node: NodeIndex,
+) -> bool {
+    let neighbors: Vec<NodeIndex> = graph.g.neighbors_undirected(node).collect();
+    for neighbor in neighbors {
+        if !check_edge_removal(graph, status_flag, node, neighbor) {
+            return false;
+        }
+    }
+    true
+}
+
+pub fn remove_node(graph: &mut UiGraph, status_flag: &mut StatusFlag, node: NodeIndex) {
+    let edges: Vec<EdgeIndex> = graph
+        .g
+        .edges_directed(node, petgraph::Direction::Outgoing)
+        .map(|edge| edge.weight().id())
+        .collect();
+    for edge in edges {
+        graph.edge_mut(edge).unwrap().payload_mut().is_active = false;
+    }
+    get_drone_node(graph, node).crashed = true;
 }
 
 pub fn bfs_with_disabled_edges<N>(
