@@ -31,7 +31,7 @@ pub struct ChatServer {
     packet_send: Arc<RwLock<HashMap<NodeId, Sender<Packet>>>>,
     flood_id: u64, // keeps track of the current flood index
     topology: Arc<RwLock<GraphMap<NodeId, (), Undirected>>>, // nodes don't register type, as they're instead inside the client_table
-    fragment_buffers: Arc<RwLock<HashMap<u64, Vec<Fragment>>>>, // stores fragments until they're ready to be assembled
+    fragment_buffers: Arc<RwLock<HashMap<(NodeId, u64), Vec<Fragment>>>>, // stores fragments until they're ready to be assembled
 }
 
 impl ServerTrait for ChatServer {
@@ -63,7 +63,9 @@ impl ServerTrait for ChatServer {
         // spawn the message handling thread
 
         let fragment_buffers = self.fragment_buffers.clone();
-        let (ready_send, ready_recv) = unbounded::<NodeId>();
+
+        // ready channel to start the assembly of the fragments
+        let (ready_send, ready_recv) = unbounded::<(NodeId, u64)>();
 
         threads.push(thread::spawn(move || {
             ChatServer::message_handler_thread(fragment_buffers, ready_recv);
@@ -77,18 +79,19 @@ impl ServerTrait for ChatServer {
 }
 
 impl Fragmenter for ChatServer {
-    fn disassemble(msg: Message) -> HashMap<u64, Fragment> {
-        todo!()
-    }
 
     fn assemble(fragments: Vec<Fragment>) -> Message {
+        todo!()
+    }
+    
+    fn disassemble(msg: Message) -> HashMap<u64, Fragment> {
         todo!()
     }
 }
 
 impl ChatServer {
 
-    fn receiver_thread(&mut self, ready_send: Sender<NodeId>) {
+    fn receiver_thread(&mut self, ready_send: Sender<(NodeId, u64)>) {
 
         loop {
             select_biased!(
@@ -124,11 +127,42 @@ impl ChatServer {
 
     }
 
-    fn message_handler_thread(fragment_buffers: Arc<RwLock<HashMap<u64, Vec<Fragment>>>>, ready_recv: Receiver<NodeId>) {
+    fn message_handler_thread(fragment_buffers: Arc<RwLock<HashMap<(NodeId, u64), Vec<Fragment>>>>, ready_recv: Receiver<(NodeId, u64)>) {
         let mut client_table: HashMap<NodeId, NodeType> = HashMap::new();
 
+        // basically infinite loop waiting for ready signal from the receiver thread
+        while let Ok((source, msg_id)) = ready_recv.recv() {
+            let mut fragment_buffers_lock = fragment_buffers.write().unwrap();
 
+            // assemble the message
+            if let Some(fragments) = fragment_buffers_lock.remove(&(source, msg_id)) {
+                let mut message = Self::assemble(fragments);
 
+                // check the message type and act accordingly
+                let mut resp_message: Option<Message> = match message.message_data {
+                    MessageData::RegisterAsClient(_) => todo!(),
+                    MessageData::UnregisterAsClient(_) => todo!(),
+                    MessageData::RequestClients(_) => todo!(),
+                    MessageData::RequestHistory { requester, partner } => todo!(),
+                    MessageData::TextMessage { from, to, text } => todo!(),
+                    MessageData::FileMessage { from, to, file, file_name } => todo!(),
+                    MessageData::ResponseClients(items) => todo!(),
+                    MessageData::AcknolewdgedAsClient => todo!(),
+                    MessageData::ResponseHistory { partner, history } => todo!(),
+                    MessageData::UnregisteredSenderError => todo!(),
+                    MessageData::UnregisteredRecipientError => todo!(),
+                    MessageData::UnsupportedMessageTypeError => todo!(),
+                };
+
+                if let Some(resp_mess) = resp_message {
+                    let fragments = Self::disassemble(resp_mess);
+
+                    // send the fragments to the sender thread
+                    todo!();
+
+                }
+            }
+        }
     }
 
 }
@@ -167,26 +201,10 @@ impl ChatServer {
                 session_id: 0, // it'll be whatever for now
             };
 
-            let next_node = packet.routing_header.hops[packet.routing_header.hop_index];
-            let send_channel = &self.packet_send.read().unwrap()[&next_node];
-
-            log::debug!(
-                "{} from {} - packet: {}",
-                " -> packet sent ".blue(),
-                self.id,
-                packet
-            );
-
-            let res = send_channel.send(packet.clone());
-
-            if let Err(mut packet) = res {
-                log::error!("The send inside channel gave an error, this shouldn't be happening");
-            } else {
-                self.sim_contr_send.send(ServerEvent::PacketSent(packet));
-            }
+            self.send_packet(packet);
         }
     }
-
+    
     fn manage_flood_response(&self, fr: FloodResponse) {
         log::debug!(
             "{} {} received a flood response: {:?}",
@@ -213,7 +231,7 @@ impl ChatServer {
         log::info!("{} {:?}", "Server topology: ".green(), self.topology);
     }
 
-    fn manage_msg_fragment(&self, packet: Packet, ready_send: Sender<NodeId>) {
+    fn manage_msg_fragment(&self, packet: Packet, ready_send: Sender<(NodeId, u64)>) {
         log::debug!(
             "{} {} received a message fragment: {:?}",
             "↳ server".green(),
@@ -221,11 +239,75 @@ impl ChatServer {
             packet.pack_type
         );
 
-        if let PacketType::MsgFragment(fragment) = packet.pack_type {
-            let fragment_buffers_lock = self.fragment_buffers.write().unwrap();
+        let packet_source = packet.routing_header.hops[0];
+        let packet_msg_id = packet.session_id;
 
+        // inverse route calculation for the ack
+        let mut inverse_route = packet.routing_header.hops.clone();
+        inverse_route.reverse();
+
+        if let PacketType::MsgFragment(fragment) = packet.pack_type {
+
+            // send ack for this fragment
+            let packet = Packet {
+                pack_type: PacketType::Ack(
+                    Ack {
+                        fragment_index: fragment.fragment_index,
+                    }
+                ),
+                routing_header: SourceRoutingHeader {
+                    hops: inverse_route,
+                    hop_index: 1,
+                },
+                session_id: packet_msg_id,
+            };
+
+            self.send_packet(packet);
+
+            // handle the fragment buffer and send the ready signal to the message handler thread
+            let mut fragment_buffers_lock = self.fragment_buffers.write().unwrap();
+
+            let total_frags = fragment.total_n_fragments;
+
+            if fragment_buffers_lock.contains_key(&(packet_source, packet_msg_id)) {
+                let mut frag_buffer = fragment_buffers_lock.get_mut(&(packet_source, packet_msg_id)).unwrap();
+                
+                frag_buffer.push(fragment);
+
+                // if the buffer is full, tell the message handler thread to start assembling the fragments
+                if frag_buffer.len() == total_frags as usize {
+                    ready_send.send((packet_source, packet_msg_id));
+                }
+
+            } else {
+                fragment_buffers_lock.insert((packet_source, packet_msg_id), vec![fragment]);
+                // if the total frags is 1, then we can just send the message to the message handler thread
+                if total_frags == 1 {
+                    ready_send.send((packet_source, packet_msg_id));
+                }
+            }
         }
         
+    }
+
+    fn send_packet(&self, packet: Packet) {
+        let next_node = packet.routing_header.hops[packet.routing_header.hop_index];
+        let send_channel = &self.packet_send.read().unwrap()[&next_node];
+    
+        log::debug!(
+            "{} from {} - packet: {}",
+            " -> packet sent ".blue(),
+            self.id,
+            packet
+        );
+    
+        let res = send_channel.send(packet.clone());
+    
+        if let Err(mut packet) = res {
+            log::error!("The send inside channel gave an error, this shouldn't be happening");
+        } else {
+            self.sim_contr_send.send(ServerEvent::PacketSent(packet));
+        }
     }
 
 }
