@@ -46,6 +46,16 @@ pub fn get_drone_node(graph: &mut UiGraph, node_index: NodeIndex) -> &mut UiDron
     drone_node
 }
 
+pub fn get_drone_node_opt(graph: &mut UiGraph, node_index: NodeIndex) -> Option<&mut UiDroneNode> {
+    if let UiNodeType::Drone(drone_node) =
+        &mut get_payload_mut(graph, node_index).unwrap().node_type
+    {
+        Some(drone_node)
+    } else {
+        None
+    }
+}
+
 pub fn get_payload_mut_from_state(
     state: &mut State,
     node_index: NodeIndex,
@@ -149,7 +159,18 @@ pub fn check_edge_addition(
     node2: NodeIndex,
 ) -> bool {
     // Check that either drone is not crashed
-    if get_drone_node(graph, node1).crashed || get_drone_node(graph, node2).crashed {
+
+    let has_crashed_drone = match (
+        &graph.node(node1).unwrap().payload().node_type,
+        &graph.node(node1).unwrap().payload().node_type,
+    ) {
+        (UiNodeType::Drone(drone1), UiNodeType::Drone(drone2)) => drone1.crashed || drone2.crashed,
+        (UiNodeType::Drone(drone), _) => drone.crashed,
+        (_, UiNodeType::Drone(drone)) => drone.crashed,
+        _ => false,
+    };
+
+    if has_crashed_drone {
         *status_flag = Some(Err("Cannot add link to crashed drone".to_string()));
         return false;
     }
