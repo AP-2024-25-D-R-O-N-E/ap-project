@@ -330,15 +330,11 @@ pub fn add_edge_between(
     simulation_controller.send_add_sender_command(node2_wg_id, node1_wg_id);
 }
 
-pub fn check_node_removal(
-    graph: &mut UiGraph,
-    status_flag: &mut StatusFlag,
-    node: NodeIndex,
-) -> bool {
+pub fn check_node_removal(graph: &mut UiGraph, node: NodeIndex) -> Result<(), String> {
     if is_connected_without_node_set(&graph.g, HashSet::from([node])) {
-        true
+        Ok(())
     } else {
-        false
+        Err("Removing the node would cause the graph to discounnect".to_string())
     }
 }
 
@@ -511,7 +507,18 @@ where
         visited.insert(curr_node);
     }
 
-    visited.len() == graph.node_count()
+    let mut total_crashed_drones = 0;
+    for node in graph.node_indices() {
+        if is_crashed_drone(&graph, node) {
+            total_crashed_drones += 1;
+        }
+    }
+
+    println!("Visited count: {}", visited.len());
+    println!("Graph node count: {}", graph.node_count());
+    println!("Total crashed drones: {}", total_crashed_drones);
+
+    visited.len() == graph.node_count() - total_crashed_drones - excluded_nodes.len()
 }
 
 pub fn get_neigbors_with_disabled_edges<N>(
@@ -584,4 +591,22 @@ pub fn is_well_formed(
     }
 
     Ok(())
+}
+
+fn is_crashed_drone<E>(
+    graph: &StableGraph<
+        Node<UiNodePayload, UiEdgePayload, Undirected, DefaultIx, CustomNodeShape>,
+        E,
+        Undirected,
+    >,
+    node: NodeIndex,
+) -> bool {
+    match &graph.node_weight(node) {
+        Some(node) => match &node.payload().node_type {
+            UiNodeType::Server(_) => false,
+            UiNodeType::Client(_) => false,
+            UiNodeType::Drone(ui_drone_node) => ui_drone_node.crashed,
+        },
+        None => false,
+    }
 }

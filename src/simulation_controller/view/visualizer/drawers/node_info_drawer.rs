@@ -122,17 +122,8 @@ fn draw_drone_specific(
 ) {
     let curr_node_wg_id = get_payload_from_state(state, node_index).unwrap().wg_id;
     if ui.button("Crash").clicked() {
-        if check_node_removal(
-            &mut state.graph_section.g,
-            &mut state
-                .node_info_section
-                .opened_windows
-                .get_mut(&node_index)
-                .unwrap()
-                .crash_status_flag,
-            node_index,
-        ) {
-            remove_node(
+        match check_node_removal(&mut state.graph_section.g, node_index) {
+            Ok(_) => remove_node(
                 &mut state.graph_section.g,
                 &mut state
                     .node_info_section
@@ -142,7 +133,15 @@ fn draw_drone_specific(
                     .crash_status_flag,
                 node_index,
                 &simulation_controller,
-            );
+            ),
+            Err(err) => {
+                state
+                    .node_info_section
+                    .opened_windows
+                    .get_mut(&node_index)
+                    .unwrap()
+                    .crash_status_flag = Some(Err(err))
+            }
         }
 
         // get_drone_node_from_state(state, node_index).crashed = true;
