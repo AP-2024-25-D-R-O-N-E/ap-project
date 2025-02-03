@@ -13,8 +13,9 @@ use petgraph::graph::NodeIndex;
 use wg_2024::controller::DroneEvent;
 
 use super::drawers::{
-    draw_infos_for_selected_nodes, draw_section_console, draw_section_debug, draw_section_graph,
-    draw_section_settings, draw_section_testing, draw_toolbar_section,
+    draw_infos_for_selected_nodes, draw_modify_topology_section, draw_section_console,
+    draw_section_debug, draw_section_graph, draw_section_settings, draw_section_testing,
+    draw_toolbar_section,
 };
 use super::state::State;
 
@@ -380,12 +381,30 @@ impl App for SCGui {
             Window::new("Test")
                 .collapsible(true)
                 .resizable(true)
-                .default_width(200.0)
-                .default_height(100.0)
+                .default_width(300.0)
+                .default_height(150.0)
                 .default_open(true)
                 .show(ctx, |ui| {
                     ScrollArea::vertical().show(ui, |ui| {
                         draw_section_testing(ui, &mut self.state, &self.simulation_controller);
+                    });
+                });
+        }
+
+        if self.state.toolbar_section.modify_topology_open {
+            Window::new("Modify topology")
+                .collapsible(true)
+                .resizable(true)
+                .default_width(200.0)
+                .default_height(150.0)
+                .default_open(true)
+                .show(ctx, |ui| {
+                    ScrollArea::vertical().show(ui, |ui| {
+                        draw_modify_topology_section(
+                            ui,
+                            &mut self.state,
+                            &self.simulation_controller,
+                        );
                     });
                 });
         }

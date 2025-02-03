@@ -3,6 +3,7 @@ pub struct ToolbarSectionState {
     pub test_open: bool,
     pub debug_open: bool,
     pub settings_open: bool,
+    pub modify_topology_open: bool,
 }
 
 impl Default for ToolbarSectionState {
@@ -12,6 +13,7 @@ impl Default for ToolbarSectionState {
             test_open: true,
             debug_open: false,
             settings_open: false,
+            modify_topology_open: false,
         }
     }
 }
