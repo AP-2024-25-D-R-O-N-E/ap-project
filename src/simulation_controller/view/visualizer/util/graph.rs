@@ -335,13 +335,11 @@ pub fn check_node_removal(
     status_flag: &mut StatusFlag,
     node: NodeIndex,
 ) -> bool {
-    let neighbors: Vec<NodeIndex> = get_neigbors_with_disabled_edges(&graph.g, node);
-    for neighbor in neighbors {
-        if !check_edge_removal(graph, status_flag, node, neighbor) {
-            return false;
-        }
+    if is_connected_without_node_set(&graph.g, HashSet::from([node])) {
+        true
+    } else {
+        false
     }
-    true
 }
 
 pub fn remove_node(
@@ -405,9 +403,9 @@ where
     visited.len()
 }
 
-pub fn is_connected_without_edge_set<N>(
+pub fn is_connected_without_edge_set(
     graph: &StableGraph<
-        N,
+        Node<UiNodePayload, UiEdgePayload, Undirected, DefaultIx, CustomNodeShape>,
         Edge<UiNodePayload, UiEdgePayload, Undirected, DefaultIx, CustomNodeShape, CustomEdgeShape>,
         Undirected,
     >,
@@ -442,7 +440,12 @@ where
                 }
             }
 
-            if !visited.contains(&neighbor) && has_active_edge {
+            let is_crashed_drone = match &graph.node_weight(neighbor).unwrap().payload().node_type {
+                UiNodeType::Server(_) => false,
+                UiNodeType::Client(_) => false,
+                UiNodeType::Drone(ui_drone_node) => ui_drone_node.crashed,
+            };
+            if !visited.contains(&neighbor) && !is_crashed_drone && has_active_edge {
                 queue.push_back(neighbor);
             }
         }
@@ -455,11 +458,11 @@ where
 
 pub fn is_connected_without_node_set<E>(
     graph: &StableGraph<
-        Edge<UiNodePayload, UiEdgePayload, Undirected, DefaultIx, CustomNodeShape, CustomEdgeShape>,
+        Node<UiNodePayload, UiEdgePayload, Undirected, DefaultIx, CustomNodeShape>,
         E,
         Undirected,
     >,
-    excluded_edges: HashSet<NodeIndex>,
+    excluded_nodes: HashSet<NodeIndex>,
 ) -> bool
 where
 {
@@ -467,11 +470,17 @@ where
     let mut visited = HashSet::new();
     let mut first_node = None;
     for node in graph.node_indices() {
-        if graph.node_weight(node).unwrap().payload().is_active {
+        let is_crashed_drone = match &graph.node_weight(node).unwrap().payload().node_type {
+            UiNodeType::Server(_) => false,
+            UiNodeType::Client(_) => false,
+            UiNodeType::Drone(ui_drone_node) => ui_drone_node.crashed,
+        };
+        if !is_crashed_drone {
             first_node = Some(node);
             break;
         }
     }
+
     match first_node {
         Some(first_node_unwrapped) => (),
         None => return true,
@@ -486,8 +495,15 @@ where
         }
 
         for neighbor in graph.neighbors_undirected(curr_node) {
-            let node_payload = graph.node_weight(neighbor).unwrap().payload();
-            if node_payload.is_active && !visited.contains(&neighbor) {
+            let is_crashed_drone = match &graph.node_weight(neighbor).unwrap().payload().node_type {
+                UiNodeType::Server(_) => false,
+                UiNodeType::Client(_) => false,
+                UiNodeType::Drone(ui_drone_node) => ui_drone_node.crashed,
+            };
+            if !is_crashed_drone
+                && !visited.contains(&neighbor)
+                && !excluded_nodes.contains(&neighbor)
+            {
                 queue.push_back(neighbor);
             }
         }
