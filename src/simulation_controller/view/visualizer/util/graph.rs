@@ -453,6 +453,51 @@ where
     visited.len() == graph.node_count()
 }
 
+pub fn is_connected_without_node_set<E>(
+    graph: &StableGraph<
+        Edge<UiNodePayload, UiEdgePayload, Undirected, DefaultIx, CustomNodeShape, CustomEdgeShape>,
+        E,
+        Undirected,
+    >,
+    excluded_edges: HashSet<NodeIndex>,
+) -> bool
+where
+{
+    let mut queue = VecDeque::new();
+    let mut visited = HashSet::new();
+    let mut first_node = None;
+    for node in graph.node_indices() {
+        if graph.node_weight(node).unwrap().payload().is_active {
+            first_node = Some(node);
+            break;
+        }
+    }
+    match first_node {
+        Some(first_node_unwrapped) => (),
+        None => return true,
+    }
+    queue.push_back(first_node.unwrap());
+
+    while (!queue.is_empty()) {
+        let curr_node = queue.pop_front().unwrap();
+
+        if (visited.contains(&curr_node)) {
+            continue;
+        }
+
+        for neighbor in graph.neighbors_undirected(curr_node) {
+            let node_payload = graph.node_weight(neighbor).unwrap().payload();
+            if node_payload.is_active && !visited.contains(&neighbor) {
+                queue.push_back(neighbor);
+            }
+        }
+
+        visited.insert(curr_node);
+    }
+
+    visited.len() == graph.node_count()
+}
+
 pub fn get_neigbors_with_disabled_edges<N>(
     graph: &StableGraph<
         N,
