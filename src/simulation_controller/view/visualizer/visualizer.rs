@@ -1,7 +1,7 @@
 use std::time::Instant;
 
 use super::state::events_state;
-use crate::simulation_controller::{ClientEvent, ServerEvent, SimulationController};
+use crate::simulation_controller::{ClientEvent, SCEvent, ServerEvent, SimulationController};
 
 use super::state::EventsState;
 use eframe::{run_native, App, CreationContext, NativeOptions};
@@ -97,27 +97,30 @@ impl SCGui {
     }
 
     fn handle_sc_events(&mut self) {
-        for (_, channel) in self.simulation_controller.node_event_channels.iter() {
+        for (node_id, channel) in self.simulation_controller.node_event_channels.iter() {
             channel.try_iter().for_each(|e| {
-                self.state
-                    .events
-                    .add_with_limit(e.into(), MAIN_CONSOLE_SCROLLBACK_LIMIT);
+                self.state.events.add_with_limit(
+                    SCEvent::new(*node_id, e.into()),
+                    MAIN_CONSOLE_SCROLLBACK_LIMIT,
+                );
             })
         }
 
-        for (_, channel) in self.simulation_controller.client_event_channels.iter() {
+        for (node_id, channel) in self.simulation_controller.client_event_channels.iter() {
             channel.try_iter().for_each(|e| {
-                self.state
-                    .events
-                    .add_with_limit(e.into(), MAIN_CONSOLE_SCROLLBACK_LIMIT);
+                self.state.events.add_with_limit(
+                    SCEvent::new(*node_id, e.into()),
+                    MAIN_CONSOLE_SCROLLBACK_LIMIT,
+                );
             })
         }
 
-        for (_, channel) in self.simulation_controller.server_event_channels.iter() {
+        for (node_id, channel) in self.simulation_controller.server_event_channels.iter() {
             channel.try_iter().for_each(|e| {
-                self.state
-                    .events
-                    .add_with_limit(e.into(), MAIN_CONSOLE_SCROLLBACK_LIMIT);
+                self.state.events.add_with_limit(
+                    SCEvent::new(*node_id, e.into()),
+                    MAIN_CONSOLE_SCROLLBACK_LIMIT,
+                );
             })
         }
     }

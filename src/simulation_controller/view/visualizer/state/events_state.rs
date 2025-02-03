@@ -1,8 +1,6 @@
-use crate::simulation_controller::{ClientEvent, SCEvent, ServerEvent};
+use crate::simulation_controller::{ClientEvent, SCEvent, SCEventType, ServerEvent};
 use petgraph::graph::NodeIndex;
 use wg_2024::{controller::DroneEvent, packet::Packet};
-
-
 
 pub struct EventsState {
     pub events: Vec<SCEvent>,
@@ -15,19 +13,16 @@ impl EventsState {
                 .events
                 .clone()
                 .into_iter()
-                .filter(|e| match e.get_sender_node_index() {
-                    Some(idx) => idx == specific_index,
-                    None => false,
-                })
+                .filter(|e| e.sender_id == specific_index)
                 .collect(),
             None => self
                 .events
                 .clone()
                 .into_iter()
-                .filter(|e| match e {
-                    SCEvent::ClientEvent(client_event) => display_options.clients,
-                    SCEvent::ServerEvent(server_event) => display_options.servers,
-                    SCEvent::DroneEvent(drone_event) => display_options.drones,
+                .filter(|e| match &e.event_type {
+                    SCEventType::ClientEvent(client_event) => display_options.clients,
+                    SCEventType::ServerEvent(server_event) => display_options.servers,
+                    SCEventType::DroneEvent(drone_event) => display_options.drones,
                 })
                 .collect(),
         }
