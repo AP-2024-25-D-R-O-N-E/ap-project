@@ -6,11 +6,12 @@ use petgraph::{
     Undirected,
 };
 use std::collections::{HashSet, VecDeque};
+use wg_2024::network::NodeId;
 
 use crate::simulation_controller::{
     edge::{CustomEdgeShape, UiEdgePayload},
     node::{CustomNodeShape, UiDroneNode, UiNodePayload, UiNodeType},
-    state::State,
+    state::{GraphSectionState, State},
     util::*,
     SimulationController,
 };
@@ -218,6 +219,59 @@ pub fn check_edge_addition(
         ) => check_non_drone(status_flag),
         _ => true,
     }
+}
+
+pub fn check_drone_addition(
+    graph_section_state: &mut GraphSectionState,
+    neighbors_wg_ids: &Vec<NodeId>,
+) -> Result<(), String> {
+    let neighbors_graph_ids: Vec<NodeIndex> = neighbors_wg_ids
+        .clone()
+        .into_iter()
+        .map(|node| *graph_section_state.node_id_map.get(&node).unwrap())
+        .collect();
+
+    // Check that either drone is not crashed
+    for node in neighbors_graph_ids.iter() {
+        if get_drone_node(&mut graph_section_state.g, *node).crashed {
+            return Err(format!(
+                "Cannot add link since drone {:?} is crashed",
+                graph_section_state.g.node(*node).unwrap().payload().wg_id
+            ));
+        }
+    }
+
+    // Helper function to validate client connection
+    fn check_drone_client(graph: &mut UiGraph, client: NodeIndex) -> Result<(), String> {
+        let neighbors: Vec<NodeIndex> = get_neigbors_with_disabled_edges(&graph.g, client);
+        if neighbors.len() >= 2 {
+            return Err("Client nodes can have at most 2 neighbors".to_string());
+        }
+        Ok(())
+    }
+
+    for node in neighbors_graph_ids {
+        let node_payload = match graph_section_state.g.node(node) {
+            Some(node) => node.payload().clone(),
+            None => {
+                return Err(format!(
+                    "{:?} is not a valid node id",
+                    graph_section_state.g.node(node).unwrap().payload().wg_id
+                ));
+            }
+        };
+        match node_payload.node_type {
+            UiNodeType::Server(ui_server_node) => (),
+            UiNodeType::Client(ui_client_node) => {
+                if let Err(err) = check_drone_client(&mut graph_section_state.g, node) {
+                    return Err(err);
+                }
+            }
+            UiNodeType::Drone(ui_drone_node) => (),
+        };
+    }
+
+    Ok(())
 }
 
 pub fn add_edge_between(
