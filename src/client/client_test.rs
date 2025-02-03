@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 
 use colored::Colorize;
 use crossbeam::channel::{select_biased, Receiver, Sender};
@@ -96,12 +96,50 @@ impl ClientTrait for Client {
 }
 
 impl Fragmenter for Client {
-    fn disassemble(msg: Message) -> std::collections::HashMap<u64, wg_2024::packet::Fragment> {
-        todo!()
+    fn assemble(mut fragments: Vec<Fragment>) -> Message {
+        // sort fragments by index before assembling
+        fragments.sort_by(|a, b| a.fragment_index.cmp(&b.fragment_index));
+
+        let mut message_data: Vec<u8> = Vec::new();
+        for fragment in fragments {
+            if fragment.length < 128 {
+                message_data.extend(&fragment.data[0..fragment.length as usize]);
+            } else {
+                message_data.extend(&fragment.data);
+            }
+        }
+
+        Message::from_u8(message_data)
     }
 
-    fn assemble(fragments: Vec<wg_2024::packet::Fragment>) -> Message {
-        todo!()
+    fn disassemble(msg: Message) -> std::collections::VecDeque<Fragment> {
+        let mut message_data = msg.into_u8();
+
+        message_data.reverse();
+
+        let mut fragments: VecDeque<Fragment> = VecDeque::new();
+        let frag_numbers = (message_data.len() as f64 / 128.0).ceil() as u64;
+
+        for i in 0..frag_numbers {
+            let mut fragment_data: [u8; 128] = [0; 128];
+            let mut lenght: u8 = 0;
+            for index in 0..128 {
+                if let Some(byte) = message_data.pop() {
+                    fragment_data[index] = byte;
+                    lenght += 1;
+                } else {
+                    break;
+                }
+            }
+
+            fragments.push_back(Fragment {
+                fragment_index: i as u64,
+                total_n_fragments: frag_numbers,
+                length: lenght,
+                data: fragment_data,
+            });
+        }
+        fragments
     }
 }
 
