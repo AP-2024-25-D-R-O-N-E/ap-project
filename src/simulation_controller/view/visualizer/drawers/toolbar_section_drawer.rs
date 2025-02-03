@@ -64,22 +64,17 @@ pub fn draw_toolbar_section(ui: &mut Ui, state: &mut State) {
             }
         }
 
-        if ui.button("Spawn").clicked() {
-            // state.graph_section.g.add_node(UiNodePayload {
-            //     node_type: UiDroneNode {
-            //         radius: Default::default(),
-            //         pdr: todo!(),
-            //         last_committed_pdr: todo!(),
-            //         crashed: todo!(),
-            //     },
-            //     vendor: todo!(),
-            //     wg_id: todo!(),
-            // });
-            // let selected_nodes = state.graph_section.g.selected_nodes().to_owned();
-            // for node_index in selected_nodes {
-            //     state.node_info_section.opened_windows.insert(node_index, Default::default() );
-            // }
-        }
+        // if ui.button("Spawn").clicked() {
+        //     state.graph_section.g.add_node(UiNodePayload {
+        //         node_type: UiDroneNode::default()
+        //         vendor: todo!(),
+        //         wg_id: todo!(),
+        //     });
+        // let selected_nodes = state.graph_section.g.selected_nodes().to_owned();
+        // for node_index in selected_nodes {
+        //     state.node_info_section.opened_windows.insert(node_index, Default::default() );
+        // }
+        // }
 
         match &state.graph_section.well_formedness_flag {
             Ok(_) => {
