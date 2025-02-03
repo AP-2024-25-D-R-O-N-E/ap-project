@@ -1,4 +1,4 @@
-use egui::{Layout, Ui};
+use egui::{Layout, Response, Ui};
 
 use crate::simulation_controller::{
     node::{UiDroneNode, UiNodePayload},
@@ -81,26 +81,31 @@ pub fn draw_toolbar_section(ui: &mut Ui, state: &mut State) {
             // }
         }
 
-        if state.graph_section.is_well_formed {
-            add_right_aligned_label(
-                ui,
-                egui::RichText::new("Ok".to_string()).color(util::colors::MUTED_GREEN),
-            );
-        } else {
-            add_right_aligned_label(
-                ui,
-                egui::RichText::new("Malformed topology".to_string())
-                    .color(util::colors::MUTED_RED),
-            );
+        match &state.graph_section.well_formedness_flag {
+            Ok(_) => {
+                add_right_aligned_label(
+                    ui,
+                    egui::RichText::new("Ok".to_string()).color(util::colors::MUTED_GREEN),
+                )
+                .on_hover_text("Topology is well-formed");
+            }
+            Err(err) => {
+                add_right_aligned_label(
+                    ui,
+                    egui::RichText::new("Malformed topology".to_string())
+                        .color(util::colors::MUTED_RED),
+                )
+                .on_hover_text(err);
+            }
         }
     });
 }
 
-fn add_right_aligned_label(ui: &mut Ui, text: egui::RichText) {
+fn add_right_aligned_label(ui: &mut Ui, text: egui::RichText) -> Response {
     let label1 = egui::Label::new(text.clone());
     let label2 = egui::Label::new(text);
     let res = label1.layout_in_ui(ui).2;
     let label_width = res.intrinsic_size.unwrap().x;
     ui.add_space(ui.available_size().x - label_width);
-    ui.add(label2);
+    ui.add(label2)
 }

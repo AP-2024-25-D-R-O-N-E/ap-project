@@ -389,38 +389,44 @@ pub fn is_well_formed(
         Edge<UiNodePayload, UiEdgePayload, Undirected, DefaultIx, CustomNodeShape, CustomEdgeShape>,
         Undirected,
     >,
-) -> bool {
+) -> Result<(), String> {
     // Connected
     if !is_connected_without_edge_set(&graph, HashSet::new()) {
-        return false;
+        return Err("Graph is not connected".to_string());
     }
 
     // Clients have [1,2] neighbors
     // Servers have [2,inf] neighbors
     for node in graph.node_indices() {
         let node_payload = graph.node_weight(node).unwrap().payload();
-        if !match &node_payload.node_type {
+        if let Err(error) = match &node_payload.node_type {
             UiNodeType::Server(ui_server_node) => {
                 let neighbors: Vec<NodeIndex> = get_neigbors_with_disabled_edges(graph, node);
                 if neighbors.len() < 2 {
-                    false
+                    Err(format!(
+                        "Server {} should have at least 2 neighbors",
+                        node_payload.wg_id
+                    ))
                 } else {
-                    true
+                    Ok(())
                 }
             }
             UiNodeType::Client(ui_client_node) => {
                 let neighbors: Vec<NodeIndex> = get_neigbors_with_disabled_edges(graph, node);
                 if neighbors.len() > 2 {
-                    false
+                    Err(format!(
+                        "Client {} should have at most 2 neighbors",
+                        node_payload.wg_id
+                    ))
                 } else {
-                    true
+                    Ok(())
                 }
             }
-            UiNodeType::Drone(_) => true,
+            UiNodeType::Drone(_) => Ok(()),
         } {
-            return false;
+            return Err(error);
         }
     }
 
-    true
+    Ok(())
 }

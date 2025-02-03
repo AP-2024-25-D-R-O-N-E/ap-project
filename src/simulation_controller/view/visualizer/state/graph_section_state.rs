@@ -29,7 +29,7 @@ pub struct GraphSectionState {
 
     pub graph_event_publisher: Sender<Event>,
     pub graph_event_consumer: Receiver<Event>,
-    pub is_well_formed: bool,
+    pub well_formedness_flag: Result<(), String>,
 
     node_id_map: HashMap<wg_2024::network::NodeId, petgraph::graph::NodeIndex>,
 }
@@ -50,14 +50,14 @@ impl GraphSectionState {
         let graph_section = GraphSectionState::default();
         let (event_publisher, event_consumer) = unbounded();
         let ui_graph = Graph::from(&graph);
-        let is_well_formed = is_well_formed(&ui_graph.g);
+        let well_formedness_flag = is_well_formed(&ui_graph.g);
 
         GraphSectionState {
             g: ui_graph,
             graph_event_publisher: event_publisher,
             graph_event_consumer: event_consumer,
             node_id_map: get_node_id_map(&graph),
-            is_well_formed,
+            well_formedness_flag,
         }
     }
 
@@ -85,7 +85,7 @@ impl Default for GraphSectionState {
             graph_event_publisher: event_publisher,
             graph_event_consumer: event_consumer,
             node_id_map: get_node_id_map(&graph),
-            is_well_formed: true,
+            well_formedness_flag: Ok(()),
         }
     }
 }
