@@ -135,7 +135,12 @@ impl Client2 {
 
         // this is 100% a test function and shouldn't be used like this
         if msg.total_n_fragments == 1 {
-            log::debug!("{} {} {:?}", "↳ client".green(), self.id, Self::assemble(vec![msg.clone()]));
+            log::debug!(
+                "{} {} {:?}",
+                "↳ client".green(),
+                self.id,
+                Self::assemble(vec![msg.clone()])
+            );
         } else {
             log::debug!(
                 "{} {} received a fragment: {:?}",
@@ -144,7 +149,6 @@ impl Client2 {
                 msg
             );
         }
-
     }
 
     fn manage_flood_request(&self, mut packet: Packet) {

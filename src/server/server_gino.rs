@@ -156,7 +156,7 @@ impl Fragmenter for ChatServer {
 
         let mut fragments: VecDeque<Fragment> = VecDeque::new();
         let frag_numbers = (message_data.len() as f64 / 128.0).ceil() as u64;
-    
+
         for i in 0..frag_numbers {
             let mut fragment_data: [u8; 128] = [0; 128];
             let mut lenght: u8 = 0;
@@ -181,11 +181,7 @@ impl Fragmenter for ChatServer {
 }
 
 impl ChatServer {
-    fn receiver_thread(
-        &mut self,
-        ready_send: Sender<(NodeId, u64)>,
-        nack_send: Sender<Packet>,
-    ) {
+    fn receiver_thread(&mut self, ready_send: Sender<(NodeId, u64)>, nack_send: Sender<Packet>) {
         loop {
             select_biased!(
                 recv(self.sim_contr_recv) -> cmd => {
@@ -288,7 +284,7 @@ impl ChatServer {
                             buff.len() + nack_recv.len() >= MAX_OUTPUT_BUFFER
                         })
                         .unwrap();
-                        
+
                         ack_buff.insert((session_id, fragment_index), packet.clone());
 
                         Self::send_msg_packet(id, packet_sender.clone(), sim_contr_send.clone(), packet);
@@ -317,6 +313,13 @@ impl ChatServer {
             // assemble the message
             if let Some(fragments) = fragment_buffers_lock.remove(&(source, msg_id)) {
                 let mut message = Self::assemble(fragments);
+
+                log::debug!(
+                    "{} {} assembled message: {:?}",
+                    "↳ server".green(),
+                    id,
+                    message
+                );
 
                 // check the message type and act accordingly
                 let mut resp_message: Option<Message> = match message.message_data {
@@ -537,12 +540,7 @@ impl ChatServer {
         }
     }
 
-    fn manage_nack(
-        &self,
-        session_id: u64,
-        nack: Nack,
-        nack_send: Sender<Packet>,
-    ) {
+    fn manage_nack(&self, session_id: u64, nack: Nack, nack_send: Sender<Packet>) {
         log::debug!(
             "{} {} received a nack: {:?}",
             "↳ server".green(),
@@ -550,19 +548,24 @@ impl ChatServer {
             nack
         );
 
+        // fast return flag to throw the packet away if a weird error happens
+        let mut fast_return = false;
+
         match &nack.nack_type {
             packet::NackType::ErrorInRouting(node) => {
                 self.topology.write().unwrap().remove_node(*node);
                 *self.topology_modified.lock().unwrap() = true;
             }
             packet::NackType::DestinationIsDrone => {
-                panic!("The destination is a drone, this shouldn't be happening")
+                log::error!("The destination is a drone, this shouldn't be happening");
+                fast_return = true;
             }
             packet::NackType::Dropped => {
                 // do nothing for now, maybe in the future update the edge weights
             }
             packet::NackType::UnexpectedRecipient(_) => {
-                panic!("The recipient is not the expected one, this shouldn't be happening")
+                log::error!("The recipient is not the expected one, this shouldn't be happening");
+                fast_return = true;
             }
         }
 
@@ -571,6 +574,9 @@ impl ChatServer {
         let mut ack_packet_buffer_lock = self.ack_packet_buffer.lock().unwrap();
 
         if let Some(packet) = ack_packet_buffer_lock.remove(&ack_key) {
+            if fast_return {
+                return;
+            }
             nack_send.send(packet);
         } else {
             log::error!("The packet was not found in the ack buffer, this shouldn't be happening");
