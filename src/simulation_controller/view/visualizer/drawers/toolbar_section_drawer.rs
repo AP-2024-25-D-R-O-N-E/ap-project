@@ -34,7 +34,8 @@ pub fn draw_toolbar_section(ui: &mut Ui, state: &mut State) {
             .selectable_label(state.toolbar_section.modify_topology_open, "Topology")
             .clicked()
         {
-            state.toolbar_section.modify_topology_open = !state.toolbar_section.modify_topology_open;
+            state.toolbar_section.modify_topology_open =
+                !state.toolbar_section.modify_topology_open;
         }
 
         ui.separator();

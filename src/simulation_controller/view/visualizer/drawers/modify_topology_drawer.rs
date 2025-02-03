@@ -17,6 +17,9 @@ pub fn draw_modify_topology_section(
     state: &mut State,
     simulation_controller: &SimulationController,
 ) {
-    ui.label("prova");
+    ui.add(egui::Slider::new(
+        &mut state.modify_topology_section.pdr,
+        0.0..=1.0,
+    ));
 }
 // pub fn draw_spawn_node_window(ctx: &Context, state: &mut State) {}

@@ -4,8 +4,8 @@ use std::collections::HashMap;
 use crate::simulation_controller::SimulationController;
 
 use super::{
-    ConsoleSectionState, DebugSectionState, EventsState, GraphSectionState, NodeInfoSectionState,
-    SettingsSectionState, TestSectionState, ToolbarSectionState,
+    ConsoleSectionState, DebugSectionState, EventsState, GraphSectionState, ModifyTopologyState,
+    NodeInfoSectionState, SettingsSectionState, TestSectionState, ToolbarSectionState,
 };
 
 pub struct State {
@@ -17,6 +17,7 @@ pub struct State {
     pub toolbar_section: ToolbarSectionState,
     pub node_info_section: NodeInfoSectionState,
     pub console_section: ConsoleSectionState,
+    pub modify_topology_section: ModifyTopologyState,
 }
 
 impl State {
@@ -36,6 +37,15 @@ impl Default for State {
             map.insert(graph_section.g.node(n).unwrap().payload().wg_id, n);
         }
 
+        let mut modify_topology_section = ModifyTopologyState::default();
+        let mut max = 0;
+        for (node_id, _) in &graph_section.node_id_map {
+            if *node_id > max {
+                max = *node_id;
+            }
+        }
+        modify_topology_section.id = max + 1;
+
         Self {
             test_section: Default::default(),
             debug_section: Default::default(),
@@ -45,6 +55,7 @@ impl Default for State {
             toolbar_section: Default::default(),
             node_info_section: Default::default(),
             console_section: Default::default(),
+            modify_topology_section,
         }
     }
 }

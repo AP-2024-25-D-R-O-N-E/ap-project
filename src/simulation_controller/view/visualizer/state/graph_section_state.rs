@@ -31,7 +31,7 @@ pub struct GraphSectionState {
     pub graph_event_consumer: Receiver<Event>,
     pub well_formedness_flag: Result<(), String>,
 
-    node_id_map: HashMap<wg_2024::network::NodeId, petgraph::graph::NodeIndex>,
+    pub node_id_map: HashMap<wg_2024::network::NodeId, petgraph::graph::NodeIndex>,
 }
 
 fn get_node_id_map(
