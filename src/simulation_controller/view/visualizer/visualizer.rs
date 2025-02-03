@@ -403,7 +403,7 @@ impl App for SCGui {
                         draw_modify_topology_section(
                             ui,
                             &mut self.state,
-                            &self.simulation_controller,
+                            &mut self.simulation_controller,
                         );
                     });
                 });

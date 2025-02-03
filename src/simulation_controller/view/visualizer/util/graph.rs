@@ -287,6 +287,7 @@ pub fn add_drone(
     wg_id: NodeId,
     pdr: f32,
     drone_vendor: DroneVendor,
+    simulation_controller: &mut SimulationController,
 ) {
     let new_node_graph_index = graph_section_state.g.add_node(UiNodePayload {
         node_type: UiNodeType::Drone(UiDroneNode::new(pdr)),
@@ -305,6 +306,12 @@ pub fn add_drone(
             .g
             .add_edge(node, new_node_graph_index, UiEdgePayload::default());
     }
+
+    graph_section_state
+        .node_id_map
+        .insert(wg_id, new_node_graph_index);
+
+    simulation_controller.spawn_drone(wg_id, pdr, neighbors_wg_ids, drone_vendor);
 }
 
 pub fn add_edge_between(

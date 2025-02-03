@@ -23,7 +23,7 @@ use crate::simulation_controller::util::{
 pub fn draw_modify_topology_section(
     ui: &mut Ui,
     state: &mut State,
-    simulation_controller: &SimulationController,
+    simulation_controller: &mut SimulationController,
 ) {
     egui::Grid::new("my_grid")
         .num_columns(2)
@@ -115,7 +115,7 @@ pub fn draw_modify_topology_section(
 
     if ui.button("Spawn").clicked() {
         if can_insert_drone(state) {
-            insert_drone(state)
+            insert_drone(state, simulation_controller)
         }
     }
 
@@ -154,7 +154,7 @@ fn can_insert_drone(state: &mut State) -> bool {
     }
 }
 
-fn insert_drone(state: &mut State) {
+fn insert_drone(state: &mut State, simulation_controller: &mut SimulationController) {
     let neighbors =
         parse_string::<NodeId>(state.modify_topology_section.neighbors.clone()).unwrap();
     add_drone(
@@ -162,8 +162,16 @@ fn insert_drone(state: &mut State) {
         &neighbors,
         state.modify_topology_section.id,
         state.modify_topology_section.pdr,
-        state.modify_topology_section.drone_vendor.clone(),
+        state.modify_topology_section.drone_vendor,
+        simulation_controller,
     );
+
+    let mut first_free_id = state.modify_topology_section.id + 1;
+    while (state.graph_section.node_id_map.contains_key(&first_free_id)) {
+        first_free_id += 1;
+    }
+
+    state.modify_topology_section.id = first_free_id;
 }
 
 // fn spawn_drone(state: &mut State) {

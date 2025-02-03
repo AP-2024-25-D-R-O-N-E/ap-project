@@ -1,8 +1,18 @@
-use crossbeam::channel::Sender;
+use std::{
+    collections::HashMap,
+    sync::{Arc, Barrier},
+};
+
+use crossbeam::channel::{unbounded, Sender};
 use wg_2024::{
     controller::*,
     network::NodeId,
     packet::{Packet, PacketType},
+};
+
+use crate::initializer::{
+    drone_vendor::DroneVendor,
+    network_initializer::{spawn_drone_thread, spawn_drone_thread_by_vendor},
 };
 
 use super::simulation_controller::SimulationController;
@@ -149,5 +159,45 @@ impl SimulationController {
                 log::error!("Specified node does not exist");
             }
         }
+    }
+
+    pub fn spawn_drone(
+        &mut self,
+        node_id: NodeId,
+        pdr: f32,
+        neighbors: &Vec<NodeId>,
+        vendor: DroneVendor,
+    ) {
+        let drone_packet_channel = unbounded::<Packet>();
+        let drone_event_channel = unbounded::<DroneEvent>();
+        let drone_command_channel = unbounded::<DroneCommand>();
+
+        self.packet_channels
+            .insert(node_id, drone_packet_channel.clone());
+        self.node_event_channels
+            .insert(node_id, drone_event_channel.1);
+        self.drone_command_channels
+            .insert(node_id, drone_command_channel.0);
+
+        let mut drone_packet_senders = HashMap::new();
+        for neighbor in neighbors.iter() {
+            drone_packet_senders.insert(
+                *neighbor,
+                self.packet_channels.get(&neighbor).unwrap().0.clone(),
+            );
+        }
+
+        let barrier = Arc::new(Barrier::new(2));
+        spawn_drone_thread_by_vendor(
+            node_id,
+            drone_event_channel.0,
+            drone_command_channel.1,
+            drone_packet_channel.1,
+            drone_packet_senders,
+            pdr,
+            barrier.clone(),
+            vendor,
+        );
+        barrier.wait();
     }
 }

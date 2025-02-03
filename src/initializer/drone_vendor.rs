@@ -1,4 +1,4 @@
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Clone, Copy)]
 pub enum DroneVendor {
     RustafarianDrone,
     LockheedRustin,

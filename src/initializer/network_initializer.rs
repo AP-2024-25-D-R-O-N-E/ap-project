@@ -373,7 +373,7 @@ impl NetworkInitializer {
     }
 
     //creates a thread with a new drone inside it
-    fn create_drone_thread(
+    pub fn create_drone_thread(
         drone_index: usize, // index determines which implementation of drone to use
         id: NodeId,
         controller_send: Sender<DroneEvent>,
@@ -469,7 +469,7 @@ impl NetworkInitializer {
         }
     }
 
-    fn create_drone_from_vendor(
+    pub fn create_drone_from_vendor(
         drone_vendor: DroneVendor,
         id: NodeId,
         controller_send: Sender<DroneEvent>,
@@ -555,7 +555,7 @@ impl NetworkInitializer {
     }
 }
 
-fn spawn_drone_thread<T: Drone>(
+pub fn spawn_drone_thread<T: Drone>(
     id: u8,
     controller_send: Sender<DroneEvent>,
     controller_recv: Receiver<DroneCommand>,
@@ -582,6 +582,102 @@ fn spawn_drone_thread<T: Drone>(
         // run function is where the logic of the drone runs.
         drone.run();
     })
+}
+
+pub fn spawn_drone_thread_by_vendor(
+    id: NodeId,
+    controller_send: Sender<DroneEvent>,
+    controller_recv: Receiver<DroneCommand>,
+    packet_recv: Receiver<Packet>,
+    packet_send: HashMap<u8, Sender<Packet>>,
+    pdr: f32,
+    barrier_clone: Arc<Barrier>,
+    vendor: DroneVendor,
+) -> JoinHandle<()> {
+    match vendor {
+        DroneVendor::RustafarianDrone => spawn_drone_thread::<RustafarianDrone>(
+            id,
+            controller_send,
+            controller_recv,
+            packet_recv,
+            packet_send,
+            pdr,
+            barrier_clone,
+        ),
+        DroneVendor::LockheedRustin => spawn_drone_thread::<LockheedRustin>(
+            id,
+            controller_send,
+            controller_recv,
+            packet_recv,
+            packet_send,
+            pdr,
+            barrier_clone,
+        ),
+        DroneVendor::RustyDrone => spawn_drone_thread::<RustyDrone>(
+            id,
+            controller_send,
+            controller_recv,
+            packet_recv,
+            packet_send,
+            pdr,
+            barrier_clone,
+        ),
+        DroneVendor::RustBustersDrone => spawn_drone_thread::<RustBustersDrone>(
+            id,
+            controller_send,
+            controller_recv,
+            packet_recv,
+            packet_send,
+            pdr,
+            barrier_clone,
+        ),
+        DroneVendor::CppEnjoyersDrone => spawn_drone_thread::<CppEnjoyersDrone>(
+            id,
+            controller_send,
+            controller_recv,
+            packet_recv,
+            packet_send,
+            pdr,
+            barrier_clone,
+        ),
+        DroneVendor::RustezeDrone => spawn_drone_thread::<RustezeDrone>(
+            id,
+            controller_send,
+            controller_recv,
+            packet_recv,
+            packet_send,
+            pdr,
+            barrier_clone,
+        ),
+        DroneVendor::GetDroned => spawn_drone_thread::<GetDroned>(
+            id,
+            controller_send,
+            controller_recv,
+            packet_recv,
+            packet_send,
+            pdr,
+            barrier_clone,
+        ),
+        DroneVendor::RustRoveri => spawn_drone_thread::<RustRoveri>(
+            id,
+            controller_send,
+            controller_recv,
+            packet_recv,
+            packet_send,
+            pdr,
+            barrier_clone,
+        ),
+        DroneVendor::MyDrone => spawn_drone_thread::<MyDrone>(
+            id,
+            controller_send,
+            controller_recv,
+            packet_recv,
+            packet_send,
+            pdr,
+            barrier_clone,
+        ),
+        DroneVendor::Unknown => todo!(),
+    }
 }
 
 #[test]
