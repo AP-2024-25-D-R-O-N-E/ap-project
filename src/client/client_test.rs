@@ -1,8 +1,9 @@
-use std::collections::{HashMap, VecDeque};
-
+use std::collections::{HashMap, HashSet, VecDeque};
+use std::sync::{Arc, Condvar, Mutex, RwLock};
+use std::thread::{self, JoinHandle};
 use colored::Colorize;
-use crossbeam::channel::{select_biased, Receiver, Sender};
-use egui_graphs::Edge;
+use crossbeam::channel::{select_biased, unbounded, Receiver, Sender};
+use egui_graphs::{Edge, Node};
 use petgraph::{
     prelude::{GraphMap, StableGraph},
     Undirected,
@@ -19,80 +20,80 @@ use crate::{
 
 use super::ClientTrait;
 
-#[derive(Debug, Hash, PartialEq, Eq, Clone, Copy, PartialOrd, Ord)]
-pub enum HashableNodeType {
-    Drone,
-    Edge,
-}
-
-#[derive(Debug)]
-pub struct Client {
-    pub id: NodeId,
-    pub scs: Sender<ClientEvent>,
-    pub scr: Receiver<ClientCommand>,
-    pub pr: Receiver<Packet>,
-    pub ps: HashMap<NodeId, Sender<Packet>>,
-    topology: GraphMap<(NodeId, HashableNodeType), (), Undirected>,
+pub struct Client{
+    id: NodeId,
+    scs: Sender<ClientEvent>,
+    scr: Receiver<ClientCommand>,
+    packet_r: Receiver<Packet>,
+    packet_s: Arc<RwLock<HashMap<NodeId, Sender<Packet>>>>,
+    flood_id: u64,
+    topology: Arc<RwLock<GraphMap<NodeId, (), Undirected>>>,
+    fragment_buffer: Arc<RwLock<HashMap<(NodeId, u64), Vec<Fragment>>>>,
+    ack_packet_buffer: Arc<Mutex<HashMap<(u64, u64), Packet>>>,
+    topology_modified: Arc<Mutex<bool>>,
+    edge_nodes: Arc<RwLock<HashSet<NodeId>>>,
 }
 
 impl ClientTrait for Client {
-    fn new(
-        id: NodeId,
-        sim_contr_send: Sender<ClientEvent>,
-        sim_contr_recv: Receiver<ClientCommand>,
-        packet_recv: Receiver<Packet>,
-        packet_send: HashMap<NodeId, Sender<Packet>>,
-    ) -> Self {
-        let mut topology: GraphMap<(NodeId, HashableNodeType), (), Undirected> = GraphMap::new();
-        topology.add_node((id, HashableNodeType::Edge));
-
-        Client {
-            id: id,
-            scs: sim_contr_send,
-            scr: sim_contr_recv,
-            pr: packet_recv,
-            ps: packet_send,
-            topology,
+    fn new(id: NodeId, scs: Sender<ClientEvent>, scr: Receiver<ClientCommand>, packet_r: Receiver<Packet>, packet_s: HashMap<NodeId, Sender<Packet>>) -> Self
+    where
+        Self: Sized,
+    {
+        Self {
+            id,
+            scs,
+            scr,
+            packet_r,
+            packet_s: Arc::new(RwLock::new(packet_s)),
+            flood_id: 0,
+            topology: Arc::new(RwLock::new(GraphMap::new())),
+            fragment_buffer: Arc::new(RwLock::new(HashMap::new())),
+            ack_packet_buffer: Arc::new(Mutex::new(HashMap::new())),
+            topology_modified: Arc::new(Mutex::new(false)),
+            edge_nodes: Arc::new(RwLock::new(HashSet::new())),
         }
     }
 
     fn run(&mut self) {
-        loop {
-            select_biased! {
-                recv(self.scr) -> command_res => {
-                    if let Ok(command) = command_res {
-                        //here goes the handling fo the sim controller
-                    }
-                },
-                recv(self.pr) -> packet_res => {
+        let mut threads: Vec<JoinHandle<()>> = Vec::new();
 
-                    match packet_res {
-                        //remember to remove the underscores when you actually start using the variable ig
-                        Ok(packet) => {
-                            log::debug!("{} at {} - packet: {:?}, {:?}", " <- packet received".green(), self.id, packet.session_id, packet.routing_header);
+        let packet_s = self.packet_s.clone();
+        let scs = self.scs.clone();
+        let (nack_s, nack_r) = unbounded::<Packet>();
+        let (fragment_s, fragment_r) = unbounded::<(NodeId, u64, Fragment)>();
+        let condv = Condvar::new();
+        let ack_packet_buffer = self.ack_packet_buffer.clone();
+        let topology = self.topology.clone();
+        let id = self.id;
+        let topology_modified = self.topology_modified.clone();
+        let edge_nodes = self.edge_nodes.clone();
 
-                            match &packet.pack_type {
-                                PacketType::Nack(nack)=>self.manage_nack(nack),
-                                PacketType::Ack(ack)=>self.manage_ack(ack),
-                                PacketType::MsgFragment(fragment)=>self.manage_msg_fragment(fragment),
-                                //  ...these two are jet to be defined...
-                                PacketType::FloodRequest(flood_request) => self.manage_flood_request(packet),
-                                PacketType::FloodResponse(flood_response) => self.manage_flood_response(flood_response),
-                            }
-                        },
-                        Err(error) => {
-                            log::info!("Necessary error at program end: {}", error);
-                            return;
-                        },
-                    }
+        threads.push(thread::spawn(move || {
+            Client::sender_thread(
+                id,
+                packet_s,
+                scs,
+                fragment_r,
+                nack_r,
+                condv,
+                ack_packet_buffer,
+                topology,
+                topology_modified,
+                edge_nodes,
+            );
+        }));
 
-                },
+        let (ready_s, ready_r) = unbounded::<(NodeId, u64)>();
 
-            }
-        }
+        let id = self.id;
+
+        threads.push(thread::spawn(move ||{
+            Client::command_handler_thread(id);
+        }));
+
+        self.receiver_thread(ready_s, nack_s);
+
     }
-
-    // these are all sample function to handle messages
 }
 
 impl Fragmenter for Client {
@@ -141,6 +142,37 @@ impl Fragmenter for Client {
         }
         fragments
     }
+}
+
+impl Client{
+    fn receiver_thread(&mut self, ready_send: Sender<(NodeId, u64)>, nack_send: Sender<Packet>){
+        loop {
+            select_biased!(
+                recv(self.scr) -> cmd => {
+                    if let Ok(command) = cmd {
+                        match command {
+                            ClientCommand::NetworkInitialized => self.initiate_flood(),
+                            ClientCommand::AddSender(id, sender) => self.add_sender(id, sender),
+                            ClientCommand::RemoveSender(id) => self.remove_sender(id),
+                        }
+                    }
+                },
+                recv(self.packet_r) -> res => {
+                    if let Ok(mut packet) = res {
+                        match packet.pack_type {
+                            PacketType::MsgFragment(_) => self.manage_msg_fragment(packet, ready_s.clone()),
+                            PacketType::Ack(ack) => self.manage_ack(packet.session_id, ack),
+                            PacketType::Nack(nack) => self.manage_nack(packet.session_id, nack, nack_s.clone()),
+                            PacketType::FloodRequest(_) => self.manage_flood_request(packet),
+                            PacketType::FloodResponse(flood_response) => self.manage_flood_response(flood_response),
+                        }
+                    }
+                }
+            )
+        }
+    }
+
+
 }
 
 impl Client {
