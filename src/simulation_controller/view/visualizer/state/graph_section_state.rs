@@ -34,19 +34,8 @@ pub struct GraphSectionState {
     pub node_id_map: HashMap<wg_2024::network::NodeId, petgraph::graph::NodeIndex>,
 }
 
-fn get_node_id_map(
-    graph: &StableGraph<UiNodePayload, UiEdgePayload, Undirected>,
-) -> HashMap<u8, NodeIndex> {
-    let mut map = HashMap::new();
-
-    for n in graph.node_indices() {
-        let payload = graph.node_weight(n).unwrap();
-        map.insert(payload.wg_id, n);
-    }
-    map
-}
 impl GraphSectionState {
-    fn new(graph: StableGraph<UiNodePayload, UiEdgePayload, Undirected>) -> GraphSectionState {
+    pub fn new(graph: StableGraph<UiNodePayload, UiEdgePayload, Undirected>) -> GraphSectionState {
         let graph_section = GraphSectionState::default();
         let (event_publisher, event_consumer) = unbounded();
         let ui_graph = Graph::from(&graph);
@@ -88,6 +77,18 @@ impl Default for GraphSectionState {
             well_formedness_flag: Ok(()),
         }
     }
+}
+
+fn get_node_id_map(
+    graph: &StableGraph<UiNodePayload, UiEdgePayload, Undirected>,
+) -> HashMap<u8, NodeIndex> {
+    let mut map = HashMap::new();
+
+    for n in graph.node_indices() {
+        let payload = graph.node_weight(n).unwrap();
+        map.insert(payload.wg_id, n);
+    }
+    map
 }
 
 fn generate_graph() -> StableGraph<UiNodePayload, UiEdgePayload, Undirected> {

@@ -152,7 +152,7 @@ fn can_insert_drone(state: &mut State) -> bool {
             state.modify_topology_section.status_flag = Some(Err(error));
             return false;
         }
-    };
+    }
 }
 
 // fn spawn_drone(state: &mut State) {

@@ -5,7 +5,7 @@ use petgraph::{
     prelude::StableGraph,
     Undirected,
 };
-use std::collections::{HashSet, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 use wg_2024::network::NodeId;
 
 use crate::simulation_controller::{
@@ -225,29 +225,39 @@ pub fn check_drone_addition(
     graph_section_state: &mut GraphSectionState,
     neighbors_wg_ids: &Vec<NodeId>,
 ) -> Result<(), String> {
+    if neighbors_wg_ids.is_empty() {
+        return Err("New drone should be connected to at least 1 node".to_string());
+    }
+
+    // println!("{:#?}", graph_section_state.g.node(NodeIndex::new(8)));
+
+    for node in graph_section_state.g.g.node_indices() {
+        println!(
+            "petgraph: {:?} graph: {:?} wg_id: {:?}",
+            node,
+            graph_section_state.g.node(node).unwrap(),
+            graph_section_state.g.node(node).unwrap().payload().wg_id
+        );
+    }
+
     let neighbors_graph_ids: Vec<NodeIndex> = neighbors_wg_ids
         .clone()
         .into_iter()
         .map(|node| *graph_section_state.node_id_map.get(&node).unwrap())
         .collect();
 
-    // Check that either drone is not crashed
-    for node in neighbors_graph_ids.iter() {
-        if get_drone_node(&mut graph_section_state.g, *node).crashed {
-            return Err(format!(
-                "Cannot add link since drone {:?} is crashed",
-                graph_section_state.g.node(*node).unwrap().payload().wg_id
-            ));
-        }
-    }
+    println!("{:#?}", graph_section_state.node_id_map);
 
     // Helper function to validate client connection
     fn check_drone_client(graph: &mut UiGraph, client: NodeIndex) -> Result<(), String> {
+        println!("client: {:?}", client);
         let neighbors: Vec<NodeIndex> = get_neigbors_with_disabled_edges(&graph.g, client);
+        println!("Neighbors: {:?}", neighbors);
         if neighbors.len() >= 2 {
-            return Err("Client nodes can have at most 2 neighbors".to_string());
+            Err("Client nodes can have at most 2 neighbors".to_string())
+        } else {
+            Ok(())
         }
-        Ok(())
     }
 
     for node in neighbors_graph_ids {
@@ -260,6 +270,7 @@ pub fn check_drone_addition(
                 ));
             }
         };
+
         match node_payload.node_type {
             UiNodeType::Server(ui_server_node) => (),
             UiNodeType::Client(ui_client_node) => {
@@ -267,7 +278,14 @@ pub fn check_drone_addition(
                     return Err(err);
                 }
             }
-            UiNodeType::Drone(ui_drone_node) => (),
+            UiNodeType::Drone(ui_drone_node) => {
+                if ui_drone_node.crashed {
+                    return Err(format!(
+                        "Cannot add link since drone {:?} is crashed",
+                        node_payload.wg_id
+                    ));
+                }
+            }
         };
     }
 

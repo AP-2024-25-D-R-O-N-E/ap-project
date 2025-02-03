@@ -23,7 +23,7 @@ pub struct State {
 impl State {
     pub fn from(sc: &SimulationController) -> State {
         let mut default_state = State::default();
-        default_state.graph_section.g = Graph::from(&sc.topology);
+        default_state.graph_section = GraphSectionState::new(sc.topology.clone());
         default_state
     }
 }
