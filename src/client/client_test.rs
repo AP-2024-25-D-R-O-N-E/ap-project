@@ -476,7 +476,7 @@ impl Client{
     }
 
     fn initiate_flood(&mut self) {
-        for (id, sender) in self.packet_send.read().unwrap().iter() {
+        for (id, sender) in self.packet_s.read().unwrap().iter() {
             let packet = Packet {
                 pack_type: PacketType::FloodRequest(FloodRequest {
                     path_trace: vec![(self.id, NodeType::Client)],
