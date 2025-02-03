@@ -79,7 +79,9 @@ pub fn check_edge_removal(
 ) -> bool {
     let mut edges = HashSet::new();
     for (edge_index, edge) in graph.edges_connecting(node1, node2) {
-        edges.insert(edge_index);
+        if edge.payload().is_active {
+            edges.insert(edge_index);
+        }
     }
 
     let node1_payload = graph.node(node1).unwrap().payload().clone();
@@ -162,7 +164,7 @@ pub fn check_edge_addition(
 
     let has_crashed_drone = match (
         &graph.node(node1).unwrap().payload().node_type,
-        &graph.node(node1).unwrap().payload().node_type,
+        &graph.node(node2).unwrap().payload().node_type,
     ) {
         (UiNodeType::Drone(drone1), UiNodeType::Drone(drone2)) => drone1.crashed || drone2.crashed,
         (UiNodeType::Drone(drone), _) => drone.crashed,
@@ -353,6 +355,17 @@ pub fn add_edge_between(
 
 pub fn check_node_removal(graph: &mut UiGraph, node: NodeIndex) -> Result<(), String> {
     if is_connected_without_node_set(&graph.g, HashSet::from([node])) {
+        for neighbor in get_neigbors_with_disabled_edges(&graph.g, node) {
+            if let UiNodeType::Server(_) = graph.node(neighbor).unwrap().payload().node_type {
+                if get_neigbors_with_disabled_edges(&graph.g, neighbor).len() < 3 {
+                    return Err(format!(
+                        "Crashing the drone {:?} would cause the server {:?} to have only 1 neighbor",
+                        graph.node(node).unwrap().payload().wg_id, graph.node(neighbor).unwrap().payload().wg_id
+                    ));
+                }
+            }
+        }
+
         Ok(())
     } else {
         Err("Removing the node would cause the graph to discounnect".to_string())
@@ -487,12 +500,7 @@ where
     let mut visited = HashSet::new();
     let mut first_node = None;
     for node in graph.node_indices() {
-        let is_crashed_drone = match &graph.node_weight(node).unwrap().payload().node_type {
-            UiNodeType::Server(_) => false,
-            UiNodeType::Client(_) => false,
-            UiNodeType::Drone(ui_drone_node) => ui_drone_node.crashed,
-        };
-        if !is_crashed_drone {
+        if !!is_crashed_drone(&graph, node) {
             first_node = Some(node);
             break;
         }
@@ -512,12 +520,7 @@ where
         }
 
         for neighbor in graph.neighbors_undirected(curr_node) {
-            let is_crashed_drone = match &graph.node_weight(neighbor).unwrap().payload().node_type {
-                UiNodeType::Server(_) => false,
-                UiNodeType::Client(_) => false,
-                UiNodeType::Drone(ui_drone_node) => ui_drone_node.crashed,
-            };
-            if !is_crashed_drone
+            if !is_crashed_drone(&graph, neighbor)
                 && !visited.contains(&neighbor)
                 && !excluded_nodes.contains(&neighbor)
             {
@@ -528,18 +531,20 @@ where
         visited.insert(curr_node);
     }
 
-    let mut total_crashed_drones = 0;
+    let mut crashed_drones = HashSet::new();
     for node in graph.node_indices() {
         if is_crashed_drone(&graph, node) {
-            total_crashed_drones += 1;
+            crashed_drones.insert(node);
         }
     }
 
+    let total_excluded_count = crashed_drones.union(&excluded_nodes).count();
     println!("Visited count: {}", visited.len());
     println!("Graph node count: {}", graph.node_count());
-    println!("Total crashed drones: {}", total_crashed_drones);
+    println!("Total crashed drones: {:?}", crashed_drones);
+    println!("Total excluded count: {:?}", total_excluded_count);
 
-    visited.len() == graph.node_count() - total_crashed_drones - excluded_nodes.len()
+    visited.len() == graph.node_count() - total_excluded_count
 }
 
 pub fn get_neigbors_with_disabled_edges<N>(
