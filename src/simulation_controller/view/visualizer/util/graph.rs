@@ -8,12 +8,15 @@ use petgraph::{
 use std::collections::{HashMap, HashSet, VecDeque};
 use wg_2024::network::NodeId;
 
-use crate::simulation_controller::{
-    edge::{CustomEdgeShape, UiEdgePayload},
-    node::{CustomNodeShape, UiDroneNode, UiNodePayload, UiNodeType},
-    state::{GraphSectionState, State},
-    util::*,
-    SimulationController,
+use crate::{
+    initializer::drone_vendor::DroneVendor,
+    simulation_controller::{
+        edge::{CustomEdgeShape, UiEdgePayload},
+        node::{CustomNodeShape, UiDroneNode, UiNodePayload, UiNodeType},
+        state::{GraphSectionState, State},
+        util::*,
+        SimulationController,
+    },
 };
 
 // TODO take into account the disabled edges and crashed drones
@@ -229,28 +232,14 @@ pub fn check_drone_addition(
         return Err("New drone should be connected to at least 1 node".to_string());
     }
 
-    // println!("{:#?}", graph_section_state.g.node(NodeIndex::new(8)));
-
-    for node in graph_section_state.g.g.node_indices() {
-        println!(
-            "petgraph: {:?} graph: {:?} wg_id: {:?}",
-            node,
-            graph_section_state.g.node(node).unwrap(),
-            graph_section_state.g.node(node).unwrap().payload().wg_id
-        );
-    }
-
     let neighbors_graph_ids: Vec<NodeIndex> = neighbors_wg_ids
         .clone()
         .into_iter()
         .map(|node| *graph_section_state.node_id_map.get(&node).unwrap())
         .collect();
 
-    println!("{:#?}", graph_section_state.node_id_map);
-
     // Helper function to validate client connection
     fn check_drone_client(graph: &mut UiGraph, client: NodeIndex) -> Result<(), String> {
-        println!("client: {:?}", client);
         let neighbors: Vec<NodeIndex> = get_neigbors_with_disabled_edges(&graph.g, client);
         println!("Neighbors: {:?}", neighbors);
         if neighbors.len() >= 2 {
@@ -290,6 +279,32 @@ pub fn check_drone_addition(
     }
 
     Ok(())
+}
+
+pub fn add_drone(
+    graph_section_state: &mut GraphSectionState,
+    neighbors_wg_ids: &Vec<NodeId>,
+    wg_id: NodeId,
+    pdr: f32,
+    drone_vendor: DroneVendor,
+) {
+    let new_node_graph_index = graph_section_state.g.add_node(UiNodePayload {
+        node_type: UiNodeType::Drone(UiDroneNode::new(pdr)),
+        vendor: drone_vendor,
+        wg_id,
+    });
+
+    let neighbors_graph_ids: Vec<NodeIndex> = neighbors_wg_ids
+        .clone()
+        .into_iter()
+        .map(|node| *graph_section_state.node_id_map.get(&node).unwrap())
+        .collect();
+
+    for node in neighbors_graph_ids {
+        graph_section_state
+            .g
+            .add_edge(node, new_node_graph_index, UiEdgePayload::default());
+    }
 }
 
 pub fn add_edge_between(

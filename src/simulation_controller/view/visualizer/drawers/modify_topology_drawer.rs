@@ -8,7 +8,10 @@ use crate::{
     simulation_controller::{
         node::{UiDroneNode, UiNodePayload, UiNodeType},
         state::{DisplayOptions, NodeInfoSectionState, State},
-        util::{self, check_drone_addition, check_node_removal, colors, parse_string, remove_node},
+        util::{
+            self, add_drone, check_drone_addition, check_node_removal, colors, parse_string,
+            remove_node,
+        },
         SimulationController,
     },
 };
@@ -112,11 +115,7 @@ pub fn draw_modify_topology_section(
 
     if ui.button("Spawn").clicked() {
         if can_insert_drone(state) {
-            // state.modify_topology_section.status_flag = Some(simulation_controller.spawn_drone(
-            //     state.modify_topology_section.id,
-            //     state.modify_topology_section.pdr,
-            //     &state.modify_topology_section.neighbors,
-            // ));
+            insert_drone(state)
         }
     }
 
@@ -153,6 +152,18 @@ fn can_insert_drone(state: &mut State) -> bool {
             return false;
         }
     }
+}
+
+fn insert_drone(state: &mut State) {
+    let neighbors =
+        parse_string::<NodeId>(state.modify_topology_section.neighbors.clone()).unwrap();
+    add_drone(
+        &mut state.graph_section,
+        &neighbors,
+        state.modify_topology_section.id,
+        state.modify_topology_section.pdr,
+        state.modify_topology_section.drone_vendor.clone(),
+    );
 }
 
 // fn spawn_drone(state: &mut State) {

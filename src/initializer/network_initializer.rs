@@ -273,7 +273,7 @@ impl NetworkInitializer {
         for drone in &config.drone {
             let n = graph.add_node(UiNodePayload {
                 node_type: UiNodeType::Drone(UiDroneNode::new(drone.pdr)),
-                vendor: "unknown".to_string(),
+                vendor: DroneVendor::Unknown,
                 wg_id: drone.id,
             });
             node_map_function.insert(drone.id, n);
@@ -281,7 +281,7 @@ impl NetworkInitializer {
         for server in &config.server {
             let n = graph.add_node(UiNodePayload {
                 node_type: UiNodeType::Server(UiServerNode {}),
-                vendor: "unknown".to_string(),
+                vendor: DroneVendor::Unknown,
                 wg_id: server.id,
             });
             node_map_function.insert(server.id, n);
@@ -289,7 +289,7 @@ impl NetworkInitializer {
         for client in &config.client {
             let n = graph.add_node(UiNodePayload {
                 node_type: UiNodeType::Client(UiClientNode {}),
-                vendor: "unknown".to_string(),
+                vendor: DroneVendor::Unknown,
                 wg_id: client.id,
             });
             node_map_function.insert(client.id, n);

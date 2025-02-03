@@ -1,4 +1,4 @@
-#[derive(PartialEq)]
+#[derive(PartialEq, Clone)]
 pub enum DroneVendor {
     RustafarianDrone,
     LockheedRustin,
@@ -9,6 +9,7 @@ pub enum DroneVendor {
     GetDroned,
     RustRoveri,
     MyDrone,
+    Unknown,
 }
 
 impl ToString for DroneVendor {
@@ -23,6 +24,7 @@ impl ToString for DroneVendor {
             DroneVendor::GetDroned => "GetDroned".to_string(),
             DroneVendor::RustRoveri => "RustRoveri".to_string(),
             DroneVendor::MyDrone => "MyDrone".to_string(),
+            DroneVendor::Unknown => "Unknown".to_string(),
         }
     }
 }
