@@ -20,10 +20,10 @@ use crate::{
 pub trait ClientTrait {
     fn new(
         id: NodeId,
-        sim_contr_send: Sender<ClientEvent>,
-        sim_contr_recv: Receiver<ClientCommand>,
-        packet_recv: Receiver<Packet>,
-        packet_send: HashMap<NodeId, Sender<Packet>>,
+        scs: Sender<ClientEvent>,
+        scr: Receiver<ClientCommand>,
+        packet_r: Receiver<Packet>,
+        packet_s: HashMap<NodeId, Sender<Packet>>,
     ) -> Self
     where
         Self: Sized;
