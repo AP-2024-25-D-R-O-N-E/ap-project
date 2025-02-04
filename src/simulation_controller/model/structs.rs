@@ -8,7 +8,7 @@ pub enum ClientEvent {
 }
 
 /// From controller to client
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize)]
 pub enum ClientCommand {}
 
 /// From server to controller
@@ -149,3 +149,22 @@ impl std::fmt::Display for SCEvent {
 //         format!("{} {}", self.sender_id, self.event_type)
 //     }
 // }
+
+impl serde::Serialize for SCEvent {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        todo!()
+    }
+}
+
+impl serde::Serialize for SCEventType {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_struct("sc_event:", 2);
+        todo!()
+    }
+}
