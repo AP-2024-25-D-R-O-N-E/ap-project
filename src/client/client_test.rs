@@ -2,6 +2,11 @@ use std::collections::HashMap;
 
 use colored::Colorize;
 use crossbeam::channel::{select_biased, Receiver, Sender};
+use egui_graphs::Edge;
+use petgraph::{
+    prelude::{GraphMap, StableGraph},
+    Undirected,
+};
 use wg_2024::{
     network::{NodeId, SourceRoutingHeader},
     packet::{Ack, FloodRequest, FloodResponse, Fragment, Nack, NodeType, Packet, PacketType},
@@ -9,34 +14,45 @@ use wg_2024::{
 
 use crate::{
     fragmentation::{message::Message, Fragmenter},
-    simulation_controller::structs::{ServerCommand, ServerEvent},
+    simulation_controller::structs::{ClientCommand, ClientEvent},
 };
 
-use super::ServerTrait;
+use super::ClientTrait;
 
-#[derive(Debug)]
-pub struct Server {
-    pub id: NodeId,
-    pub scs: Sender<ServerEvent>,
-    pub scr: Receiver<ServerCommand>,
-    pub pr: Receiver<Packet>,
-    pub ps: HashMap<NodeId, Sender<Packet>>,
+#[derive(Debug, Hash, PartialEq, Eq, Clone, Copy, PartialOrd, Ord)]
+pub enum HashableNodeType {
+    Drone,
+    Edge,
 }
 
-impl ServerTrait for Server {
+#[derive(Debug)]
+pub struct Client {
+    pub id: NodeId,
+    pub scs: Sender<ClientEvent>,
+    pub scr: Receiver<ClientCommand>,
+    pub pr: Receiver<Packet>,
+    pub ps: HashMap<NodeId, Sender<Packet>>,
+    topology: GraphMap<(NodeId, HashableNodeType), (), Undirected>,
+}
+
+impl ClientTrait for Client {
     fn new(
         id: NodeId,
-        sim_contr_send: Sender<ServerEvent>,
-        sim_contr_recv: Receiver<ServerCommand>,
+        sim_contr_send: Sender<ClientEvent>,
+        sim_contr_recv: Receiver<ClientCommand>,
         packet_recv: Receiver<Packet>,
         packet_send: HashMap<NodeId, Sender<Packet>>,
     ) -> Self {
-        Server {
+        let mut topology: GraphMap<(NodeId, HashableNodeType), (), Undirected> = GraphMap::new();
+        topology.add_node((id, HashableNodeType::Edge));
+
+        Client {
             id: id,
             scs: sim_contr_send,
             scr: sim_contr_recv,
             pr: packet_recv,
             ps: packet_send,
+            topology,
         }
     }
 
@@ -49,10 +65,10 @@ impl ServerTrait for Server {
                     }
                 },
                 recv(self.pr) -> packet_res => {
+
                     match packet_res {
                         //remember to remove the underscores when you actually start using the variable ig
                         Ok(packet) => {
-
                             log::debug!("{} at {} - packet: {:?}, {:?}", " <- packet received".green(), self.id, packet.session_id, packet.routing_header);
 
                             match &packet.pack_type {
@@ -75,24 +91,38 @@ impl ServerTrait for Server {
             }
         }
     }
+
+    // these are all sample function to handle messages
 }
 
-impl Fragmenter for Server {
-    fn disassemble(msg: Message) -> std::collections::HashMap<u64, wg_2024::packet::Fragment> {
-        todo!()
+impl Fragmenter for Client {
+    fn assemble(mut fragments: Vec<Fragment>) -> Message {
+        // sort fragments by index before assembling
+        fragments.sort_by(|a, b| a.fragment_index.cmp(&b.fragment_index));
+
+        let mut message_data: Vec<u8> = Vec::new();
+        for fragment in fragments {
+            if fragment.length < 128 {
+                message_data.extend(&fragment.data[0..fragment.length as usize]);
+            } else {
+                message_data.extend(&fragment.data);
+            }
+        }
+
+        Message::from_u8(message_data)
     }
 
-    fn assemble(fragments: Vec<wg_2024::packet::Fragment>) -> Message {
+    fn disassemble(msg: Message) -> std::collections::VecDeque<Fragment> {
         todo!()
     }
 }
 
-impl Server {
+impl Client {
     fn manage_nack(&self, nack: &Nack) {
         //resend the packet
         log::debug!(
             "{} {} received a nack: {:?}",
-            "↳ server".green(),
+            "↳ client".green(),
             self.id,
             nack
         );
@@ -102,7 +132,7 @@ impl Server {
         //free memory of message vector
         log::debug!(
             "{} {} received an ack: {:?}",
-            "↳ server".green(),
+            "↳ client".green(),
             self.id,
             ack
         );
@@ -110,24 +140,41 @@ impl Server {
 
     fn manage_msg_fragment(&self, msg: &Fragment) {
         //call to the assembler
-        log::debug!(
-            "{} {} received a fragment: {:?}",
-            "↳ server".green(),
-            self.id,
-            msg
-        );
+        // log::debug!(
+        //     "{} {} received a fragment: {:?}",
+        //     "↳ client".green(),
+        //     self.id,
+        //     msg
+        // );
+
+        // this is 100% a test function and shouldn't be used like this
+        if msg.total_n_fragments == 1 {
+            log::debug!(
+                "{} {} {:?}",
+                "↳ client".green(),
+                self.id,
+                Self::assemble(vec![msg.clone()])
+            );
+        } else {
+            log::debug!(
+                "{} {} received a fragment: {:?}",
+                "↳ client".green(),
+                self.id,
+                msg
+            );
+        }
     }
 
     fn manage_flood_request(&self, mut packet: Packet) {
         log::debug!(
             "{} {} received a flood request: {:?}",
-            "↳ server".green(),
+            "↳ client".green(),
             self.id,
             packet.pack_type
         );
 
         if let PacketType::FloodRequest(mut flood_request) = packet.pack_type {
-            flood_request.path_trace.push((self.id, NodeType::Server));
+            flood_request.path_trace.push((self.id, NodeType::Client));
 
             let new_flood_res = FloodResponse {
                 path_trace: flood_request.path_trace,
@@ -153,14 +200,36 @@ impl Server {
         }
     }
 
-    fn manage_flood_response(&self, fr: &FloodResponse) {
+    fn manage_flood_response(&mut self, fr: &FloodResponse) {
         //call to the assembler
         log::debug!(
             "{} {} received a flood response: {:?}",
-            "↳ server".green(),
+            "↳ client".green(),
             self.id,
             fr
         );
+
+        // check that the flood response is ours
+        if fr.path_trace[0].0 == self.id {
+            let node = match fr.path_trace[0].1 {
+                NodeType::Drone => (fr.path_trace[0].0, HashableNodeType::Drone),
+                _ => (fr.path_trace[0].0, HashableNodeType::Edge),
+            };
+
+            let mut current_index = self.topology.add_node(node);
+
+            for value in fr.path_trace.iter().skip(1) {
+                let node = match value.1 {
+                    NodeType::Drone => (value.0, HashableNodeType::Drone),
+                    _ => (value.0, HashableNodeType::Edge),
+                };
+                let new_node = self.topology.add_node(node);
+                self.topology.add_edge(current_index, new_node, ());
+                current_index = new_node;
+            }
+        }
+
+        log::info!("{} {:?}", "Client 1 topology: ".green(), self.topology);
     }
 
     fn forward_packet(&self, mut packet: Packet) {
@@ -182,7 +251,7 @@ impl Server {
         if let Err(mut packet) = res {
             log::error!("The send inside channel gave an error, this shouldn't be happening");
         } else {
-            self.scs.send(ServerEvent::PacketSent(packet));
+            self.scs.send(ClientEvent::PacketSent(packet));
         }
     }
 }

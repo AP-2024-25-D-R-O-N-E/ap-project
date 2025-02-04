@@ -17,7 +17,7 @@ use crate::{
 
 use super::ClientTrait;
 
-pub struct Client{
+pub struct ClientLuca {
     id: NodeId,
     scs: Sender<ClientEvent>,
     scr: Receiver<ClientCommand>,
@@ -31,7 +31,7 @@ pub struct Client{
     edge_nodes: Arc<RwLock<HashSet<NodeId>>>,
 }
 
-impl ClientTrait for Client {
+impl ClientTrait for ClientLuca {
     fn new(id: NodeId, scs: Sender<ClientEvent>, scr: Receiver<ClientCommand>, packet_r: Receiver<Packet>, packet_s: HashMap<NodeId, Sender<Packet>>) -> Self
     where
         Self: Sized,
@@ -66,7 +66,7 @@ impl ClientTrait for Client {
         let edge_nodes = self.edge_nodes.clone();
 
         threads.push(thread::spawn(move || {
-            Client::sender_thread(
+            ClientLuca::sender_thread(
                 id,
                 packet_s,
                 scs,
@@ -85,7 +85,7 @@ impl ClientTrait for Client {
         let id = self.id;
 
         threads.push(thread::spawn(move ||{
-            Client::command_handler_thread(id);
+            ClientLuca::command_handler_thread(id);
         }));
 
         self.receiver_thread(ready_s, nack_s);
@@ -93,7 +93,7 @@ impl ClientTrait for Client {
     }
 }
 
-impl Fragmenter for Client {
+impl Fragmenter for ClientLuca {
     fn assemble(mut fragments: Vec<Fragment>) -> Message {
         // sort fragments by index before assembling
         fragments.sort_by(|a, b| a.fragment_index.cmp(&b.fragment_index));
@@ -141,7 +141,7 @@ impl Fragmenter for Client {
     }
 }
 
-impl Client{
+impl ClientLuca {
     fn receiver_thread(&mut self, ready_s: Sender<(NodeId, u64)>, nack_s: Sender<Packet>){
         loop {
             select_biased!(
@@ -151,7 +151,7 @@ impl Client{
                             ClientCommand::NetworkInitialized => self.initiate_flood(),
                             ClientCommand::AddSender(id, sender) => self.add_sender(id, sender),
                             ClientCommand::RemoveSender(id) => self.remove_sender(id),
-                            ClientCommand::RequestClients
+                            ClientCommand::RequestClients => todo!()
                             //Need to add other commands when defined
                         }
                     }
@@ -258,7 +258,7 @@ impl Client{
 }
 
 //Thread: receiver
-impl Client{
+impl ClientLuca {
     fn manage_flood_request(&self, mut packet: Packet) {
         log::debug!(
             "{} {} received a flood request: {:?}",
@@ -509,7 +509,7 @@ impl Client{
 
 
 //Thread: Sender
-impl Client{
+impl ClientLuca {
     fn find_route(
         id: NodeId,
         destination: NodeId,
