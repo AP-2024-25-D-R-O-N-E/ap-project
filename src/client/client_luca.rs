@@ -151,6 +151,7 @@ impl Client{
                             ClientCommand::NetworkInitialized => self.initiate_flood(),
                             ClientCommand::AddSender(id, sender) => self.add_sender(id, sender),
                             ClientCommand::RemoveSender(id) => self.remove_sender(id),
+                            ClientCommand::RequestClients
                             //Need to add other commands when defined
                         }
                     }
@@ -220,9 +221,6 @@ impl Client{
                 },
                 recv(fragment_r) -> frag_res => {
                     if let Ok((destination, session_id, fragment)) = frag_res {
-
-                        // receives normal packets
-
                         // choose the route for the packet
                         if routing_table.get(&destination).is_none() {
                             // if the routing table doesn't have the next hop, then we need to update the routing table
@@ -420,8 +418,8 @@ impl Client{
             nack
         );
 
-        // fast return flag to throw the packet away if a weird error happens
-        let mut fast_return = false;
+        // return that throws the packet away in case of an error
+        let mut ret = false;
 
         match &nack.nack_type {
             packet::NackType::ErrorInRouting(node) => {
@@ -430,12 +428,12 @@ impl Client{
             }
             packet::NackType::DestinationIsDrone => {
                 log::error!("Error: the destination is a drone");
-                fast_return = true;
+                ret = true;
             }
             packet::NackType::Dropped => {}
             packet::NackType::UnexpectedRecipient(_) => {
                 log::error!("Error: the recipient is not the expected one");
-                fast_return = true;
+                ret = true;
             }
         }
 
@@ -444,7 +442,7 @@ impl Client{
         let mut ack_packet_buffer_lock = self.ack_packet_buffer.lock().unwrap();
 
         if let Some(packet) = ack_packet_buffer_lock.remove(&ack_key) {
-            if fast_return {
+            if ret {
                 return;
             }
             nack_send.send(packet);
