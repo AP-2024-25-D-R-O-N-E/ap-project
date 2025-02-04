@@ -505,7 +505,7 @@ impl Client{
         self.packet_s.write().unwrap().insert(id, sender);
     }
 
-    fn remove_channel(&mut self, id: NodeId) {
+    fn remove_sender(&mut self, id: NodeId) {
         self.packet_s.write().unwrap().remove(&id);
     }
 
