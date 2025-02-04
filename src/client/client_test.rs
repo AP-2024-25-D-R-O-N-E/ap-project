@@ -3,11 +3,9 @@ use std::sync::{Arc, Condvar, Mutex, RwLock};
 use std::thread::{self, JoinHandle};
 use colored::Colorize;
 use crossbeam::channel::{select_biased, unbounded, Receiver, Sender};
+use egui::accesskit::NodeId;
 use egui_graphs::{Edge, Node};
-use petgraph::{
-    prelude::{GraphMap, StableGraph},
-    Undirected,
-};
+use petgraph::{algo, prelude::{GraphMap, StableGraph}, Undirected};
 use wg_2024::{
     network::{NodeId, SourceRoutingHeader},
     packet::{self, Ack, FloodRequest, FloodResponse, Fragment, Nack, NodeType, Packet, PacketType},
@@ -145,7 +143,7 @@ impl Fragmenter for Client {
 }
 
 impl Client{
-    fn receiver_thread(&mut self, ready_send: Sender<(NodeId, u64)>, nack_send: Sender<Packet>){
+    fn receiver_thread(&mut self, ready_s: Sender<(NodeId, u64)>, nack_s: Sender<Packet>){
         loop {
             select_biased!(
                 recv(self.scr) -> cmd => {
@@ -154,6 +152,7 @@ impl Client{
                             ClientCommand::NetworkInitialized => self.initiate_flood(),
                             ClientCommand::AddSender(id, sender) => self.add_sender(id, sender),
                             ClientCommand::RemoveSender(id) => self.remove_sender(id),
+                            //Need to add other commands when defined
                         }
                     }
                 },
@@ -206,14 +205,14 @@ impl Client{
 
                         packet.routing_header.hops = routing_table.get(&destination).unwrap().clone();
 
-                        let mut ack_buff = condv
+                        let mut ack_buffer = condv
                         .wait_while(ack_packet_buffer.lock().unwrap(), |buff| {
                             buff.len() + nack_r.len() >= MAX_OUTPUT_BUFFER
                         })
                         .unwrap();
 
                         if let PacketType::MsgFragment(fragment) = &packet.pack_type {
-                            ack_buff.insert((packet.session_id, fragment.fragment_index), packet.clone());
+                            ack_buffer.insert((packet.session_id, fragment.fragment_index), packet.clone());
                         }
 
                         Self::send_msg_packet(id, packet_s.clone(), scs.clone(), packet);
@@ -242,13 +241,13 @@ impl Client{
                             pack_type: PacketType::MsgFragment(fragment) };
 
                         // get the ack_buffer through mutex and on condition
-                        let mut ack_buff = condv
+                        let mut ack_buffer = condv
                         .wait_while(ack_packet_buffer.lock().unwrap(), |buff| {
                             buff.len() + nack_r.len() >= MAX_OUTPUT_BUFFER
                         })
                         .unwrap();
 
-                        ack_buff.insert((session_id, fragment_index), packet.clone());
+                        ack_buffer.insert((session_id, fragment_index), packet.clone());
 
                         Self::send_msg_packet(id, packet_s.clone(), scs.clone(), packet);
                     }
@@ -510,4 +509,68 @@ impl Client{
     }
 
 }
+
+
+//Thread: Sender
+impl Client{
+    fn find_route(
+        id: NodeId,
+        destination: NodeId,
+        routing_table: &mut HashMap<NodeId, Vec<NodeId>>,
+        topology: Arc<RwLock<GraphMap<NodeId, (), Undirected>>>,
+        edge_nodes: Arc<RwLock<HashSet<NodeId>>>,
+    ){
+        let topology_lock = topology.read().unwrap();
+
+        let path = algo::astar(
+            &*topology_lock,
+            id,
+            |finish| finish == destination,
+            |(a, b, _)| {
+                if destination == a || destination == b {
+                    return 1;
+                }
+                let edge_nodes_lock = edge_nodes.read().unwrap();
+                if edge_nodes_lock.contains(&b) || edge_nodes_lock.contains(&a) {
+                    topology_lock.edge_count()
+                } else {
+                    1
+                }
+            },
+            |_| 0,
+        );
+
+        if let Some((_, route)) = path{
+            routing_table.insert(destination, route);
+        }else{
+            log::error!("No route found to destination {}", destination);
+        }
+    }
+
+    fn send_msg_packet(
+        id: NodeId,
+        packet_s: Arc<RwLock<HashMap<u8, Sender<Packet>>>>,
+        scs: Sender<ClientEvent>,
+        packet: Packet,
+    ){
+        let next_node = packet.routing_header.hops[packet.routing_header.hop_index];
+        let send_channel = &packet_s.read().unwrap()[&next_node];
+
+        log::debug!(
+            "{} from {} - packet: {}",
+            " -> packet sent ".blue(),
+            id,
+            packet
+        );
+
+        let r = send_channel.send(packet.clone());
+
+        if let Err(mut packet) = r{
+            log::error!("The send inside channel gave an error")
+        }else{
+            scs.send(ClientEvent::PacketSent(packet));
+        }
+    }
+}
+
 
