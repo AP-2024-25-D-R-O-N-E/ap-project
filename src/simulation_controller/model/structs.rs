@@ -95,6 +95,13 @@ impl SCEvent {
             SCEvent::ClientEvent(client_event) => match client_event {
                 ClientEvent::PacketSent(packet) => packet,
                 ClientEvent::PacketDropped(packet) => packet,
+                ClientEvent::ResponseClientsReceived(items) => todo!(),
+                ClientEvent::AcknolewdgedAsClient => todo!(),
+                ClientEvent::ResponseHistoryReceived { partner, history } => todo!(),
+                ClientEvent::UnregisteredSenderError => todo!(),
+                ClientEvent::UnregisteredRecipientError => todo!(),
+                ClientEvent::UnsupportedMessageTypeError => todo!(),
+                
             },
             SCEvent::ServerEvent(server_event) => match server_event {
                 ServerEvent::PacketSent(packet) => packet,
