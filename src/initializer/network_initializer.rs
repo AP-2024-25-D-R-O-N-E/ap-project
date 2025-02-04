@@ -12,6 +12,8 @@ use rustafarian_drone::RustafarianDrone;
 use rustbusters_drone::RustBustersDrone;
 use rusteze_drone::RustezeDrone;
 use rusty_drones::RustyDrone;
+use skylink::SkyLinkDrone;
+use LeDron_James::Drone as LeDron_JamesDrone;
 
 use std::{
     collections::{HashMap, HashSet},
@@ -32,7 +34,7 @@ use d_r_o_n_e_drone::MyDrone;
 
 use crate::{
     client::{client_test::Client, client_test_2::Client2, ClientTrait},
-    server::{server_gino::Server, ServerTrait},
+    server::{server_gino::ChatServer, ServerTrait},
     simulation_controller::{
         node::{UiClientNode, UiDroneNode, UiNodePayload, UiNodeType, UiServerNode},
         structs::{ClientCommand, ClientEvent, ServerCommand, ServerEvent},
@@ -338,7 +340,7 @@ impl NetworkInitializer {
         server_id: u8,
     ) -> Box<dyn ServerTrait> {
         match index {
-            _ => Box::new(Server::new(
+            _ => Box::new(ChatServer::new(
                 server_id,
                 command_send,
                 command_receiver,
@@ -442,6 +444,22 @@ impl NetworkInitializer {
                 pdr,
             )),
             7 => Box::new(RustRoveri::new(
+                id,
+                controller_send,
+                controller_recv,
+                packet_recv,
+                packet_send,
+                pdr,
+            )),
+            8 => Box::new(SkyLinkDrone::new(
+                id,
+                controller_send,
+                controller_recv,
+                packet_recv,
+                packet_send,
+                pdr,
+            )),
+            9 => Box::new(LeDron_JamesDrone::new(
                 id,
                 controller_send,
                 controller_recv,

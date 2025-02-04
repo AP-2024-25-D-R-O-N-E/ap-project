@@ -6,7 +6,7 @@ use wg_2024::network::NodeId;
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct Message {
     origin_id: NodeId,
-    destination_id: NodeId,
+    pub destination_id: NodeId,
     pub message_data: MessageData,
 }
 
@@ -51,12 +51,25 @@ pub enum MessageData {
         partner: NodeId,
         history: Vec<ChatMessage>,
     },
+    UnregisteredSenderError,
+    UnregisteredRecipientError,
+
+    UnsupportedMessageTypeError, // for example when a client sends response clients to the server
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum ChatMessage {
-    TextMessage(String),
-    File { file: Vec<u8>, file_name: String }, //file data, file name
+    TextMessage {
+        from: NodeId,
+        to: NodeId,
+        text: String,
+    },
+    FileMessage {
+        from: NodeId,
+        to: NodeId,
+        file: Vec<u8>,
+        file_name: String,
+    }, //file data, file name
 }
 
 impl Message {
