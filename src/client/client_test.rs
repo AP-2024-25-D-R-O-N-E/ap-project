@@ -3,7 +3,6 @@ use std::sync::{Arc, Condvar, Mutex, RwLock};
 use std::thread::{self, JoinHandle};
 use colored::Colorize;
 use crossbeam::channel::{select_biased, unbounded, Receiver, Sender};
-use egui::accesskit::NodeId;
 use egui_graphs::{Edge, Node};
 use petgraph::{algo, prelude::{GraphMap, StableGraph}, Undirected};
 use wg_2024::{
