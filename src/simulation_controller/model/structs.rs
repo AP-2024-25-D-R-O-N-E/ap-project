@@ -1,17 +1,49 @@
+use std::fs::File;
+
 use crossbeam::channel::Sender;
 use egui::accesskit::Node;
 use wg_2024::{controller::DroneEvent, network::NodeId, packet::Packet};
+
+use crate::fragmentation::message::ChatMessage;
 
 /// From client to controller
 #[derive(Debug, Clone)]
 pub enum ClientEvent {
     PacketSent(Packet),
     PacketDropped(Packet),
+    
+    ResponseClientsReceived(Vec<NodeId>),
+    AcknolewdgedAsClient,
+    ResponseHistoryReceived{
+        partner: NodeId,
+        history: Vec<ChatMessage>
+    },
+    UnregisteredSenderError,
+    UnregisteredRecipientError,
+    UnsupportedMessageTypeError
 }
 
 /// From controller to client
-#[derive(Debug, Clone)]
-pub enum ClientCommand {}
+#[derive(Debug)]
+pub enum ClientCommand {
+    StartFlooding,
+
+    AddSender(NodeId, Sender<Packet>),
+    RemoveSender(NodeId),
+
+    GetResponseClient,
+    RegisterAsClient,
+    UnregisterAsClient,
+    OpenChatWith(NodeId),
+    SendTextMessageTo{
+        receiver: NodeId,
+        message: String,
+    },
+    SendFileMessageTo{
+        receiver: NodeId,
+        file: File
+    }
+}
 
 /// From server to controller
 #[derive(Debug, Clone)]
