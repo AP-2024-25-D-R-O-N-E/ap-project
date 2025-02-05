@@ -1,13 +1,19 @@
-use std::collections::{HashMap, HashSet, VecDeque};
-use std::sync::{Arc, Condvar, Mutex, RwLock};
-use std::thread::{self, JoinHandle};
 use colored::Colorize;
 use crossbeam::channel::{select_biased, unbounded, Receiver, Sender};
 use egui_graphs::{Edge, Node};
-use petgraph::{algo, prelude::{GraphMap, StableGraph}, Undirected};
+use petgraph::{
+    algo,
+    prelude::{GraphMap, StableGraph},
+    Undirected,
+};
+use std::collections::{HashMap, HashSet, VecDeque};
+use std::sync::{Arc, Condvar, Mutex, RwLock};
+use std::thread::{self, JoinHandle};
 use wg_2024::{
     network::{NodeId, SourceRoutingHeader},
-    packet::{self, Ack, FloodRequest, FloodResponse, Fragment, Nack, NodeType, Packet, PacketType},
+    packet::{
+        self, Ack, FloodRequest, FloodResponse, Fragment, Nack, NodeType, Packet, PacketType,
+    },
 };
 
 use crate::{
@@ -32,7 +38,13 @@ pub struct ClientLuca {
 }
 
 impl ClientTrait for ClientLuca {
-    fn new(id: NodeId, scs: Sender<ClientEvent>, scr: Receiver<ClientCommand>, packet_r: Receiver<Packet>, packet_s: HashMap<NodeId, Sender<Packet>>) -> Self
+    fn new(
+        id: NodeId,
+        scs: Sender<ClientEvent>,
+        scr: Receiver<ClientCommand>,
+        packet_r: Receiver<Packet>,
+        packet_s: HashMap<NodeId, Sender<Packet>>,
+    ) -> Self
     where
         Self: Sized,
     {
@@ -84,12 +96,13 @@ impl ClientTrait for ClientLuca {
 
         let id = self.id;
 
-        threads.push(thread::spawn(move ||{
+        /*
+        threads.push(thread::spawn(move || {
             ClientLuca::command_handler_thread(id);
         }));
+        */
 
         self.receiver_thread(ready_s, nack_s);
-
     }
 }
 
@@ -142,7 +155,7 @@ impl Fragmenter for ClientLuca {
 }
 
 impl ClientLuca {
-    fn receiver_thread(&mut self, ready_s: Sender<(NodeId, u64)>, nack_s: Sender<Packet>){
+    fn receiver_thread(&mut self, ready_s: Sender<(NodeId, u64)>, nack_s: Sender<Packet>) {
         loop {
             select_biased!(
                 recv(self.scr) -> cmd => {
@@ -151,7 +164,7 @@ impl ClientLuca {
                             ClientCommand::NetworkInitialized => self.initiate_flood(),
                             ClientCommand::AddSender(id, sender) => self.add_sender(id, sender),
                             ClientCommand::RemoveSender(id) => self.remove_sender(id),
-                            ClientCommand::RequestClients => todo!()
+                            ClientCommand::RequestClients => self.request_clients(),
                             //Need to add other commands when defined
                         }
                     }
@@ -170,7 +183,6 @@ impl ClientLuca {
             )
         }
     }
-
 
     fn sender_thread(
         id: NodeId,
@@ -253,8 +265,7 @@ impl ClientLuca {
         }
     }
 
-    fn command_handler_thread(id: NodeId){}
-
+    //fn command_handler_thread(id: NodeId) {}
 }
 
 //Thread: receiver
@@ -330,7 +341,6 @@ impl ClientLuca {
 
         log::info!("{} {:?}", "Client topology: ".green(), self.topology);
     }
-
 
     fn manage_msg_fragment(&self, packet: Packet, ready_send: Sender<(NodeId, u64)>) {
         log::debug!(
@@ -505,8 +515,8 @@ impl ClientLuca {
         self.packet_s.write().unwrap().remove(&id);
     }
 
+    //fn request_clients(&mut self, )
 }
-
 
 //Thread: Sender
 impl ClientLuca {
@@ -516,7 +526,7 @@ impl ClientLuca {
         routing_table: &mut HashMap<NodeId, Vec<NodeId>>,
         topology: Arc<RwLock<GraphMap<NodeId, (), Undirected>>>,
         edge_nodes: Arc<RwLock<HashSet<NodeId>>>,
-    ){
+    ) {
         let topology_lock = topology.read().unwrap();
 
         let path = algo::astar(
@@ -537,9 +547,9 @@ impl ClientLuca {
             |_| 0,
         );
 
-        if let Some((_, route)) = path{
+        if let Some((_, route)) = path {
             routing_table.insert(destination, route);
-        }else{
+        } else {
             log::error!("No route found to destination {}", destination);
         }
     }
@@ -549,7 +559,7 @@ impl ClientLuca {
         packet_s: Arc<RwLock<HashMap<u8, Sender<Packet>>>>,
         scs: Sender<ClientEvent>,
         packet: Packet,
-    ){
+    ) {
         let next_node = packet.routing_header.hops[packet.routing_header.hop_index];
         let send_channel = &packet_s.read().unwrap()[&next_node];
 
@@ -562,12 +572,10 @@ impl ClientLuca {
 
         let r = send_channel.send(packet.clone());
 
-        if let Err(mut packet) = r{
+        if let Err(mut packet) = r {
             log::error!("The send inside channel gave an error")
-        }else{
+        } else {
             scs.send(ClientEvent::PacketSent(packet));
         }
     }
 }
-
-
