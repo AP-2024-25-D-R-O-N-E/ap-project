@@ -33,7 +33,7 @@ pub fn into_serializable_derive(input: TokenStream) -> TokenStream {
                         }
                     }
                 };
-                eprintln!("{}", output.to_string());
+                // eprintln!("{}", output.to_string());
 
                 return output.into();
             }
@@ -120,9 +120,9 @@ pub fn into_serializable_derive(input: TokenStream) -> TokenStream {
                 // );
             }
 
-            for line in enum_fields.iter() {
-                eprintln!("{}", line);
-            }
+            // for line in enum_fields.iter() {
+            //     eprintln!("{}", line);
+            // }
 
             let output = quote! {
 
