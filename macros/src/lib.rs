@@ -18,28 +18,22 @@ pub fn into_serializable_derive(input: TokenStream) -> TokenStream {
             Fields::Named(fields) => {
                 let fields = &fields.named;
 
-                // let ref_fields = fields.iter().map(|field| {
-                //     let field_name = &field.ident;
-                //     let field_type = &field.ty;
-                //     let ref_field_type = quote! { #field_type  };
-                //     quote! { #field_name: #ref_field_type }
-                // });
-
                 let into_serializable_fields = fields.iter().map(|field| {
                     let field_name = &field.ident;
                     quote! { #field_name: self.#field_name.into_serializable() }
                 });
 
                 let output = quote! {
-                    impl IntoSerializable<#ref_struct_name_ident> for #struct_name_ident {
-                        fn into_serializable(&self) -> #ref_struct_name_ident {
-                            #ref_struct_name_ident {
+                    impl IntoSerializable for #struct_name_ident {
+                        type Output = #ref_struct_name_ident;
+                        fn into_serializable(&self) -> Self::Output {
+                            Self::Output {
                                 #(#into_serializable_fields,)*
                             }
                         }
                     }
                 };
-                // eprintln!("{}", output.to_string());
+                eprintln!("{}", output.to_string());
 
                 return output.into();
             }
@@ -132,8 +126,9 @@ pub fn into_serializable_derive(input: TokenStream) -> TokenStream {
 
             let output = quote! {
 
-                impl IntoSerializable<#enum_name_ident> for #enum_name_ref_ident {
-                    fn into_serializable(&self) -> #enum_name_ident {
+                impl IntoSerializable for #enum_name_ref_ident {
+                    type Output = #enum_name_ident;
+                    fn into_serializable(&self) -> Self::Output {
                         match self {
                             #(#enum_fields),*
                         }
