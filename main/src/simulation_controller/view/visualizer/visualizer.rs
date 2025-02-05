@@ -1,19 +1,26 @@
 use std::time::Instant;
 
 use super::state::events_state;
+use crate::simulation_controller::serialization_ref_structs::IntoSerializable;
 use crate::simulation_controller::{ClientEvent, SCEvent, ServerEvent, SimulationController};
 
 use super::state::EventsState;
 use eframe::{run_native, App, CreationContext, NativeOptions};
+use egui::text::LayoutJob;
 use egui::{Context, ScrollArea, Window};
 
+use egui_extras::syntax_highlighting::CodeTheme;
 use egui_graphs::events::Event;
 
 use petgraph::graph::NodeIndex;
+use syntect::easy::HighlightLines;
+use syntect::highlighting::ThemeSet;
+use syntect::parsing::{SyntaxReference, SyntaxSet};
+use syntect::util::as_24_bit_terminal_escaped;
 use wg_2024::controller::DroneEvent;
 
 use super::drawers::{
-    draw_infos_for_selected_nodes, draw_modify_topology_section, draw_section_console,
+    draw_infos_for_selected_nodes, draw_json, draw_modify_topology_section, draw_section_console,
     draw_section_debug, draw_section_graph, draw_section_settings, draw_section_testing,
     draw_toolbar_section,
 };
@@ -411,6 +418,19 @@ impl App for SCGui {
                     });
                 });
         }
+
+        Window::new("Events json")
+            .collapsible(true)
+            .resizable(true)
+            .default_width(200.0)
+            .default_height(150.0)
+            .default_open(true)
+            .show(ctx, |ui| {
+                ScrollArea::vertical().show(ui, |ui| {
+                    // Load syntax and theme
+                    draw_json(ui, &self.state);
+                });
+            });
 
         // self.sync();
         // self.update_simulation();
