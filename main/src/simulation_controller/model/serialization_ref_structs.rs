@@ -19,24 +19,71 @@ use wg_2024::packet::*;
 // use wg_network::{NodeId, SourceRoutingHeader};
 
 use serde::Serialize;
-pub const FRAGMENT_DSIZE: usize = 128;
-
+// pub const FRAGMENT_DSIZE: usize = 128;
+//
 pub type NodeId = u8;
 
-impl IntoSerializable<usize> for usize {
-    fn into_serializable(&self) -> Self {
-        self.clone()
+pub trait IntoSerializable {
+    type Output;
+    fn into_serializable(&self) -> Self::Output;
+}
+
+impl IntoSerializable for usize {
+    type Output = usize;
+    fn into_serializable(&self) -> Self::Output {
+        *self
     }
 }
-impl IntoSerializable<u8> for u8 {
-    fn into_serializable(&self) -> Self {
+
+// impl IntoSerializable for u8 {
+//     type Output = u8;
+//     fn into_serializable(&self) -> Self::Output {
+//         *self
+//     }
+// }
+
+impl IntoSerializable for NodeId {
+    type Output = NodeId;
+    fn into_serializable(&self) -> Self::Output {
         self.clone()
     }
 }
 
-impl IntoSerializable<Vec<NodeId>> for Vec<NodeId> {
-    fn into_serializable(&self) -> Self {
-        self.clone()
+impl IntoSerializable for u64 {
+    type Output = u64;
+    fn into_serializable(&self) -> Self::Output {
+        *self
+    }
+}
+
+impl<const N: usize> IntoSerializable for [u8; N] {
+    type Output = [u8; N];
+    fn into_serializable(&self) -> Self::Output {
+        *self
+    }
+}
+
+impl<T, U> IntoSerializable for (T, U)
+where
+    T: Clone + IntoSerializable,
+    U: Clone + IntoSerializable,
+{
+    type Output = (
+        <T as IntoSerializable>::Output,
+        <U as IntoSerializable>::Output,
+    );
+    fn into_serializable(&self) -> Self::Output {
+        (self.0.into_serializable(), self.1.into_serializable())
+    }
+}
+
+impl<T> IntoSerializable for Vec<T>
+where
+    T: Clone + IntoSerializable,
+{
+    type Output = Vec<<T as IntoSerializable>::Output>;
+    fn into_serializable(&self) -> Self::Output {
+        self.iter().map(|item| item.into_serializable()).collect()
     }
 }
 
@@ -46,14 +93,14 @@ pub struct SourceRoutingHeaderRef {
     pub hops: Vec<NodeId>,
 }
 
-#[derive(Debug, Clone, IntoSerializable)]
+#[derive(IntoSerializable, Debug, Clone)]
 pub struct PacketRef {
     pub routing_header: SourceRoutingHeaderRef,
     pub session_id: u64,
     pub pack_type: PacketTypeRef,
 }
 
-#[derive(IntoSerializable, Debug, Clone)]
+#[derive(Debug, Clone, IntoSerializable)]
 pub enum PacketTypeRef {
     MsgFragment(FragmentRef),
     Ack(AckRef),
@@ -68,7 +115,7 @@ pub struct NackRef {
     pub nack_type: NackTypeRef,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(IntoSerializable, Debug, Clone, Copy, PartialEq, Eq)]
 // #[derive(IntoSerializable, Debug, Clone)]
 pub enum NackTypeRef {
     ErrorInRouting(NodeId), // contains id of not neighbor
@@ -112,9 +159,6 @@ pub enum NodeTypeRef {
     Server,
 }
 
-pub trait IntoSerializable<T> {
-    fn into_serializable(&self) -> T;
-}
 //
 // impl IntoSerializable for WGPacket {
 //     fn into_serializable(&self) -> Self {
