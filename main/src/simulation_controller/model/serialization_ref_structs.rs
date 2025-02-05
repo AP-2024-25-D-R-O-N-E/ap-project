@@ -1,3 +1,4 @@
+use macros::IntoSerializable;
 // use crossbeam::channel::Sender;
 // use wg_2024::network::NodeId as WGNodeId;
 // use wg_2024::network::SourceRoutingHeader as wgSourceRoutingHeader;
@@ -5,11 +6,13 @@
 // use wg_2024::packet::{Packet as WGPacket, PacketType as WGPacketType};
 //
 //
+use wg_2024::network::*;
+use wg_2024::packet::*;
 
 // use serde::Serialize;
 // use wg_2024::network::NodeId;
 // use wg_2024::packet::FloodResponse;
-use wg_2024::packet::NodeType as WGNodeType;
+// use wg_2024::packet::NodeType as WGNodeType;
 
 // use crate::{FloodRequest, FloodResponse};
 // use std::fmt::{Debug, Display, Formatter};
@@ -20,89 +23,97 @@ pub const FRAGMENT_DSIZE: usize = 128;
 
 pub type NodeId = u8;
 
-#[derive(Debug, Clone)]
-pub struct SourceRoutingHeader {
+impl IntoSerializable<usize> for usize {
+    fn into_serializable(&self) -> Self {
+        self.clone()
+    }
+}
+impl IntoSerializable<u8> for u8 {
+    fn into_serializable(&self) -> Self {
+        self.clone()
+    }
+}
+
+impl IntoSerializable<Vec<NodeId>> for Vec<NodeId> {
+    fn into_serializable(&self) -> Self {
+        self.clone()
+    }
+}
+
+#[derive(IntoSerializable, Debug, Clone)]
+pub struct SourceRoutingHeaderRef {
     pub hop_index: usize,
     pub hops: Vec<NodeId>,
 }
 
-#[derive(Debug, Clone)]
-pub struct Packet {
-    pub routing_header: SourceRoutingHeader,
+#[derive(Debug, Clone, IntoSerializable)]
+pub struct PacketRef {
+    pub routing_header: SourceRoutingHeaderRef,
     pub session_id: u64,
-    pub pack_type: PacketType,
+    pub pack_type: PacketTypeRef,
 }
 
-#[derive(Debug, Clone)]
-pub enum PacketType {
-    MsgFragment(Fragment),
-    Ack(Ack),
-    Nack(Nack),
-    FloodRequest(FloodRequest),
-    FloodResponse(FloodResponse),
+#[derive(IntoSerializable, Debug, Clone)]
+pub enum PacketTypeRef {
+    MsgFragment(FragmentRef),
+    Ack(AckRef),
+    Nack(NackRef),
+    FloodRequest(FloodRequestRef),
+    FloodResponse(FloodResponseRef),
 }
 
-#[derive(Debug, Clone)]
-pub struct Nack {
+#[derive(IntoSerializable, Debug, Clone)]
+pub struct NackRef {
     pub fragment_index: u64, // If the packet is not a fragment, it's considered as a whole, so fragment_index will be 0.
-    pub nack_type: NackType,
+    pub nack_type: NackTypeRef,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum NackType {
+// #[derive(IntoSerializable, Debug, Clone)]
+pub enum NackTypeRef {
     ErrorInRouting(NodeId), // contains id of not neighbor
     DestinationIsDrone,
     Dropped,
     UnexpectedRecipient(NodeId),
 }
 
-#[derive(Debug, Clone)]
-pub struct Ack {
+#[derive(IntoSerializable, Debug, Clone)]
+pub struct AckRef {
     pub fragment_index: u64,
 }
 
-#[derive(Debug, Clone)]
-pub struct Fragment {
+#[derive(IntoSerializable, Debug, Clone)]
+pub struct FragmentRef {
     pub fragment_index: u64,
     pub total_n_fragments: u64,
     pub length: u8,
     pub data: [u8; FRAGMENT_DSIZE],
 }
 
-#[derive(Debug, Clone)]
-pub struct FloodRequest {
+#[derive(IntoSerializable, Debug, Clone)]
+pub struct FloodRequestRef {
     pub flood_id: u64,
     pub initiator_id: NodeId,
-    pub path_trace: Vec<(NodeId, NodeType)>,
+    pub path_trace: Vec<(NodeId, NodeTypeRef)>,
 }
 
-#[derive(Debug, Clone)]
-pub struct FloodResponse {
+#[derive(IntoSerializable, Debug, Clone)]
+pub struct FloodResponseRef {
     pub flood_id: u64,
 
     // #[serde(skip)]
-    pub path_trace: Vec<(NodeId, NodeType)>,
+    pub path_trace: Vec<(NodeId, NodeTypeRef)>,
 }
 
-#[derive(Serialize, Debug, Clone)]
-pub enum NodeType {
+#[derive(IntoSerializable, Debug, Clone)]
+pub enum NodeTypeRef {
     Client,
     Drone,
     Server,
 }
 
-impl From<WGNodeType> for NodeType {
-    fn from(node_type: WGNodeType) -> Self {
-        match node_type {
-            WGNodeType::Client => Self::Client,
-            WGNodeType::Drone => Self::Drone,
-            WGNodeType::Server => Self::Server,
-        }
-    }
-}
-
 pub trait IntoSerializable<T> {
-    fn into_serializable(&self) -> Self;
+    fn into_serializable(&self) -> T;
 }
 //
 // impl IntoSerializable for WGPacket {

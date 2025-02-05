@@ -29,5 +29,5 @@ rustafarian-drone = { git = "https://github.com/Rustafarian-Unitn/rustafarian-dr
 LeDron_James = { git = "https://github.com/anass03/LeDron_James.git"}
 getdroned = { git = "https://github.com/GetDroned/Drone.git", features = ["log"] }
 rusteze_drone = { git = "https://github.com/Rusteze-AP/drone.git", branch = "main" }
-
+macros = { path = "../macros" }
 bincode = "1.3.3"
