@@ -76,14 +76,8 @@ pub fn draw_toolbar_section(ui: &mut Ui, state: &mut State) {
             }
         }
 
-        if ui.button("Print events as json").clicked() {
-            for event in state.events.get_events_list(DisplayOptions::ALL).iter() {
-                let event = event;
-                println!(
-                    "{}",
-                    serde_json::to_string_pretty(&event.into_serializable()).unwrap()
-                );
-            }
+        if ui.button("Clear events").clicked() {
+            state.events.events.clear();
         }
         // if ui.button("Spawn").clicked() {
         //     state.graph_section.g.add_node(UiNodePayload {
