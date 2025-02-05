@@ -195,6 +195,10 @@ impl ChatServer {
                 },
                 recv(self.packet_recv) -> res => {
                     if let Ok(mut packet) = res {
+                        // send packet to the simulation controller
+                        self.sim_contr_send.send(ServerEvent::PacketReceived(packet.clone()));
+
+                        // match the packet type and act accordingly
                         match packet.pack_type {
                             PacketType::MsgFragment(_) => self.manage_msg_fragment(packet, ready_send.clone()),
                             PacketType::Ack(ack) => self.manage_ack(packet.session_id, ack),
