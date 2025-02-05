@@ -88,7 +88,7 @@ fn register_client2(sc: &SimulationController) {
             pack_type: PacketType::MsgFragment(fragment.clone()),
             routing_header: SourceRoutingHeader {
                 hops: vec![7, 6, 4, 2, 3],
-                hop_index: 1,
+                hop_index: 2,
             },
             session_id: 0,
         };

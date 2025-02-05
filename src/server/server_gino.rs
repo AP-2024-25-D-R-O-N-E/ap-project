@@ -12,9 +12,7 @@ use crossbeam::{
     select,
 };
 use petgraph::{
-    algo,
-    prelude::{GraphMap, StableGraph},
-    Undirected,
+    algo, prelude::{GraphMap, StableGraph}, Directed, Undirected
 };
 use serde::de::DeserializeSeed;
 use wg_2024::{
@@ -43,11 +41,12 @@ pub struct ChatServer {
     packet_recv: Receiver<Packet>,
     packet_send: Arc<RwLock<HashMap<NodeId, Sender<Packet>>>>,
     flood_id: u64, // keeps track of the current flood index
-    topology: Arc<RwLock<GraphMap<NodeId, (), Undirected>>>, // nodes don't register type, as they're instead inside the client_table
+    topology: Arc<RwLock<GraphMap<NodeId, (), Directed>>>, // nodes don't register type, as they're instead inside the client_table. Directed makes it possible to estimate the edge weights for PDR
     fragment_buffers: Arc<RwLock<HashMap<(NodeId, u64), Vec<Fragment>>>>, // stores fragments until they're ready to be assembled
     ack_packet_buffer: Arc<Mutex<HashMap<(u64, u64), Packet>>>, // stores packets that need to await an ack. The tuple is (session_id, frag_index)
     topology_modified: Arc<Mutex<bool>>, // flag to check if the topology has been modified
     edge_nodes: Arc<RwLock<HashSet<NodeId>>>, // stores the edge nodes that can't be used in a route
+    pdr_estimation: Arc<RwLock<HashMap<NodeId, (f64, u64, u64)>>>, // stores the pdr estimation for each node
 }
 
 impl ServerTrait for ChatServer {
@@ -73,6 +72,7 @@ impl ServerTrait for ChatServer {
             ack_packet_buffer: Arc::new(Mutex::new(HashMap::new())),
             topology_modified: Arc::new(Mutex::new(false)),
             edge_nodes: Arc::new(RwLock::new(HashSet::new())),
+            pdr_estimation: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 
@@ -100,6 +100,8 @@ impl ServerTrait for ChatServer {
 
         let edge_nodes = self.edge_nodes.clone();
 
+        let pdr_estimation = self.pdr_estimation.clone();
+
         threads.push(thread::spawn(move || {
             ChatServer::sender_thread(
                 id,
@@ -112,6 +114,7 @@ impl ServerTrait for ChatServer {
                 topology,
                 topology_modified,
                 edge_nodes,
+                pdr_estimation,
             );
         }));
 
@@ -195,10 +198,14 @@ impl ChatServer {
                 },
                 recv(self.packet_recv) -> res => {
                     if let Ok(mut packet) = res {
+                        // send packet to the simulation controller
+                        self.sim_contr_send.send(ServerEvent::PacketReceived(packet.clone()));
+
+                        // match the packet type and act accordingly
                         match packet.pack_type {
                             PacketType::MsgFragment(_) => self.manage_msg_fragment(packet, ready_send.clone()),
                             PacketType::Ack(ack) => self.manage_ack(packet.session_id, ack),
-                            PacketType::Nack(nack) => self.manage_nack(packet.session_id, nack, nack_send.clone()),
+                            PacketType::Nack(nack) => self.manage_nack(packet.routing_header.hops.clone(), packet.session_id, nack, nack_send.clone()),
                             PacketType::FloodRequest(_) => self.manage_flood_request(packet),
                             PacketType::FloodResponse(flood_response) => self.manage_flood_response(flood_response),
                         }
@@ -216,9 +223,10 @@ impl ChatServer {
         nack_recv: Receiver<Packet>,
         condv: Condvar,
         ack_packet_buffer: Arc<Mutex<HashMap<(u64, u64), Packet>>>,
-        topology: Arc<RwLock<GraphMap<NodeId, (), Undirected>>>,
+        topology: Arc<RwLock<GraphMap<NodeId, (), Directed>>>,
         topology_modified: Arc<Mutex<bool>>,
         edge_nodes: Arc<RwLock<HashSet<NodeId>>>,
+        pdr_estimation: Arc<RwLock<HashMap<NodeId, (f64, u64, u64)>>>,
     ) {
         // records the routing table for the server (this is only updated when an update to the topology is made)
         let mut routing_table: HashMap<NodeId, Vec<NodeId>> = HashMap::new();
@@ -236,7 +244,7 @@ impl ChatServer {
                         let destination = packet.routing_header.hops.last().unwrap().clone();
 
                         if *topology_modified_lock {
-                            Self::find_route(id, destination, &mut routing_table, topology.clone(), edge_nodes.clone());
+                            Self::find_route(id, destination, &mut routing_table, topology.clone(), edge_nodes.clone(), pdr_estimation.clone());
                             *topology_modified_lock = false;
                         }
 
@@ -265,7 +273,7 @@ impl ChatServer {
                         // choose the route for the packet
                         if routing_table.get(&destination).is_none() {
                             // if the routing table doesn't have the next hop, then we need to update the routing table
-                            Self::find_route(id, destination, &mut routing_table, topology.clone(), edge_nodes.clone());
+                            Self::find_route(id, destination, &mut routing_table, topology.clone(), edge_nodes.clone(), pdr_estimation.clone());
                         }
 
                         let fragment_index = fragment.fragment_index;
@@ -437,9 +445,12 @@ impl ChatServer {
             let mut topology_lock = self.topology.write().unwrap();
             let mut edge_nodes_lock = self.edge_nodes.write().unwrap();
             let mut topology_modified_lock = self.topology_modified.lock().unwrap();
+            let mut pdr_estimation_lock = self.pdr_estimation.write().unwrap();
+
 
             let mut current_index = topology_lock.add_node(self.id);
-
+            pdr_estimation_lock.insert(self.id, (1.0, 0, 0));
+            
             for (node_id, node_type) in fr.path_trace.iter().skip(1) {
                 let next_index = topology_lock.add_node(*node_id);
                 // add the edge nodes to the edge_nodes set
@@ -454,6 +465,9 @@ impl ChatServer {
                 }
 
                 topology_lock.add_edge(current_index, next_index, ());
+                topology_lock.add_edge(next_index, current_index, ());
+                pdr_estimation_lock.insert(*node_id, (1.0, 0, 0));
+
                 current_index = next_index;
             }
             *topology_modified_lock = true;
@@ -537,10 +551,19 @@ impl ChatServer {
                 self.id,
                 packet
             );
+            let mut pdr_estimation_lock = self.pdr_estimation.write().unwrap();
+            for nodes in packet.routing_header.hops.windows(2) {
+                let (ratio, mut success, failure) = *pdr_estimation_lock.get(&nodes[0]).unwrap();
+                success += 1;
+                let new_ratio = success as f64/(success + failure) as f64;
+                // this allows a drone to drop a few packets without tanking its estimated PDR
+                let updated_ratio = 0.2 * new_ratio + 0.8 * ratio;
+                pdr_estimation_lock.insert(nodes[0], (updated_ratio, success, failure));
+            }
         }
     }
 
-    fn manage_nack(&self, session_id: u64, nack: Nack, nack_send: Sender<Packet>) {
+    fn manage_nack(&self, nack_routing: Vec<NodeId>, session_id: u64, nack: Nack, nack_send: Sender<Packet>) {
         log::debug!(
             "{} {} received a nack: {:?}",
             "↳ server".green(),
@@ -550,6 +573,7 @@ impl ChatServer {
 
         // fast return flag to throw the packet away if a weird error happens
         let mut fast_return = false;
+        let mut dropped = false;
 
         match &nack.nack_type {
             packet::NackType::ErrorInRouting(node) => {
@@ -562,6 +586,7 @@ impl ChatServer {
             }
             packet::NackType::Dropped => {
                 // do nothing for now, maybe in the future update the edge weights
+                dropped = true;
             }
             packet::NackType::UnexpectedRecipient(_) => {
                 log::error!("The recipient is not the expected one, this shouldn't be happening");
@@ -577,6 +602,24 @@ impl ChatServer {
             if fast_return {
                 return;
             }
+
+            // signal that the topology has been modified
+            let mut topology_modified_lock = self.topology_modified.lock().unwrap();
+            //change the pdr for dropped
+            let mut pdr_estimation_lock = self.pdr_estimation.write().unwrap();
+            let dropped_node = nack_routing[0];
+            let (ratio, success, mut failure) = *pdr_estimation_lock.get(&dropped_node).unwrap();
+            failure += 1;
+            let new_ratio = success as f64/(success + failure) as f64;
+            // this allows a drone to drop a few packets without tanking its estimated PDR
+            let updated_ratio = 0.2 * new_ratio + 0.8 * ratio;
+            pdr_estimation_lock.insert(dropped_node, (updated_ratio, success, failure));
+
+            // log::debug!("{:?}", *pdr_estimation_lock);
+
+            // we only tell the sender to recalc routes if a nack has been received, why change routes if we're more certain that they work?
+            *topology_modified_lock = true;
+
             nack_send.send(packet);
         } else {
             log::error!("The packet was not found in the ack buffer, this shouldn't be happening");
@@ -644,8 +687,9 @@ impl ChatServer {
         id: NodeId,
         destination: NodeId,
         routing_table: &mut HashMap<NodeId, Vec<NodeId>>,
-        topology: Arc<RwLock<GraphMap<NodeId, (), Undirected>>>,
+        topology: Arc<RwLock<GraphMap<NodeId, (), Directed>>>,
         edge_nodes: Arc<RwLock<HashSet<NodeId>>>,
+        pdr_estimation: Arc<RwLock<HashMap<NodeId, (f64, u64, u64)>>>,
     ) {
         let topology_lock = topology.read().unwrap();
 
@@ -656,17 +700,20 @@ impl ChatServer {
             |finish| finish == destination,
             |(a, b, _)| {
                 if destination == a || destination == b {
-                    return 1;
+                    return 1.0;
                 }
                 // if a node is an edge node, then the weight should be "infinite" as it can't be used
                 let edge_nodes_lock = edge_nodes.read().unwrap();
                 if edge_nodes_lock.contains(&b) || edge_nodes_lock.contains(&a) {
-                    topology_lock.edge_count()
+                    topology_lock.edge_count() as f64
                 } else {
-                    1
+                    let pdr_estimation_lock = pdr_estimation.read().unwrap();
+                    let ratio = pdr_estimation_lock.get(&b).unwrap().0;
+                    let inverse_ratio = 1.0/ratio;
+                    topology_lock.edge_count() as f64 * inverse_ratio
                 }
             },
-            |_| 0,
+            |_| 0.0,
         );
 
         if let Some((_, route)) = path {
