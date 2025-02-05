@@ -1,21 +1,48 @@
+use std::fs::File;
+
 use crossbeam::channel::Sender;
 use egui::accesskit::Node;
 use wg_2024::{controller::DroneEvent, network::NodeId, packet::Packet};
+
+use crate::fragmentation::message::ChatMessage;
 
 /// From client to controller
 #[derive(Debug, Clone)]
 pub enum ClientEvent {
     PacketSent(Packet),
     PacketDropped(Packet),
+
+    ResponseClientsReceived(Vec<NodeId>),
+    AcknolewdgedAsClient,
+    ResponseHistoryReceived{
+        partner: NodeId,
+        history: Vec<ChatMessage>
+    },
+    UnregisteredSenderError,
+    UnregisteredRecipientError,
+    UnsupportedMessageTypeError
 }
 
 /// From controller to client
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum ClientCommand {
-    NetworkInitialized,
+    StartFlooding,
+
     AddSender(NodeId, Sender<Packet>),
     RemoveSender(NodeId),
-    RequestClients,
+
+    GetResponseClient,
+    RegisterAsClient,
+    UnregisterAsClient,
+    OpenChatWith(NodeId),
+    SendTextMessageTo{
+        receiver: NodeId,
+        message: String,
+    },
+    SendFileMessageTo{
+        receiver: NodeId,
+        file: File
+    }
 }
 
 /// From server to controller
@@ -68,6 +95,13 @@ impl SCEvent {
             SCEvent::ClientEvent(client_event) => match client_event {
                 ClientEvent::PacketSent(packet) => packet,
                 ClientEvent::PacketDropped(packet) => packet,
+                ClientEvent::ResponseClientsReceived(items) => todo!(),
+                ClientEvent::AcknolewdgedAsClient => todo!(),
+                ClientEvent::ResponseHistoryReceived { partner, history } => todo!(),
+                ClientEvent::UnregisteredSenderError => todo!(),
+                ClientEvent::UnregisteredRecipientError => todo!(),
+                ClientEvent::UnsupportedMessageTypeError => todo!(),
+
             },
             SCEvent::ServerEvent(server_event) => match server_event {
                 ServerEvent::PacketSent(packet) => packet,
