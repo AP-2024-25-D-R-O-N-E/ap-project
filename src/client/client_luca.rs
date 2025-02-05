@@ -20,7 +20,7 @@ use crate::{
     fragmentation::{message::Message, Fragmenter},
     simulation_controller::structs::{ClientCommand, ClientEvent},
 };
-
+use crate::fragmentation::message::ChatMessage;
 use super::ClientTrait;
 
 pub struct ClientLuca {
@@ -35,6 +35,8 @@ pub struct ClientLuca {
     ack_packet_buffer: Arc<Mutex<HashMap<(u64, u64), Packet>>>,
     topology_modified: Arc<Mutex<bool>>,
     edge_nodes: Arc<RwLock<HashSet<NodeId>>>,
+    chat_history: HashMap<NodeId, Vec<ChatMessage>>,
+    server_id: NodeId,
 }
 
 impl ClientTrait for ClientLuca {
@@ -170,7 +172,6 @@ impl ClientLuca {
                             ClientCommand::OpenChatWith(id) => self.open_chat_with(id),
                             ClientCommand::SendTextMessageTo {receiver: NodeId, message: String} => todo!(),
                             ClientCommand::SendFileMessageTo {receiver: NodeId, file: File} => todo!(),
-                            //Need to add other commands when defined
                             }
                     }
                 },
@@ -309,7 +310,7 @@ impl ClientLuca {
         }
     }
 
-    fn manage_flood_response(&self, fr: FloodResponse) {
+    fn manage_flood_response(&mut self, fr: FloodResponse) {
         log::debug!(
             "{} {} received a flood response: {:?}",
             "↳ client".green(),
@@ -335,6 +336,7 @@ impl ClientLuca {
                     NodeType::Drone => {}
                     NodeType::Server => {
                         edge_nodes_lock.insert(*node_id);
+                        self.server_id = *node_id;
                     }
                 }
 
@@ -520,7 +522,19 @@ impl ClientLuca {
         self.packet_s.write().unwrap().remove(&id);
     }
 
-    //fn request_clients(&mut self, )
+    fn register(&mut self){
+        self.server_id.send(self.id);
+    }
+
+    fn unregister(&mut self){
+        self.server_id.send(self.id);
+    }
+
+    fn request_clients(&self) -> todo!()
+
+    fn open_chat_with(&self, id: NodeId) -> todo!()
+
+
 }
 
 //Thread: Sender
