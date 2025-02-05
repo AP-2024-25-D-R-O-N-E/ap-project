@@ -556,7 +556,9 @@ impl ChatServer {
                 let (ratio, mut success, failure) = *pdr_estimation_lock.get(&nodes[0]).unwrap();
                 success += 1;
                 let new_ratio = success as f64/(success + failure) as f64;
-                pdr_estimation_lock.insert(nodes[0], ((ratio + new_ratio)/2.0, success, failure));
+                // this allows a drone to drop a few packets without tanking its estimated PDR
+                let updated_ratio = 0.2 * new_ratio + 0.8 * ratio;
+                pdr_estimation_lock.insert(nodes[0], (updated_ratio, success, failure));
             }
         }
     }
@@ -609,7 +611,11 @@ impl ChatServer {
             let (ratio, success, mut failure) = *pdr_estimation_lock.get(&dropped_node).unwrap();
             failure += 1;
             let new_ratio = success as f64/(success + failure) as f64;
-            pdr_estimation_lock.insert(dropped_node, ((ratio + new_ratio)/2.0, success, failure));
+            // this allows a drone to drop a few packets without tanking its estimated PDR
+            let updated_ratio = 0.2 * new_ratio + 0.8 * ratio;
+            pdr_estimation_lock.insert(dropped_node, (updated_ratio, success, failure));
+
+            // log::debug!("{:?}", *pdr_estimation_lock);
 
             // we only tell the sender to recalc routes if a nack has been received, why change routes if we're more certain that they work?
             *topology_modified_lock = true;
