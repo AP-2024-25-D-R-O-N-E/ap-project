@@ -145,11 +145,26 @@ impl Serialize for FragmentRef {
     where
         S: serde::Serializer,
     {
+        let mut first_5 = String::new();
+        let mut last_5 = String::new();
+        let v = &self.data;
+        for i in 0..4 {
+            first_5.push_str(format!("{},", v[i]).as_str());
+        }
+        first_5.push_str(format!("{}", v[5]).as_str());
+
+        for i in v.len() - 5..v.len() - 1 {
+            last_5.push_str(format!("{},", v[i]).as_str());
+        }
+        last_5.push_str(format!("{}", v[v.len() - 1]).as_str());
+
+        let compact_data_rep = format!("[{}, . . , {}]", first_5, last_5);
+
         let mut state = serializer.serialize_struct("FragmentRef", 4)?;
         state.serialize_field("fragment_index", &self.fragment_index)?;
         state.serialize_field("total_n_fragments", &self.total_n_fragments)?;
         state.serialize_field("length", &self.length)?;
-        state.serialize_field("data", &self.data.as_slice())?; // Convert array to slice
+        state.serialize_field("data", &compact_data_rep)?; // Convert array to slice
         state.end()
     }
 }
