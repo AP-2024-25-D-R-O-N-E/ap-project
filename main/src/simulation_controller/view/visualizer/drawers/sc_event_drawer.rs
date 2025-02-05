@@ -1,7 +1,11 @@
 use egui::Ui;
 use egui_extras::TableRow;
 
-use crate::simulation_controller::{state::State, SCEvent, SCEventType};
+use crate::simulation_controller::{
+    serialization_ref_structs::IntoSerializable, state::State, SCEvent, SCEventType,
+};
+
+use super::{draw_all_events_as_json, draw_event_as_json};
 
 impl SCEvent {
     pub fn draw(&self, row: &mut TableRow, state: &mut State) {
@@ -23,9 +27,20 @@ impl SCEvent {
 
         row.col(|ui| {
             // let json_string = serde_json::to_string_pretty(&self).unwrap();
-            ui.label(format!("{:?}", self));
+            // ui.label(format!("{:?}", self));
             // ui.horizontal(|ui| {
             // });
+            //
+            // if ui.button("?").clicked() {
+            //     ui.to
+            // }
+            //     .on_hover_ui(|ui| {
+            //     draw_event_as_json(ui, self);
+            // });
+        })
+        .1
+        .on_hover_ui(|ui| {
+                draw_event_as_json(ui, self);
         });
     }
 }
