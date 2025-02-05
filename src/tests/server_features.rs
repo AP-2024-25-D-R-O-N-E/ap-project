@@ -13,7 +13,7 @@ use wg_2024::{network::SourceRoutingHeader, packet::*};
 fn server_functionality() {
     super::initialize();
     let mut network_initializer =
-        NetworkInitializer::new("src/topology_configs/config_no_pdr.toml".to_string());
+        NetworkInitializer::new("src/topology_configs/config.toml".to_string());
 
     let sc = network_initializer.init_network().unwrap();
     sleep(Duration::from_millis(100));
@@ -88,7 +88,7 @@ fn register_client2(sc: &SimulationController) {
             pack_type: PacketType::MsgFragment(fragment.clone()),
             routing_header: SourceRoutingHeader {
                 hops: vec![7, 6, 4, 2, 3],
-                hop_index: 1,
+                hop_index: 2,
             },
             session_id: 0,
         };

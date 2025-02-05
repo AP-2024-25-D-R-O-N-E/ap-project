@@ -74,7 +74,7 @@ impl ClientTrait for Client {
                             match &packet.pack_type {
                                 PacketType::Nack(nack)=>self.manage_nack(nack),
                                 PacketType::Ack(ack)=>self.manage_ack(ack),
-                                PacketType::MsgFragment(fragment)=>self.manage_msg_fragment(fragment),
+                                PacketType::MsgFragment(fragment)=>self.manage_msg_fragment(packet.routing_header.hops.clone(), packet.session_id, fragment),
                                 //  ...these two are jet to be defined...
                                 PacketType::FloodRequest(flood_request) => self.manage_flood_request(packet),
                                 PacketType::FloodResponse(flood_response) => self.manage_flood_response(flood_response),
@@ -138,7 +138,7 @@ impl Client {
         );
     }
 
-    fn manage_msg_fragment(&self, msg: &Fragment) {
+    fn manage_msg_fragment(&self, hops: Vec<NodeId>, packet_msg_id: u64, msg: &Fragment) {
         //call to the assembler
         // log::debug!(
         //     "{} {} received a fragment: {:?}",
@@ -146,6 +146,23 @@ impl Client {
         //     self.id,
         //     msg
         // );
+
+        // inverse route calculation for the ack
+        let mut inverse_route = hops.clone();
+        inverse_route.reverse();
+
+        let packet = Packet {
+            pack_type: PacketType::Ack(Ack {
+                fragment_index: msg.fragment_index,
+            }),
+            routing_header: SourceRoutingHeader {
+                hops: inverse_route,
+                hop_index: 0,
+            },
+            session_id: packet_msg_id,
+        };
+
+        self.forward_packet(packet);
 
         // this is 100% a test function and shouldn't be used like this
         if msg.total_n_fragments == 1 {
