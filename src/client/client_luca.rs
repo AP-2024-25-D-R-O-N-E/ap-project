@@ -161,12 +161,17 @@ impl ClientLuca {
                 recv(self.scr) -> cmd => {
                     if let Ok(command) = cmd {
                         match command {
-                            ClientCommand::NetworkInitialized => self.initiate_flood(),
+                            ClientCommand::StartFlooding => self.initiate_flood(),
                             ClientCommand::AddSender(id, sender) => self.add_sender(id, sender),
                             ClientCommand::RemoveSender(id) => self.remove_sender(id),
-                            ClientCommand::RequestClients => self.request_clients(),
+                            ClientCommand::GetResponseClient => self.request_clients(),
+                            ClientCommand::RegisterAsClient => self.register(),
+                            ClientCommand::UnregisterAsClient => self.unregister(),
+                            ClientCommand::OpenChatWith(id) => self.open_chat_with(id),
+                            ClientCommand::SendTextMessageTo {receiver: NodeId, message: String} => todo!(),
+                            ClientCommand::SendFileMessageTo {receiver: NodeId, file: File} => todo!(),
                             //Need to add other commands when defined
-                        }
+                            }
                     }
                 },
                 recv(self.packet_r) -> res => {
@@ -578,4 +583,6 @@ impl ClientLuca {
             scs.send(ClientEvent::PacketSent(packet));
         }
     }
+
+
 }
