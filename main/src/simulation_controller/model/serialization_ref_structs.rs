@@ -105,4 +105,8 @@ pub trait IntoSerializable<T> {
     fn into_serializable(&self) -> Self;
 }
 //
-// impl IntoSerializable for WGPacket {}
+// impl IntoSerializable for WGPacket {
+//     fn into_serializable(&self) -> Self {
+//         todo!()
+//     }
+// }
