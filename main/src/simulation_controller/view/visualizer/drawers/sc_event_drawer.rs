@@ -22,7 +22,7 @@ impl SCEvent {
         });
 
         row.col(|ui| {
-            let json_string = serde_json::to_string_pretty(&self).unwrap();
+            // let json_string = serde_json::to_string_pretty(&self).unwrap();
             ui.label(format!("{:?}", self));
             // ui.horizontal(|ui| {
             // });

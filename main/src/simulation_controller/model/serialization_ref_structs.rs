@@ -1,26 +1,15 @@
+use crossbeam::channel::Sender;
 use macros::IntoSerializable;
-// use crossbeam::channel::Sender;
-// use wg_2024::network::NodeId as WGNodeId;
-// use wg_2024::network::SourceRoutingHeader as wgSourceRoutingHeader;
-// use wg_2024::packet::NodeType as WGNodeType;
-// use wg_2024::packet::{Packet as WGPacket, PacketType as WGPacketType};
-//
-//
+
+use super::structs::*;
+use wg_2024::controller::*;
 use wg_2024::network::*;
 use wg_2024::packet::*;
 
-// use serde::Serialize;
-// use wg_2024::network::NodeId;
-// use wg_2024::packet::FloodResponse;
-// use wg_2024::packet::NodeType as WGNodeType;
-
-// use crate::{FloodRequest, FloodResponse};
-// use std::fmt::{Debug, Display, Formatter};
-// use wg_network::{NodeId, SourceRoutingHeader};
-
+use super::structs;
+use serde::ser::{SerializeStruct, Serializer};
 use serde::Serialize;
-// pub const FRAGMENT_DSIZE: usize = 128;
-//
+
 pub type NodeId = u8;
 
 pub trait IntoSerializable {
@@ -34,13 +23,6 @@ impl IntoSerializable for usize {
         *self
     }
 }
-
-// impl IntoSerializable for u8 {
-//     type Output = u8;
-//     fn into_serializable(&self) -> Self::Output {
-//         *self
-//     }
-// }
 
 impl IntoSerializable for NodeId {
     type Output = NodeId;
@@ -87,20 +69,20 @@ where
     }
 }
 
-#[derive(IntoSerializable, Debug, Clone)]
+#[derive(Serialize, IntoSerializable, Debug, Clone)]
 pub struct SourceRoutingHeaderRef {
     pub hop_index: usize,
     pub hops: Vec<NodeId>,
 }
 
-#[derive(IntoSerializable, Debug, Clone)]
+#[derive(Serialize, IntoSerializable, Debug, Clone)]
 pub struct PacketRef {
     pub routing_header: SourceRoutingHeaderRef,
     pub session_id: u64,
     pub pack_type: PacketTypeRef,
 }
 
-#[derive(Debug, Clone, IntoSerializable)]
+#[derive(IntoSerializable, Serialize, Debug, Clone)]
 pub enum PacketTypeRef {
     MsgFragment(FragmentRef),
     Ack(AckRef),
@@ -109,14 +91,13 @@ pub enum PacketTypeRef {
     FloodResponse(FloodResponseRef),
 }
 
-#[derive(IntoSerializable, Debug, Clone)]
+#[derive(Serialize, IntoSerializable, Debug, Clone)]
 pub struct NackRef {
     pub fragment_index: u64, // If the packet is not a fragment, it's considered as a whole, so fragment_index will be 0.
     pub nack_type: NackTypeRef,
 }
 
-#[derive(IntoSerializable, Debug, Clone, Copy, PartialEq, Eq)]
-// #[derive(IntoSerializable, Debug, Clone)]
+#[derive(Serialize, IntoSerializable, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NackTypeRef {
     ErrorInRouting(NodeId), // contains id of not neighbor
     DestinationIsDrone,
@@ -124,7 +105,7 @@ pub enum NackTypeRef {
     UnexpectedRecipient(NodeId),
 }
 
-#[derive(IntoSerializable, Debug, Clone)]
+#[derive(Serialize, IntoSerializable, Debug, Clone)]
 pub struct AckRef {
     pub fragment_index: u64,
 }
@@ -137,14 +118,14 @@ pub struct FragmentRef {
     pub data: [u8; FRAGMENT_DSIZE],
 }
 
-#[derive(IntoSerializable, Debug, Clone)]
+#[derive(Serialize, IntoSerializable, Debug, Clone)]
 pub struct FloodRequestRef {
     pub flood_id: u64,
     pub initiator_id: NodeId,
     pub path_trace: Vec<(NodeId, NodeTypeRef)>,
 }
 
-#[derive(IntoSerializable, Debug, Clone)]
+#[derive(Serialize, IntoSerializable, Debug, Clone)]
 pub struct FloodResponseRef {
     pub flood_id: u64,
 
@@ -152,16 +133,57 @@ pub struct FloodResponseRef {
     pub path_trace: Vec<(NodeId, NodeTypeRef)>,
 }
 
-#[derive(IntoSerializable, Debug, Clone)]
+#[derive(Serialize, IntoSerializable, Debug, Clone)]
 pub enum NodeTypeRef {
     Client,
     Drone,
     Server,
 }
 
-//
-// impl IntoSerializable for WGPacket {
-//     fn into_serializable(&self) -> Self {
-//         todo!()
-//     }
-// }
+impl Serialize for FragmentRef {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut state = serializer.serialize_struct("FragmentRef", 4)?;
+        state.serialize_field("fragment_index", &self.fragment_index)?;
+        state.serialize_field("total_n_fragments", &self.total_n_fragments)?;
+        state.serialize_field("length", &self.length)?;
+        state.serialize_field("data", &self.data.as_slice())?; // Convert array to slice
+        state.end()
+    }
+}
+
+#[derive(IntoSerializable, Serialize, Debug, Clone)]
+pub enum ClientEventRef {
+    PacketSent(PacketRef),
+    PacketDropped(PacketRef),
+}
+
+/// From server to controller
+#[derive(IntoSerializable, Serialize, Debug, Clone)]
+pub enum ServerEventRef {
+    PacketSent(PacketRef),
+    PacketDropped(PacketRef),
+}
+
+#[derive(IntoSerializable, Serialize, Debug, Clone)]
+pub enum DroneEventRef {
+    PacketSent(PacketRef),
+    PacketDropped(PacketRef),
+    ControllerShortcut(PacketRef),
+}
+
+/// Common interface for events
+#[derive(IntoSerializable, Serialize, Debug, Clone)]
+pub enum SCEventTypeRef {
+    ClientEvent(ClientEventRef),
+    ServerEvent(ServerEventRef),
+    DroneEvent(DroneEventRef),
+}
+
+#[derive(IntoSerializable, Serialize, Debug, Clone)]
+pub struct SCEventRef {
+    pub event_type: SCEventTypeRef,
+    pub sender_id: NodeId,
+}

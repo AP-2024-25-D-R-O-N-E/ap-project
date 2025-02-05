@@ -142,29 +142,3 @@ impl std::fmt::Display for SCEvent {
         write!(f, "{} {}", self.sender_id, self.event_type)
     }
 }
-//
-//
-// impl ToString for SCEventType {
-//     fn to_string(&self) -> String {
-//         format!("{} {}", self.sender_id, self.event_type)
-//     }
-// }
-
-impl serde::Serialize for SCEvent {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        todo!()
-    }
-}
-
-impl serde::Serialize for SCEventType {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        serializer.serialize_struct("sc_event:", 2);
-        todo!()
-    }
-}
