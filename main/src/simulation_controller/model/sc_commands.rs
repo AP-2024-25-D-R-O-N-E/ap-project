@@ -188,10 +188,13 @@ impl SimulationController {
 
         let mut drone_packet_senders = HashMap::new();
         for neighbor in neighbors.iter() {
+            // new drone -> neighbors
             drone_packet_senders.insert(
                 *neighbor,
                 self.packet_channels.get(&neighbor).unwrap().0.clone(),
             );
+
+            self.send_add_sender_command(*neighbor, node_id);
         }
 
         let barrier = Arc::new(Barrier::new(2));
