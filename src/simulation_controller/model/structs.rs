@@ -109,6 +109,8 @@ impl SCEvent {
                 ClientEvent::UnregisteredSenderError => todo!(),
                 ClientEvent::UnregisteredRecipientError => todo!(),
                 ClientEvent::UnsupportedMessageTypeError => todo!(),
+                ClientEvent::TextMessage { from, to, text } => todo!(),
+                ClientEvent::FileMessage { from, to, file, file_name } => todo!(),
 
             },
             SCEvent::ServerEvent(server_event) => match server_event {
