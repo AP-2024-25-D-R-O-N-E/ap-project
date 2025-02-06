@@ -1,4 +1,8 @@
-use wg_2024::{controller::DroneEvent, network::NodeId, packet::Packet};
+use wg_2024::{
+    controller::DroneEvent,
+    network::NodeId,
+    packet::{self, Packet},
+};
 
 /// From client to controller
 #[derive(Debug, Clone)]
@@ -98,6 +102,17 @@ impl SCEventType {
                 DroneEvent::PacketDropped(packet) => "PacketDropped",
                 DroneEvent::ControllerShortcut(packet) => "ControllerShortcut",
             },
+        }
+        .to_string()
+    }
+
+    pub fn get_packet_type(&self) -> String {
+        match self.get_packet().pack_type {
+            packet::PacketType::MsgFragment(fragment) => "MsgFragment",
+            packet::PacketType::Ack(ack) => "Ack",
+            packet::PacketType::Nack(nack) => "Nack",
+            packet::PacketType::FloodRequest(flood_request) => "FlooadRequest",
+            packet::PacketType::FloodResponse(flood_response) => "FloodResponse",
         }
         .to_string()
     }
