@@ -1,7 +1,10 @@
 use crate::simulation_controller::util::colors;
 use egui::{Color32, Response, Ui};
 use egui_extras::TableRow;
-use wg_2024::{controller, packet};
+use wg_2024::{
+    controller,
+    packet::{self, NackType, PacketType},
+};
 
 use crate::simulation_controller::{
     serialization_ref_structs::IntoSerializable, state::State, SCEvent, SCEventType,
@@ -74,15 +77,54 @@ impl SCEvent {
                     };
 
                     let pack_type_string = match &packet.pack_type {
-                        packet::PacketType::MsgFragment(fragment) => "MsgFragment",
-                        packet::PacketType::Ack(ack) => "Ack",
-                        packet::PacketType::Nack(nack) => "Nack",
-                        packet::PacketType::FloodRequest(flood_request) => "FloodRequest",
-                        packet::PacketType::FloodResponse(flood_response) => "FloodResponse",
+                        PacketType::MsgFragment(fragment) => "MsgFragment",
+                        PacketType::Ack(ack) => "Ack",
+                        PacketType::Nack(nack) => "Nack",
+                        PacketType::FloodRequest(flood_request) => "FloodRequest",
+                        PacketType::FloodResponse(flood_response) => "FloodResponse",
                     }
                     .to_string();
 
-                    ui.label(egui::RichText::new(pack_type_string).color(Color32::DARK_GRAY));
+                    let pack_type_string = match &packet.pack_type {
+                        PacketType::MsgFragment(fragment) => {
+                            ui.label(egui::RichText::new("MsgFragment").color(Color32::DARK_GRAY))
+                        }
+                        PacketType::Ack(ack) => {
+                            ui.label(egui::RichText::new("Ack").color(Color32::DARK_GRAY))
+                        }
+                        PacketType::Nack(nack) => {
+                            ui.horizontal(|ui| {
+                                ui.label(egui::RichText::new("Nack").color(Color32::DARK_GRAY));
+                                ui.label(egui::RichText::new(" - ").color(Color32::DARK_GRAY));
+                                match nack.nack_type {
+                                    NackType::ErrorInRouting(_) => ui.label(
+                                        egui::RichText::new("ErrorInRouting")
+                                            .color(Color32::DARK_GRAY),
+                                    ),
+                                    NackType::DestinationIsDrone => ui.label(
+                                        egui::RichText::new("DestinationIsDrone")
+                                            .color(Color32::DARK_GRAY),
+                                    ),
+                                    NackType::Dropped => ui.label(
+                                        egui::RichText::new("Dropped").color(Color32::DARK_GRAY),
+                                    ),
+                                    NackType::UnexpectedRecipient(_) => ui.label(
+                                        egui::RichText::new("UnexpectedRecipient")
+                                            .color(Color32::DARK_GRAY),
+                                    ),
+                                };
+                            })
+                            .response
+                        }
+                        PacketType::FloodRequest(flood_request) => {
+                            ui.label(egui::RichText::new("FloodRequest").color(Color32::DARK_GRAY))
+                        }
+                        PacketType::FloodResponse(flood_response) => {
+                            ui.label(egui::RichText::new("FloodResponse").color(Color32::DARK_GRAY))
+                        }
+                    };
+
+                    // ui.label(egui::RichText::new(pack_type_string).color(Color32::DARK_GRAY));
                 })
                 .response
             }
