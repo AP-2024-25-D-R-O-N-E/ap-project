@@ -19,8 +19,6 @@ use crate::{
     },
 };
 
-// TODO take into account the disabled edges and crashed drones
-
 pub fn get_payload_mut(graph: &mut UiGraph, node_index: NodeIndex) -> Option<&mut UiNodePayload> {
     match graph.node_mut(node_index) {
         Some(node) => Some(node.payload_mut()),
@@ -521,7 +519,7 @@ where
     let mut visited = HashSet::new();
     let mut first_node = None;
     for node in graph.node_indices() {
-        if !!is_crashed_drone(&graph, node) && !excluded_nodes.contains(&node) {
+        if !(is_crashed_drone(&graph, node) || excluded_nodes.contains(&node)) {
             first_node = Some(node);
             break;
         }
