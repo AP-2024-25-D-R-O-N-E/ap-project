@@ -64,44 +64,51 @@ impl SimulationController {
     }
 
     pub fn send_default_ack(&self, node_id: NodeId) {
-        self.send_ack(self.default_ack.clone(), node_id);
+        self.send_ack(self.default_ack.clone());
     }
 
-    pub fn send_ack(&self, packet: Packet, node_id: NodeId) {
-        match &self.packet_channels.get(&node_id) {
-            Some(channel) => match &packet.pack_type {
-                PacketType::Ack(_) => {
-                    channel.0.send(packet);
-                    log::info!("Sending to node {}", node_id)
-                }
-                _ => {
-                    log::error!("Provided package is not an ack")
+    pub fn send_ack(&self, packet: Packet) {
+        match packet.routing_header.current_hop() {
+            Some(current_hop) => match &self.packet_channels.get(&current_hop) {
+                Some(channel) => match &packet.pack_type {
+                    PacketType::Ack(_) => {
+                        channel.0.send(packet);
+                        log::info!("Sending to node {}", current_hop)
+                    }
+                    _ => {
+                        log::error!("Provided package is not an ack")
+                    }
+                },
+                None => {
+                    log::error!("Specified node does not exist")
                 }
             },
-            None => {
-                log::error!("Specified node does not exist")
-            }
+            None => todo!(),
         }
     }
 
     pub fn send_default_nack(&self, node_id: NodeId) {
-        self.send_nack(self.default_nack.clone(), node_id);
+        self.send_nack(self.default_nack.clone());
     }
 
-    pub fn send_nack(&self, packet: Packet, node_id: NodeId) {
-        match &self.packet_channels.get(&node_id) {
-            Some(channel) => match &packet.pack_type {
-                PacketType::Nack(_) => {
-                    channel.0.send(packet);
-                    log::info!("Sending to node {}", node_id)
-                }
-                _ => {
-                    log::error!("Provided package is not an nack")
+    pub fn send_nack(&self, packet: Packet) {
+        match packet.routing_header.current_hop() {
+            Some(current_hop) => match &self.packet_channels.get(&current_hop) {
+                Some(channel) => match &packet.pack_type {
+                    PacketType::Nack(_) => {
+                        channel.0.send(packet);
+                        log::info!("Sending to node {}", current_hop)
+                    }
+                    _ => {
+                        log::error!("Provided package is not an nack")
+                    }
+                },
+                None => {
+                    log::error!("Specified node does not exist")
                 }
             },
-            None => {
-                log::error!("Specified node does not exist")
-            }
+
+            None => todo!(),
         }
     }
 

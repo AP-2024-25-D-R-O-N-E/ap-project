@@ -1,8 +1,8 @@
+use super::super::util::graph::*;
 use egui::{CollapsingHeader, Context, RichText, ScrollArea, Ui, Window};
 use egui_extras::{Size, StripBuilder};
 use petgraph::graph::{EdgeIndex, NodeIndex};
 use wg_2024::network::NodeId;
-use super::super::util::graph::*;
 
 use crate::{
     initializer::drone_vendor::DroneVendor,

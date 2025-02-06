@@ -28,6 +28,6 @@ fn main() {
         session_id: 0,
     };
 
-    sc.send_ack(packet, 1);
+    sc.send_ack(packet);
     sleep(Duration::from_secs(100));
 }
