@@ -46,19 +46,21 @@ impl SimulationController {
         self.send_flood_request(self.default_flood.clone(), node_id);
     }
 
-    pub fn send_flood_request(&self, packet: Packet, node_id: NodeId) {
-        match &self.packet_channels.get(&node_id) {
-            Some(channel) => match &packet.pack_type {
-                PacketType::FloodRequest(_) => {
-                    channel.0.send(packet);
-                    log::info!("Sending to node {}", node_id)
+    pub fn send_flood_request(&self, packet: Packet) {
+        match packet.pack_type.clone() {
+            PacketType::FloodRequest(flood_req) => {
+                match &self.packet_channels.get(&flood_req.initiator_id) {
+                    Some(channel) => {
+                        channel.0.send(packet);
+                        log::info!("Sending to node {}", &flood_req.initiator_id)
+                    }
+                    None => {
+                        log::error!("Specified node does not exist")
+                    }
                 }
-                _ => {
-                    log::error!("Provided package is not a flood request")
-                }
-            },
-            None => {
-                log::error!("Specified node does not exist")
+            }
+            _ => {
+                log::error!("Provided package is not a flood request")
             }
         }
     }

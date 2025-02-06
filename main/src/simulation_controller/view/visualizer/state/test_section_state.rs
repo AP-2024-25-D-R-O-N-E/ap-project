@@ -7,11 +7,15 @@ pub struct TestSectionState {
     pub send_default_flood_request_node_id: NodeId,
     pub send_default_ack_node_id: NodeId,
     pub send_default_nack_node_id: NodeId,
+
     pub msg_fragment_routing_path_string: String,
-    pub ack_nack_routing_path_string: String,
     pub msg_frag_data_string: String,
     pub packet_sender_status_flag: StatusFlag,
+
+    pub ack_nack_routing_path_string: String,
     pub ack_nack_sender_status_flag: StatusFlag,
+
+    pub flood_req_initiator_id: usize,
     pub flood_req_sender_status_flag: StatusFlag,
     pub channel_modifier_status_flag: StatusFlag,
 }
@@ -30,6 +34,7 @@ impl Default for TestSectionState {
             flood_req_sender_status_flag: None,
             ack_nack_routing_path_string: String::new(),
             ack_nack_sender_status_flag: None,
+            flood_req_initiator_id: 1,
         }
     }
 }

@@ -170,17 +170,7 @@ pub fn send_msg_fragment_section(
     }
 
     ui.end_row();
-    match &state.test_section.packet_sender_status_flag {
-        Some(status) => match status {
-            Ok(s) => {
-                ui.label(RichText::new(s).color(colors::MUTED_GREEN));
-            }
-            Err(s) => {
-                ui.label(RichText::new(s).color(colors::MUTED_RED));
-            }
-        },
-        None => (),
-    }
+    display_status_flag(&state.test_section.packet_sender_status_flag, ui);
     ui.end_row();
 }
 
@@ -227,7 +217,10 @@ pub fn send_ack_nack_section(
         }
     });
 
-    if ui.button("Send").clicked() {
+    if ui
+        .add_sized(ui.available_size(), egui::Button::new("Send"))
+        .clicked()
+    {
         match parse_data(state.test_section.ack_nack_routing_path_string.clone()) {
             Ok(parsed_path) => {
                 let mut packet = simulation_controller.default_ack.clone();
@@ -239,17 +232,7 @@ pub fn send_ack_nack_section(
     }
     ui.end_row();
 
-    match &state.test_section.ack_nack_sender_status_flag {
-        Some(status) => match status {
-            Ok(s) => {
-                ui.label(RichText::new(s).color(colors::MUTED_GREEN));
-            }
-            Err(s) => {
-                ui.label(RichText::new(s).color(colors::MUTED_RED));
-            }
-        },
-        None => (),
-    }
+    display_status_flag(&state.test_section.ack_nack_sender_status_flag, ui);
     ui.end_row();
     // match parse_path
     // let mut packet = simulation_controller.default_ack.clone();
@@ -260,9 +243,24 @@ pub fn send_flood_req_nack_section(
     state: &mut State,
     simulation_controller: &SimulationController,
 ) {
+    ui.horizontal(|ui| {
+        ui.label("Initiator id");
+        ui.add(egui::DragValue::new(
+            &mut state.test_section.flood_req_initiator_id,
+        ));
+    });
+
+    if ui
+        .add_sized(ui.available_size(), egui::Button::new("Send"))
+        .clicked()
+    {
+        // let mut packet = simulation_controller.default_flood.clone();
+        // packet = state.test_section.flood_req_initiator_id;
+
+        simulation_controller.send_flood_request(state.test_section.flood_req_initiator_id);
+    }
     ui.end_row();
-    // match parse_path
-    // let mut packet = simulation_controller.default_ack.clone();
+    display_status_flag(&state.test_section.flood_req_sender_status_flag, ui);
 }
 
 fn parse_data<T>(path: String) -> Result<Vec<T>, StatusFlag>
@@ -324,5 +322,19 @@ fn get_path_between_selected_nodes(state: &mut State) -> Result<String, String> 
             }
             None => Err("Cannot find path. Is the graph connected?".to_string()),
         }
+    }
+}
+
+fn display_status_flag(status_flag: &StatusFlag, ui: &mut Ui) {
+    match &status_flag {
+        Some(status) => match status {
+            Ok(s) => {
+                ui.label(RichText::new(s).color(colors::MUTED_GREEN));
+            }
+            Err(s) => {
+                ui.label(RichText::new(s).color(colors::MUTED_RED));
+            }
+        },
+        None => (),
     }
 }
