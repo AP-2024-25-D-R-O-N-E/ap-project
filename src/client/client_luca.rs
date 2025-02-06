@@ -94,8 +94,6 @@ impl ClientTrait for ClientLuca {
             );
         }));
 
-        //let (ready_s, ready_r) = unbounded::<(NodeId, u64)>();
-
         let id = self.id;
 
         self.receiver_thread(nack_s, fragment_s);
