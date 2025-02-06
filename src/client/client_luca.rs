@@ -100,7 +100,7 @@ impl ClientTrait for ClientLuca {
 
         let id = self.id;
 
-        self.receiver_thread(ready_s, nack_s);
+        self.receiver_thread(ready_s, nack_s, fragment_s);
     }
 }
 
@@ -153,7 +153,8 @@ impl Fragmenter for ClientLuca {
 }
 
 impl ClientLuca {
-    fn receiver_thread(&mut self, ready_s: Sender<(NodeId, u64)>, nack_s: Sender<Packet>) {
+    fn receiver_thread(&mut self, ready_s: Sender<(NodeId, u64)>, nack_s: Sender<Packet>, fragment_s: Sender<(NodeId, u64, Fragment)>){
+        let mut session_id: u64 = 0;
         loop {
             select_biased!(
                 recv(self.scr) -> cmd => {
@@ -167,8 +168,15 @@ impl ClientLuca {
                             ClientCommand::UnregisterAsClient => self.unregister(),
                             ClientCommand::OpenChatWith(id) => self.open_chat_with(id),
                             ClientCommand::SendTextMessageTo {receiver, message} => self.send_text_msg(receiver, message),
-                            //ClientCommand::SendFileMessageTo {receiver: NodeId, file: File} => todo!(),
+                            ClientCommand::SendFileMessageTo {receiver: NodeId, file: File} => todo!(),
+                            };
+                        if let Some(message) = msg{
+                            let fragments = Self::disassemble(message);
+                            for frag in fragments{
+                                fragment_s.send((self.server_id, session_id, frag.clone()));
+                                session_id += 1;
                             }
+                        }
                     }
                 },
                 recv(self.packet_r) -> res => {
@@ -389,14 +397,58 @@ impl ClientLuca {
 
                 // if the buffer is full, tell the message handler thread to start assembling the fragments
                 if frag_buffer.len() == total_frags as usize {
-                    ready_s.send((packet_source, packet_msg_id));
+                    let message = Self::assemble(fragment_buffer_lock.get(&(packet_source, packet_msg_id)).unwrap().clone());
+
+                    self.manage_assemble_msg(message);
                 }
             } else {
                 fragment_buffer_lock.insert((packet_source, packet_msg_id), vec![fragment]);
                 // if the total frags is 1, then we can just send the message to the message handler thread
                 if total_frags == 1 {
-                    ready_s.send((packet_source, packet_msg_id));
+                    let message = Self::assemble(fragment_buffer_lock.get(&(packet_source, packet_msg_id)).unwrap().clone());
+                    self.manage_assemble_msg(message);
                 }
+            }
+        }
+    }
+
+    fn manage_assemble_msg(&self, message: Message){
+        match message.message_data {
+            MessageData::RegisterAsClient(_) => {}
+            MessageData::UnregisterAsClient(_) => {}
+            MessageData::RequestClients(_) => {}
+            MessageData::RequestHistory { .. } => {}
+            MessageData::TextMessage { from, to, text } => {
+                let event = ClientEvent::TextMessage {from, to, text};
+                self.scs.send(event);
+            }
+            MessageData::FileMessage { from, to, file, file_name } => {
+                let event = ClientEvent::FileMessage {from, to, file, file_name};
+                self.scs.send(event);
+            }
+            MessageData::ResponseClients(clients) => {
+                let event = ClientEvent::ResponseClientsReceived(clients);
+                self.scs.send(event);
+            }
+            MessageData::AcknolewdgedAsClient => {
+                let event = ClientEvent::AcknolewdgedAsClient;
+                self.scs.send(event);
+            }
+            MessageData::ResponseHistory { partner, history } => {
+                let event = ClientEvent::ResponseHistoryReceived {partner, history};
+                self.scs.send(event);
+            }
+            MessageData::UnregisteredSenderError => {
+                let event = ClientEvent::UnregisteredSenderError;
+                self.scs.send(event);
+            }
+            MessageData::UnregisteredRecipientError => {
+                let event = ClientEvent::UnregisteredRecipientError;
+                self.scs.send(event);
+            }
+            MessageData::UnsupportedMessageTypeError => {
+                let event = ClientEvent::UnsupportedMessageTypeError;
+                self.scs.send(event);
             }
         }
     }
