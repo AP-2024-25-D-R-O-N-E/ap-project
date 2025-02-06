@@ -94,11 +94,11 @@ impl ClientTrait for ClientLuca {
             );
         }));
 
-        let (ready_s, ready_r) = unbounded::<(NodeId, u64)>();
+        //let (ready_s, ready_r) = unbounded::<(NodeId, u64)>();
 
         let id = self.id;
 
-        self.receiver_thread(ready_s, nack_s, fragment_s);
+        self.receiver_thread(nack_s, fragment_s);
     }
 }
 
@@ -119,7 +119,7 @@ impl Fragmenter for ClientLuca {
         Message::from_u8(message_data)
     }
 
-    fn disassemble(msg: Message) -> std::collections::VecDeque<Fragment> {
+    fn disassemble(msg: Message) -> VecDeque<Fragment> {
         let mut message_data = msg.into_u8();
 
         message_data.reverse();
@@ -151,7 +151,7 @@ impl Fragmenter for ClientLuca {
 }
 
 impl ClientLuca {
-    fn receiver_thread(&mut self, ready_s: Sender<(NodeId, u64)>, nack_s: Sender<Packet>, fragment_s: Sender<(NodeId, u64, Fragment)>){
+    fn receiver_thread(&mut self, nack_s: Sender<Packet>, fragment_s: Sender<(NodeId, u64, Fragment)>){
         let mut session_id: u64 = 0;
         loop {
             select_biased!(
@@ -180,7 +180,7 @@ impl ClientLuca {
                 recv(self.packet_r) -> res => {
                     if let Ok(mut packet) = res {
                         match packet.pack_type {
-                            PacketType::MsgFragment(_) => self.manage_msg_fragment(packet, ready_s.clone()),
+                            PacketType::MsgFragment(_) => self.manage_msg_fragment(packet),
                             PacketType::Ack(ack) => self.manage_ack(packet.session_id, ack),
                             PacketType::Nack(nack) => self.manage_nack(packet.session_id, nack, nack_s.clone()),
                             PacketType::FloodRequest(_) => self.manage_flood_request(packet),
@@ -350,7 +350,7 @@ impl ClientLuca {
         log::info!("{} {:?}", "Client topology: ".green(), self.topology);
     }
 
-    fn manage_msg_fragment(&self, packet: Packet, ready_s: Sender<(NodeId, u64)>) {
+    fn manage_msg_fragment(&self, packet: Packet) {
         log::debug!(
             "{} {} received a message fragment: {}",
             "↳ client".green(),
@@ -380,7 +380,7 @@ impl ClientLuca {
 
             self.send_packet(packet);
 
-            // handle the fragment buffer and send the ready signal to the manage_assemble_msg function
+            // handle the fragment buffer
             let mut fragment_buffer_lock = self.fragment_buffer.write().unwrap();
 
             let total_frags = fragment.total_n_fragments;
@@ -471,7 +471,7 @@ impl ClientLuca {
         }
     }
 
-    fn manage_nack(&self, session_id: u64, nack: Nack, nack_send: Sender<Packet>) {
+    fn manage_nack(&self, session_id: u64, nack: Nack, nack_s: Sender<Packet>) {
         log::debug!(
             "{} {} received a nack: {:?}",
             "↳ client".green(),
@@ -506,7 +506,7 @@ impl ClientLuca {
             if ret {
                 return;
             }
-            nack_send.send(packet);
+            nack_s.send(packet);
         } else {
             log::error!("Error: the packet was not found in the ack buffer");
         }
