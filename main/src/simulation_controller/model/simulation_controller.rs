@@ -6,7 +6,7 @@ use petgraph::{
 use std::{io, thread::sleep, time::Duration};
 use wg_2024::{
     network::SourceRoutingHeader,
-    packet::{NackType, PacketType},
+    packet::{NackType, NodeType, PacketType},
 };
 
 use std::{collections::HashMap, thread::JoinHandle};
@@ -120,7 +120,7 @@ impl SimulationController {
                 pack_type: PacketType::FloodRequest(FloodRequest {
                     flood_id: 0,
                     initiator_id: 0,
-                    path_trace: vec![],
+                    path_trace: vec![(0, NodeType::Client), (1, NodeType::Drone)],
                 }),
                 routing_header: SourceRoutingHeader {
                     hop_index: 1,

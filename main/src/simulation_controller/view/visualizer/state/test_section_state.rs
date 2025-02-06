@@ -15,7 +15,7 @@ pub struct TestSectionState {
     pub ack_nack_routing_path_string: String,
     pub ack_nack_sender_status_flag: StatusFlag,
 
-    pub flood_req_initiator_id: usize,
+    pub flood_req_initiator_id: NodeId,
     pub flood_req_sender_status_flag: StatusFlag,
     pub channel_modifier_status_flag: StatusFlag,
 }

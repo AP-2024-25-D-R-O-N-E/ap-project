@@ -54,8 +54,8 @@ impl SCEvent {
 
     fn draw_additional_infos(&self, ui: &mut Ui) -> Response {
         match &self.event_type {
-            SCEventType::ClientEvent(client_event) => todo!(),
-            SCEventType::ServerEvent(server_event) => todo!(),
+            SCEventType::ClientEvent(client_event) => ui.label(""), /*TODO add more infos*/
+            SCEventType::ServerEvent(server_event) => ui.label(""), /*TODO add more infos*/
             SCEventType::DroneEvent(drone_event) => {
                 ui.horizontal(|ui| {
                     let (packet, response) = match drone_event {

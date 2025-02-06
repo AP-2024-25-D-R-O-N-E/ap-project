@@ -685,7 +685,15 @@ pub fn spawn_drone_thread_by_vendor(
             pdr,
             barrier_clone,
         ),
-        DroneVendor::Unknown => todo!(),
+        DroneVendor::Unknown => spawn_drone_thread::<MyDrone>(
+            id,
+            controller_send,
+            controller_recv,
+            packet_recv,
+            packet_send,
+            pdr,
+            barrier_clone,
+        ),
     }
 }
 

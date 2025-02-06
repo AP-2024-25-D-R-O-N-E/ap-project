@@ -13,7 +13,7 @@ use std::{
     hash::Hash,
     str::FromStr,
 };
-use wg_2024::network::NodeId;
+use wg_2024::{network::NodeId, packet::PacketType};
 
 use super::super::util::graph::*;
 
@@ -62,7 +62,7 @@ pub fn draw_section_testing(
                 .spacing([40.0, 4.0])
                 .striped(true)
                 .show(ui, |ui| {
-                    send_flood_req_nack_section(ui, state, simulation_controller)
+                    send_flood_req_section(ui, state, simulation_controller)
                 });
         });
 }
@@ -151,7 +151,7 @@ pub fn send_msg_fragment_section(
                             let mut packet = simulation_controller.default_msg_fragment.clone();
                             packet.routing_header.hops = parsed_path_vec;
                             match &mut packet.pack_type {
-                                wg_2024::packet::PacketType::MsgFragment(fragment) => {
+                                PacketType::MsgFragment(fragment) => {
                                     fragment.data = parsed_data;
                                 }
                                 _ => (),
@@ -238,7 +238,7 @@ pub fn send_ack_nack_section(
     // let mut packet = simulation_controller.default_ack.clone();
 }
 
-pub fn send_flood_req_nack_section(
+pub fn send_flood_req_section(
     ui: &mut Ui,
     state: &mut State,
     simulation_controller: &SimulationController,
@@ -254,10 +254,41 @@ pub fn send_flood_req_nack_section(
         .add_sized(ui.available_size(), egui::Button::new("Send"))
         .clicked()
     {
-        // let mut packet = simulation_controller.default_flood.clone();
-        // packet = state.test_section.flood_req_initiator_id;
-
-        simulation_controller.send_flood_request(state.test_section.flood_req_initiator_id);
+        let mut packet = simulation_controller.default_flood.clone();
+        match &mut packet.pack_type {
+            PacketType::FloodRequest(flood_req) => {
+                flood_req.initiator_id = state.test_section.flood_req_initiator_id;
+                match state.graph_section.node_id_map.get(&flood_req.initiator_id) {
+                    Some(node) => {
+                        if is_client(&state.graph_section.g.g, *node)
+                            || is_server(&state.graph_section.g.g, *node)
+                        {
+                            for neighbor in state.graph_section.g.g.neighbors(*node) {
+                                let neighbor_wg_id = state
+                                    .graph_section
+                                    .g
+                                    .node(neighbor)
+                                    .unwrap()
+                                    .payload()
+                                    .wg_id;
+                                println!("{:?}", packet);
+                                simulation_controller
+                                    .send_flood_request(packet.clone(), neighbor_wg_id);
+                            }
+                        } else {
+                            state.test_section.flood_req_sender_status_flag = Some(Err(
+                                "The initiator id should be a client or a server".to_string(),
+                            ))
+                        }
+                    }
+                    None => {
+                        state.test_section.flood_req_sender_status_flag =
+                            Some(Err("Inalid node id".to_string()))
+                    }
+                }
+            }
+            _ => (),
+        }
     }
     ui.end_row();
     display_status_flag(&state.test_section.flood_req_sender_status_flag, ui);

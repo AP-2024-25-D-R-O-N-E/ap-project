@@ -38,27 +38,29 @@ impl SimulationController {
                     log::error!("Specified node does not exist")
                 }
             },
-            None => todo!(),
+            None => log::error!("Cannot get current hop"),
         }
     }
 
     pub fn send_default_flood_request(&self, node_id: NodeId) {
-        self.send_flood_request(self.default_flood.clone(), node_id);
+        self.send_flood_request(self.default_flood.clone(), 1);
     }
 
-    pub fn send_flood_request(&self, packet: Packet) {
+    pub fn send_flood_request(&self, packet: Packet, node: NodeId) {
         match packet.pack_type.clone() {
-            PacketType::FloodRequest(flood_req) => {
-                match &self.packet_channels.get(&flood_req.initiator_id) {
-                    Some(channel) => {
-                        channel.0.send(packet);
-                        log::info!("Sending to node {}", &flood_req.initiator_id)
-                    }
-                    None => {
-                        log::error!("Specified node does not exist")
-                    }
+            PacketType::FloodRequest(flood_req) => match &self.packet_channels.get(&node) {
+                Some(channel) => {
+                    channel.0.send(packet);
+                    log::info!(
+                        "Sending to node {}, initiated by {}",
+                        node,
+                        flood_req.initiator_id
+                    )
                 }
-            }
+                None => {
+                    log::error!("Specified node does not exist")
+                }
+            },
             _ => {
                 log::error!("Provided package is not a flood request")
             }
@@ -85,7 +87,8 @@ impl SimulationController {
                     log::error!("Specified node does not exist")
                 }
             },
-            None => todo!(),
+
+            None => log::error!("Cannot get current hop"),
         }
     }
 
@@ -110,7 +113,7 @@ impl SimulationController {
                 }
             },
 
-            None => todo!(),
+            None => log::error!("Cannot get current hop"),
         }
     }
 

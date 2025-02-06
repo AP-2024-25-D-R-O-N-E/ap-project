@@ -640,7 +640,7 @@ pub fn is_well_formed(
     Ok(())
 }
 
-fn is_crashed_drone<E>(
+pub fn is_crashed_drone<E>(
     graph: &StableGraph<
         Node<UiNodePayload, UiEdgePayload, Undirected, DefaultIx, CustomNodeShape>,
         E,
@@ -653,6 +653,42 @@ fn is_crashed_drone<E>(
             UiNodeType::Server(_) => false,
             UiNodeType::Client(_) => false,
             UiNodeType::Drone(ui_drone_node) => ui_drone_node.crashed,
+        },
+        None => false,
+    }
+}
+
+pub fn is_client<E>(
+    graph: &StableGraph<
+        Node<UiNodePayload, UiEdgePayload, Undirected, DefaultIx, CustomNodeShape>,
+        E,
+        Undirected,
+    >,
+    node: NodeIndex,
+) -> bool {
+    match &graph.node_weight(node) {
+        Some(node) => match &node.payload().node_type {
+            UiNodeType::Server(_) => false,
+            UiNodeType::Client(_) => true,
+            UiNodeType::Drone(_) => false,
+        },
+        None => false,
+    }
+}
+
+pub fn is_server<E>(
+    graph: &StableGraph<
+        Node<UiNodePayload, UiEdgePayload, Undirected, DefaultIx, CustomNodeShape>,
+        E,
+        Undirected,
+    >,
+    node: NodeIndex,
+) -> bool {
+    match &graph.node_weight(node) {
+        Some(node) => match &node.payload().node_type {
+            UiNodeType::Server(_) => true,
+            UiNodeType::Client(_) => false,
+            UiNodeType::Drone(_) => false,
         },
         None => false,
     }
