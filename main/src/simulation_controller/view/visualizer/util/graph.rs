@@ -255,6 +255,15 @@ pub fn check_drone_addition(
         return Err("New drone should be connected to at least 1 node".to_string());
     }
 
+    for node in neighbors_wg_ids {
+        match graph_section_state.node_id_map.get(node) {
+            Some(index) => (),
+            None => {
+                return Err("One or more node ids are not valid".to_string());
+            }
+        }
+    }
+
     let neighbors_graph_ids: Vec<NodeIndex> = neighbors_wg_ids
         .clone()
         .into_iter()
@@ -378,6 +387,7 @@ pub fn remove_node(
     node: NodeIndex,
     simulation_controller: &SimulationController,
 ) {
+    let curr_node_wg_id = graph.node(node).unwrap().payload().wg_id;
     let edges: Vec<EdgeIndex> = graph
         .g
         .edges_directed(node, petgraph::Direction::Outgoing)
@@ -386,8 +396,19 @@ pub fn remove_node(
     for edge in edges {
         graph.edge_mut(edge).unwrap().payload_mut().is_active = false;
     }
+
+    let neighbors_wg_ids: Vec<NodeId> = graph
+        .g
+        .neighbors(node)
+        .map(|id| graph.g.node_weight(id).unwrap().payload().wg_id)
+        .collect();
+
+    for node_to in neighbors_wg_ids {
+        simulation_controller.send_remove_sender_command(node_to, curr_node_wg_id);
+    }
+
     get_drone_node(graph, node).crashed = true;
-    simulation_controller.send_crash_command(graph.node(node).unwrap().payload().wg_id);
+    simulation_controller.send_crash_command(curr_node_wg_id);
 }
 
 pub fn bfs_with_disabled_edges<N>(
@@ -500,7 +521,7 @@ where
     let mut visited = HashSet::new();
     let mut first_node = None;
     for node in graph.node_indices() {
-        if !!is_crashed_drone(&graph, node) {
+        if !!is_crashed_drone(&graph, node) && !excluded_nodes.contains(&node) {
             first_node = Some(node);
             break;
         }
@@ -543,6 +564,8 @@ where
     println!("Graph node count: {}", graph.node_count());
     println!("Total crashed drones: {:?}", crashed_drones);
     println!("Total excluded count: {:?}", total_excluded_count);
+
+    println!("{:?}", visited);
 
     visited.len() == graph.node_count() - total_excluded_count
 }
