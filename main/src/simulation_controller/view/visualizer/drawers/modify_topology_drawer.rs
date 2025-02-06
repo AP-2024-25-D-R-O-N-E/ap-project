@@ -2,6 +2,7 @@ use egui::{CollapsingHeader, Context, RichText, ScrollArea, Ui, Window};
 use egui_extras::{Size, StripBuilder};
 use petgraph::graph::{EdgeIndex, NodeIndex};
 use wg_2024::network::NodeId;
+use super::super::util::graph::*;
 
 use crate::{
     initializer::drone_vendor::DroneVendor,
@@ -25,111 +26,126 @@ pub fn draw_modify_topology_section(
     state: &mut State,
     simulation_controller: &mut SimulationController,
 ) {
-    egui::Grid::new("my_grid")
-        .num_columns(2)
-        .spacing([40.0, 4.0])
-        .striped(true)
+    CollapsingHeader::new("Spawn drone")
+        .default_open(true)
         .show(ui, |ui| {
-            ui.label("Pdr");
-            ui.add(egui::Slider::new(
-                &mut state.modify_topology_section.pdr,
-                0.0..=1.0,
-            ));
+            egui::Grid::new("my_grid")
+                .num_columns(2)
+                .spacing([40.0, 4.0])
+                .striped(true)
+                .show(ui, |ui| {
+                    ui.label("Pdr");
+                    ui.add(egui::Slider::new(
+                        &mut state.modify_topology_section.pdr,
+                        0.0..=1.0,
+                    ));
 
-            ui.end_row();
+                    ui.end_row();
 
-            ui.label("Node id");
-            ui.label(state.modify_topology_section.id.to_string());
-            ui.end_row();
+                    ui.label("Node id");
+                    ui.label(state.modify_topology_section.id.to_string());
+                    ui.end_row();
 
-            ui.label("Neighbors");
-            if ui
-                .add_sized(
-                    ui.available_size(),
-                    egui::TextEdit::singleline(&mut state.modify_topology_section.neighbors)
-                        .hint_text("Enter node IDs separated by commas"),
-                )
-                .changed()
-            {}
-            ui.end_row();
+                    ui.label("Neighbors");
+                    if ui
+                        .add_sized(
+                            ui.available_size(),
+                            egui::TextEdit::singleline(
+                                &mut state.modify_topology_section.neighbors,
+                            )
+                            .hint_text("Enter node IDs separated by commas"),
+                        )
+                        .changed()
+                    {}
+                    ui.end_row();
 
-            ui.label("Drone vendor");
-            egui::ComboBox::from_label("")
-                .selected_text(format!(
-                    "{}",
-                    state.modify_topology_section.drone_vendor.to_string()
-                ))
-                .show_ui(ui, |ui| {
-                    ui.selectable_value(
-                        &mut state.modify_topology_section.drone_vendor,
-                        DroneVendor::MyDrone,
-                        DroneVendor::MyDrone.to_string(),
-                    );
-                    ui.selectable_value(
-                        &mut state.modify_topology_section.drone_vendor,
-                        DroneVendor::RustafarianDrone,
-                        DroneVendor::RustafarianDrone.to_string(),
-                    );
-                    ui.selectable_value(
-                        &mut state.modify_topology_section.drone_vendor,
-                        DroneVendor::LockheedRustin,
-                        DroneVendor::LockheedRustin.to_string(),
-                    );
-                    ui.selectable_value(
-                        &mut state.modify_topology_section.drone_vendor,
-                        DroneVendor::RustyDrone,
-                        DroneVendor::RustyDrone.to_string(),
-                    );
-                    ui.selectable_value(
-                        &mut state.modify_topology_section.drone_vendor,
-                        DroneVendor::RustBustersDrone,
-                        DroneVendor::RustBustersDrone.to_string(),
-                    );
-                    ui.selectable_value(
-                        &mut state.modify_topology_section.drone_vendor,
-                        DroneVendor::CppEnjoyersDrone,
-                        DroneVendor::CppEnjoyersDrone.to_string(),
-                    );
-                    ui.selectable_value(
-                        &mut state.modify_topology_section.drone_vendor,
-                        DroneVendor::RustezeDrone,
-                        DroneVendor::RustezeDrone.to_string(),
-                    );
-                    ui.selectable_value(
-                        &mut state.modify_topology_section.drone_vendor,
-                        DroneVendor::GetDroned,
-                        DroneVendor::GetDroned.to_string(),
-                    );
-                    ui.selectable_value(
-                        &mut state.modify_topology_section.drone_vendor,
-                        DroneVendor::RustRoveri,
-                        DroneVendor::RustRoveri.to_string(),
-                    );
-                    ui.selectable_value(
-                        &mut state.modify_topology_section.drone_vendor,
-                        DroneVendor::MyDrone,
-                        DroneVendor::MyDrone.to_string(),
-                    );
+                    ui.label("Drone vendor");
+                    egui::ComboBox::from_label("")
+                        .selected_text(format!(
+                            "{}",
+                            state.modify_topology_section.drone_vendor.to_string()
+                        ))
+                        .show_ui(ui, |ui| {
+                            ui.selectable_value(
+                                &mut state.modify_topology_section.drone_vendor,
+                                DroneVendor::MyDrone,
+                                DroneVendor::MyDrone.to_string(),
+                            );
+                            ui.selectable_value(
+                                &mut state.modify_topology_section.drone_vendor,
+                                DroneVendor::RustafarianDrone,
+                                DroneVendor::RustafarianDrone.to_string(),
+                            );
+                            ui.selectable_value(
+                                &mut state.modify_topology_section.drone_vendor,
+                                DroneVendor::LockheedRustin,
+                                DroneVendor::LockheedRustin.to_string(),
+                            );
+                            ui.selectable_value(
+                                &mut state.modify_topology_section.drone_vendor,
+                                DroneVendor::RustyDrone,
+                                DroneVendor::RustyDrone.to_string(),
+                            );
+                            ui.selectable_value(
+                                &mut state.modify_topology_section.drone_vendor,
+                                DroneVendor::RustBustersDrone,
+                                DroneVendor::RustBustersDrone.to_string(),
+                            );
+                            ui.selectable_value(
+                                &mut state.modify_topology_section.drone_vendor,
+                                DroneVendor::CppEnjoyersDrone,
+                                DroneVendor::CppEnjoyersDrone.to_string(),
+                            );
+                            ui.selectable_value(
+                                &mut state.modify_topology_section.drone_vendor,
+                                DroneVendor::RustezeDrone,
+                                DroneVendor::RustezeDrone.to_string(),
+                            );
+                            ui.selectable_value(
+                                &mut state.modify_topology_section.drone_vendor,
+                                DroneVendor::GetDroned,
+                                DroneVendor::GetDroned.to_string(),
+                            );
+                            ui.selectable_value(
+                                &mut state.modify_topology_section.drone_vendor,
+                                DroneVendor::RustRoveri,
+                                DroneVendor::RustRoveri.to_string(),
+                            );
+                        });
                 });
+
+            if ui.button("Spawn").clicked() {
+                if can_insert_drone(state) {
+                    insert_drone(state, simulation_controller)
+                }
+            }
+
+            match &state.modify_topology_section.status_flag {
+                Some(status) => match status {
+                    Ok(s) => {
+                        ui.label(
+                            RichText::new("Drone spawned with success").color(colors::MUTED_GREEN),
+                        );
+                    }
+                    Err(error) => {
+                        ui.label(RichText::new(error).color(colors::MUTED_RED));
+                    }
+                },
+                None => (),
+            }
         });
 
-    if ui.button("Spawn").clicked() {
-        if can_insert_drone(state) {
-            insert_drone(state, simulation_controller)
-        }
-    }
-
-    match &state.modify_topology_section.status_flag {
-        Some(status) => match status {
-            Ok(s) => {
-                ui.label(RichText::new("Drone spawned with success").color(colors::MUTED_GREEN));
-            }
-            Err(error) => {
-                ui.label(RichText::new(error).color(colors::MUTED_RED));
-            }
-        },
-        None => (),
-    }
+    CollapsingHeader::new("Add/remove sender")
+        .default_open(true)
+        .show(ui, |ui| {
+            egui::Grid::new("my_grid")
+                .num_columns(2)
+                .spacing([40.0, 4.0])
+                .striped(true)
+                .show(ui, |ui| {
+                    add_remove_sender_section(ui, state, simulation_controller)
+                });
+        });
 }
 
 fn can_insert_drone(state: &mut State) -> bool {
@@ -174,6 +190,80 @@ fn insert_drone(state: &mut State, simulation_controller: &mut SimulationControl
     state.modify_topology_section.id = first_free_id;
 }
 
+pub fn add_remove_sender_section(
+    ui: &mut Ui,
+    state: &mut State,
+    simulation_controller: &SimulationController,
+) {
+    let check_parameters = |state: &mut State| {
+        if state.graph_section.g.selected_nodes().len() != 2 {
+            state.test_section.channel_modifier_status_flag =
+                Some(Err("Please select exactly 2 nodes".to_string()));
+            false
+        } else {
+            state.test_section.channel_modifier_status_flag = None;
+            true
+        }
+    };
+
+    if ui.button("Add sender").clicked() {
+        if check_parameters(state) {
+            let node1 = state.graph_section.g.selected_nodes()[0];
+            let node2 = state.graph_section.g.selected_nodes()[1];
+
+            if check_edge_addition(
+                &mut state.graph_section.g,
+                &mut state.test_section.channel_modifier_status_flag,
+                node1,
+                node2,
+            ) {
+                add_edge_between(
+                    &mut state.graph_section.g,
+                    &mut state.test_section.channel_modifier_status_flag,
+                    node1,
+                    node2,
+                    simulation_controller,
+                );
+            }
+        }
+    }
+
+    if (ui.button("Remove sender").clicked()) {
+        if check_parameters(state) {
+            let node1 = state.graph_section.g.selected_nodes()[0];
+            let node2 = state.graph_section.g.selected_nodes()[1];
+
+            if (check_edge_removal(
+                &mut state.graph_section.g,
+                &mut state.test_section.channel_modifier_status_flag,
+                node1,
+                node2,
+            )) {
+                remove_edges_between(
+                    &mut state.graph_section.g,
+                    &mut state.test_section.channel_modifier_status_flag,
+                    node1,
+                    node2,
+                    simulation_controller,
+                );
+            }
+        }
+    }
+
+    ui.end_row();
+
+    match &state.test_section.channel_modifier_status_flag {
+        Some(status) => match status {
+            Ok(s) => {
+                ui.label(RichText::new(s).color(colors::MUTED_GREEN));
+            }
+            Err(s) => {
+                ui.label(RichText::new(s).color(colors::MUTED_RED));
+            }
+        },
+        None => (),
+    }
+}
 // fn spawn_drone(state: &mut State) {
 //
 // }
