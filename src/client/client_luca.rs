@@ -35,7 +35,6 @@ pub struct ClientLuca {
     ack_packet_buffer: Arc<Mutex<HashMap<(u64, u64), Packet>>>,
     topology_modified: Arc<Mutex<bool>>,
     edge_nodes: Arc<RwLock<HashSet<NodeId>>>,
-    chat_history: HashMap<NodeId, Vec<ChatMessage>>,
     server_id: NodeId,
 }
 
@@ -62,7 +61,6 @@ impl ClientTrait for ClientLuca {
             ack_packet_buffer: Arc::new(Mutex::new(HashMap::new())),
             topology_modified: Arc::new(Mutex::new(false)),
             edge_nodes: Arc::new(RwLock::new(HashSet::new())),
-            chat_history: HashMap::new(),
             server_id: 0,
         }
     }
@@ -275,7 +273,6 @@ impl ClientLuca {
         }
     }
 
-    //fn command_handler_thread(id: NodeId) {}
 }
 
 //Thread: receiver
@@ -307,7 +304,7 @@ impl ClientLuca {
                     hops: inverse_route,
                     hop_index: 1,
                 },
-                session_id: 0, // it'll be whatever for now
+                session_id: 0,
             };
 
             self.send_packet(packet);
@@ -340,7 +337,7 @@ impl ClientLuca {
                     NodeType::Drone => {}
                     NodeType::Server => {
                         edge_nodes_lock.insert(*node_id);
-                        self.server_id = *node_id;
+                        self.server_id = *node_id; //registers the server id when it is found
                     }
                 }
 
@@ -383,7 +380,7 @@ impl ClientLuca {
 
             self.send_packet(packet);
 
-            // handle the fragment buffer and send the ready signal to the message handler thread
+            // handle the fragment buffer and send the ready signal to the manage_assemble_msg function
             let mut fragment_buffer_lock = self.fragment_buffer.write().unwrap();
 
             let total_frags = fragment.total_n_fragments;
@@ -395,15 +392,14 @@ impl ClientLuca {
 
                 frag_buffer.push(fragment);
 
-                // if the buffer is full, tell the message handler thread to start assembling the fragments
+                // if the buffer is full, assemble the fragments and pass the message to the manage_assemble_msg
                 if frag_buffer.len() == total_frags as usize {
                     let message = Self::assemble(fragment_buffer_lock.get(&(packet_source, packet_msg_id)).unwrap().clone());
-
                     self.manage_assemble_msg(message);
                 }
             } else {
                 fragment_buffer_lock.insert((packet_source, packet_msg_id), vec![fragment]);
-                // if the total frags is 1, then we can just send the message to the message handler thread
+                // if the total frags is 1, assemble and pass the message to the manage_assemble_msg
                 if total_frags == 1 {
                     let message = Self::assemble(fragment_buffer_lock.get(&(packet_source, packet_msg_id)).unwrap().clone());
                     self.manage_assemble_msg(message);
