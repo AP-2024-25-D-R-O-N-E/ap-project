@@ -20,7 +20,7 @@ use crate::{
     fragmentation::{message::Message, Fragmenter},
     simulation_controller::structs::{ClientCommand, ClientEvent},
 };
-use crate::fragmentation::message::ChatMessage;
+use crate::fragmentation::message::{ChatMessage, MessageData};
 use super::ClientTrait;
 
 pub struct ClientLuca {
@@ -62,6 +62,8 @@ impl ClientTrait for ClientLuca {
             ack_packet_buffer: Arc::new(Mutex::new(HashMap::new())),
             topology_modified: Arc::new(Mutex::new(false)),
             edge_nodes: Arc::new(RwLock::new(HashSet::new())),
+            chat_history: HashMap::new(),
+            server_id: 0,
         }
     }
 
@@ -97,12 +99,6 @@ impl ClientTrait for ClientLuca {
         let (ready_s, ready_r) = unbounded::<(NodeId, u64)>();
 
         let id = self.id;
-
-        /*
-        threads.push(thread::spawn(move || {
-            ClientLuca::command_handler_thread(id);
-        }));
-        */
 
         self.receiver_thread(ready_s, nack_s);
     }
@@ -162,7 +158,7 @@ impl ClientLuca {
             select_biased!(
                 recv(self.scr) -> cmd => {
                     if let Ok(command) = cmd {
-                        match command {
+                        let msg = match command {
                             ClientCommand::StartFlooding => self.initiate_flood(),
                             ClientCommand::AddSender(id, sender) => self.add_sender(id, sender),
                             ClientCommand::RemoveSender(id) => self.remove_sender(id),
@@ -170,8 +166,8 @@ impl ClientLuca {
                             ClientCommand::RegisterAsClient => self.register(),
                             ClientCommand::UnregisterAsClient => self.unregister(),
                             ClientCommand::OpenChatWith(id) => self.open_chat_with(id),
-                            ClientCommand::SendTextMessageTo {receiver: NodeId, message: String} => todo!(),
-                            ClientCommand::SendFileMessageTo {receiver: NodeId, file: File} => todo!(),
+                            ClientCommand::SendTextMessageTo {receiver, message} => self.send_text_msg(receiver, message),
+                            //ClientCommand::SendFileMessageTo {receiver: NodeId, file: File} => todo!(),
                             }
                     }
                 },
@@ -349,7 +345,7 @@ impl ClientLuca {
         log::info!("{} {:?}", "Client topology: ".green(), self.topology);
     }
 
-    fn manage_msg_fragment(&self, packet: Packet, ready_send: Sender<(NodeId, u64)>) {
+    fn manage_msg_fragment(&self, packet: Packet, ready_s: Sender<(NodeId, u64)>) {
         log::debug!(
             "{} {} received a message fragment: {}",
             "↳ client".green(),
@@ -393,13 +389,13 @@ impl ClientLuca {
 
                 // if the buffer is full, tell the message handler thread to start assembling the fragments
                 if frag_buffer.len() == total_frags as usize {
-                    ready_send.send((packet_source, packet_msg_id));
+                    ready_s.send((packet_source, packet_msg_id));
                 }
             } else {
                 fragment_buffer_lock.insert((packet_source, packet_msg_id), vec![fragment]);
                 // if the total frags is 1, then we can just send the message to the message handler thread
                 if total_frags == 1 {
-                    ready_send.send((packet_source, packet_msg_id));
+                    ready_s.send((packet_source, packet_msg_id));
                 }
             }
         }
@@ -488,7 +484,7 @@ impl ClientLuca {
         }
     }
 
-    fn initiate_flood(&mut self) {
+    fn initiate_flood(&mut self)->Option<Message> {
         for (id, sender) in self.packet_s.read().unwrap().iter() {
             let packet = Packet {
                 pack_type: PacketType::FloodRequest(FloodRequest {
@@ -512,27 +508,47 @@ impl ClientLuca {
                 self.scs.send(ClientEvent::PacketSent(packet));
             }
         }
+        None
     }
 
-    fn add_sender(&mut self, id: NodeId, sender: Sender<Packet>) {
+    fn add_sender(&mut self, id: NodeId, sender: Sender<Packet>)->Option<Message> {
         self.packet_s.write().unwrap().insert(id, sender);
+        None
     }
 
-    fn remove_sender(&mut self, id: NodeId) {
+    fn remove_sender(&mut self, id: NodeId) -> Option<Message> {
         self.packet_s.write().unwrap().remove(&id);
+        None
     }
 
-    fn register(&mut self){
-        self.server_id.send(self.id);
+    fn register(&mut self) -> Option<Message>{
+        let msg = Message::new(self.id, self.server_id, MessageData::RegisterAsClient(self.id));
+        Some(msg)
     }
 
-    fn unregister(&mut self){
-        self.server_id.send(self.id);
+    fn unregister(&mut self)->Option<Message>{
+        let msg =  Message::new(self.id, self.server_id, MessageData::UnregisterAsClient(self.id));
+        Some(msg)
     }
 
-    fn request_clients(&self) -> todo!()
+    fn request_clients(&self) -> Option<Message>{
+        let msg = Message::new(self.id, self.server_id, MessageData::RequestClients(self.id));
+        Some(msg)
+    }
 
-    fn open_chat_with(&self, id: NodeId) -> todo!()
+    fn open_chat_with(&self, id: NodeId) -> Option<Message>{
+        let msg = Message::new(self.id, self.server_id, MessageData::RequestHistory { requester: self.id, partner:id });
+        Some(msg)
+    }
+
+    fn send_text_msg(&self, receiver: NodeId, message: String) -> Option<Message>{
+        let msg = Message::new(self.id, receiver, MessageData::TextMessage {
+            from: self.id,
+            to: receiver,
+            text: message,
+        });
+        Some(msg)
+    }
 
 
 }
