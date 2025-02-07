@@ -17,6 +17,7 @@ pub struct TestSectionState {
 
     pub flood_req_initiator_id: NodeId,
     pub flood_req_sender_status_flag: StatusFlag,
+    pub flood_latest_used_id: u64,
     pub channel_modifier_status_flag: StatusFlag,
 }
 
@@ -35,6 +36,7 @@ impl Default for TestSectionState {
             ack_nack_routing_path_string: String::new(),
             ack_nack_sender_status_flag: None,
             flood_req_initiator_id: 1,
+            flood_latest_used_id: 0,
         }
     }
 }

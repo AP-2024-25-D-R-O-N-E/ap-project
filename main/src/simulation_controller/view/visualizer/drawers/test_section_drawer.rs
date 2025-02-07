@@ -13,7 +13,10 @@ use std::{
     hash::Hash,
     str::FromStr,
 };
-use wg_2024::{network::NodeId, packet::PacketType};
+use wg_2024::{
+    network::{NodeId, SourceRoutingHeader},
+    packet::{FloodRequest, NodeType, Packet, PacketType},
+};
 
 use super::super::util::graph::*;
 
@@ -254,42 +257,67 @@ pub fn send_flood_req_section(
         .add_sized(ui.available_size(), egui::Button::new("Send"))
         .clicked()
     {
-        let mut packet = simulation_controller.default_flood.clone();
-        match &mut packet.pack_type {
-            PacketType::FloodRequest(flood_req) => {
-                flood_req.initiator_id = state.test_section.flood_req_initiator_id;
-                match state.graph_section.node_id_map.get(&flood_req.initiator_id) {
-                    Some(node) => {
-                        if is_client(&state.graph_section.g.g, *node)
-                            || is_server(&state.graph_section.g.g, *node)
+        // flood_req.initiator_id = state.test_section.flood_req_initiator_id;
+        let curr_node_wg_id = state.test_section.flood_req_initiator_id;
+        match state.graph_section.node_id_map.get(&curr_node_wg_id) {
+            Some(node) => {
+                if is_client(&state.graph_section.g.g, *node)
+                    || is_server(&state.graph_section.g.g, *node)
+                {
+                    for neighbor in state.graph_section.g.g.neighbors(*node) {
+                        let neighbor_wg_id = state
+                            .graph_section
+                            .g
+                            .node(neighbor)
+                            .unwrap()
+                            .payload()
+                            .wg_id;
+
+                        let mut flood_req = FloodRequest::new(
+                            state.test_section.flood_latest_used_id,
+                            state.test_section.flood_req_initiator_id,
+                        );
+                        match &state
+                            .graph_section
+                            .g
+                            .node(*node)
+                            .unwrap()
+                            .payload()
+                            .node_type
                         {
-                            for neighbor in state.graph_section.g.g.neighbors(*node) {
-                                let neighbor_wg_id = state
-                                    .graph_section
-                                    .g
-                                    .node(neighbor)
-                                    .unwrap()
-                                    .payload()
-                                    .wg_id;
-                                println!("{:?}", packet);
-                                simulation_controller
-                                    .send_flood_request(packet.clone(), neighbor_wg_id);
+                            UiNodeType::Server(ui_server_node) => {
+                                flood_req.path_trace = vec![(curr_node_wg_id, NodeType::Server)]
                             }
-                        } else {
-                            state.test_section.flood_req_sender_status_flag = Some(Err(
-                                "The initiator id should be a client or a server".to_string(),
-                            ))
+                            UiNodeType::Client(ui_client_node) => {
+                                flood_req.path_trace = vec![(curr_node_wg_id, NodeType::Client)]
+                            }
+                            UiNodeType::Drone(ui_drone_node) => {
+                                flood_req.path_trace = vec![(curr_node_wg_id, NodeType::Drone)]
+                            }
                         }
+
+                        let routing_header =
+                            SourceRoutingHeader::new(vec![curr_node_wg_id, neighbor_wg_id], 1);
+                        let packet = Packet::new_flood_request(routing_header, 0, flood_req);
+                        // packet.routing_header.hops = vec![flood_req.initiator_id, neighbor_wg_id];
+                        // println!("{:?}", packet);
+                        simulation_controller.send_flood_request(packet.clone(), neighbor_wg_id);
                     }
-                    None => {
-                        state.test_section.flood_req_sender_status_flag =
-                            Some(Err("Inalid node id".to_string()))
-                    }
+
+                    state.test_section.flood_latest_used_id += 1;
+                } else {
+                    state.test_section.flood_req_sender_status_flag = Some(Err(
+                        "The initiator id should be a client or a server".to_string(),
+                    ))
                 }
             }
-            _ => (),
+            None => {
+                state.test_section.flood_req_sender_status_flag =
+                    Some(Err("Inalid node id".to_string()))
+            }
         }
     }
+
     ui.end_row();
     display_status_flag(&state.test_section.flood_req_sender_status_flag, ui);
 }
