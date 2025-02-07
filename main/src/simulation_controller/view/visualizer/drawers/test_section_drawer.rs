@@ -23,7 +23,7 @@ use super::super::util::graph::*;
 use crate::simulation_controller::{
     edge::{CustomEdgeShape, UiEdgePayload},
     node::{CustomNodeShape, UiNodePayload, UiNodeType},
-    state::State,
+    state::{AckType, State},
     util::*,
     SimulationController,
 };
@@ -220,19 +220,30 @@ pub fn send_ack_nack_section(
         }
     });
 
-    if ui
-        .add_sized(ui.available_size(), egui::Button::new("Send"))
-        .clicked()
-    {
-        match parse_data(state.test_section.ack_nack_routing_path_string.clone()) {
-            Ok(parsed_path) => {
-                let mut packet = simulation_controller.default_ack.clone();
-                packet.routing_header.hops = parsed_path;
-                simulation_controller.send_ack(packet);
+    ui.horizontal(|ui| {
+        ui.radio_value(&mut state.test_section.ack_type, AckType::Ack, "Ack");
+        ui.radio_value(&mut state.test_section.ack_type, AckType::Nack, "Nack");
+        if ui
+            .add_sized(ui.available_size(), egui::Button::new("Send"))
+            .clicked()
+        {
+            match parse_data(state.test_section.ack_nack_routing_path_string.clone()) {
+                Ok(parsed_path) => match state.test_section.ack_type {
+                    AckType::Ack => {
+                        let mut packet = simulation_controller.default_ack.clone();
+                        packet.routing_header.hops = parsed_path;
+                        simulation_controller.send_ack(packet);
+                    }
+                    AckType::Nack => {
+                        let mut packet = simulation_controller.default_nack.clone();
+                        packet.routing_header.hops = parsed_path;
+                        simulation_controller.send_nack(packet);
+                    }
+                },
+                Err(error) => state.test_section.ack_nack_sender_status_flag = error,
             }
-            Err(error) => state.test_section.ack_nack_sender_status_flag = error,
         }
-    }
+    });
     ui.end_row();
 
     display_status_flag(&state.test_section.ack_nack_sender_status_flag, ui);

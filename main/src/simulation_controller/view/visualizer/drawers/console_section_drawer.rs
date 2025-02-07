@@ -7,14 +7,13 @@ pub fn draw_section_console(ui: &mut Ui, state: &mut State) {
     ScrollArea::vertical()
         .auto_shrink([false, false])
         .show(ui, |ui| {
-            //TODO draw node events
             // ui.label(egui::RichText::new("This is red text!").color(egui::Color32::LIGHT_GRAY));
             let events = state.events.get_events_list(DisplayOptions::ALL);
             let text_height = ui.text_style_height(&egui::TextStyle::Body);
             TableBuilder::new(ui)
-                .column(Column::auto().resizable(true))
-                .column(Column::auto().resizable(true))
-                .column(Column::auto().resizable(true))
+                .column(Column::initial(80.).resizable(true))
+                .column(Column::initial(80.).resizable(true))
+                .column(Column::initial(80.).resizable(true))
                 .column(Column::remainder())
                 .striped(true)
                 .header(text_height, |mut header| {

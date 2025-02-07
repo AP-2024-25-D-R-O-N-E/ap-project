@@ -106,7 +106,7 @@ pub fn draw_node_info(
             CollapsingHeader::new("Logs")
                 .default_open(true)
                 .show(ui, |ui| {
-                    ScrollArea::vertical()
+                    ScrollArea::both()
                         .auto_shrink([false, false])
                         .show(ui, |ui| {
                             //TODO draw node events
@@ -142,7 +142,6 @@ pub fn draw_node_info(
                                     });
                                 })
                                 .body(|mut body| {
-                                    let mut hover_index = None;
                                     for (index, event) in state
                                         .events
                                         .get_events_list(DisplayOptions::from_index(payload.wg_id))
@@ -150,22 +149,9 @@ pub fn draw_node_info(
                                         .enumerate()
                                     {
                                         body.row(30.0, |mut row| {
-                                            match state.console_section.hovered_row {
-                                                Some(hovered_index) => {
-                                                    if index == hovered_index {
-                                                        row.set_selected(true);
-                                                    }
-                                                }
-                                                None => row.set_selected(false),
-                                            }
-
                                             event.draw(&mut row, state);
-                                            if row.response().contains_pointer() {
-                                                hover_index = Some(index);
-                                            }
                                         });
                                     }
-                                    state.console_section.hovered_row = hover_index;
                                 });
 
                             // let mut table = TableBuilder::new(ui)
