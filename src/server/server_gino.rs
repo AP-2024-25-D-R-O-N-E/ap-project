@@ -705,7 +705,7 @@ impl ChatServer {
                 // if a node is an edge node, then the weight should be "infinite" as it can't be used
                 let edge_nodes_lock = edge_nodes.read().unwrap();
                 if edge_nodes_lock.contains(&b) || edge_nodes_lock.contains(&a) {
-                    topology_lock.edge_count() as f64
+                    topology_lock.edge_count() as f64  * 100.0f64 // 100 equivale ad una success ratio di 1/100.
                 } else {
                     let pdr_estimation_lock = pdr_estimation.read().unwrap();
                     let ratio = pdr_estimation_lock.get(&b).unwrap().0;
