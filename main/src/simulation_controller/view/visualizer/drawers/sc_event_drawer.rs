@@ -117,10 +117,31 @@ impl SCEvent {
                             .response
                         }
                         PacketType::FloodRequest(flood_request) => {
-                            ui.label(egui::RichText::new("FloodRequest").color(Color32::DARK_GRAY))
+                            ui.horizontal(|ui| {
+                                ui.label(
+                                    egui::RichText::new("FloodRequest").color(Color32::DARK_GRAY),
+                                );
+                                ui.label(
+                                    egui::RichText::new(format!(
+                                        "Initiated by: {}, flood_id: {}",
+                                        flood_request.initiator_id, flood_request.flood_id
+                                    ))
+                                    .color(Color32::DARK_GRAY),
+                                );
+                            })
+                            .response
                         }
                         PacketType::FloodResponse(flood_response) => {
-                            ui.label(egui::RichText::new("FloodResponse").color(Color32::DARK_GRAY))
+                            ui.horizontal(|ui| {
+                                ui.label(
+                                    egui::RichText::new("FloodResponse").color(Color32::DARK_GRAY),
+                                );
+                                ui.label(
+                                    egui::RichText::new(format!("{:?}", flood_response.path_trace))
+                                        .color(Color32::DARK_GRAY),
+                                )
+                            })
+                            .response
                         }
                     };
 
