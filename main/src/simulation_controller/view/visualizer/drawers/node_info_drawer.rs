@@ -1,4 +1,5 @@
 use egui::{CollapsingHeader, Context, RichText, ScrollArea, Ui, Window};
+use egui_extras::{Column, TableBuilder};
 use petgraph::graph::{EdgeIndex, NodeIndex};
 
 use crate::simulation_controller::{
@@ -28,90 +29,199 @@ pub fn draw_node_info(
     state: &mut State,
     simulation_controller: &SimulationController,
 ) {
-    let node_payload = state.graph_section.g.node(node_index).unwrap().payload();
-    Window::new(format!("Node {}", node_payload.wg_id))
-        .collapsible(true)
-        .resizable(true)
-        .default_width(200.0)
-        .default_height(100.0)
-        .show(ctx, |ui| {
-            ScrollArea::vertical().show(ui, |ui| {
-                ui.expand_to_include_rect(ui.available_rect_before_wrap());
-                egui::Grid::new("my_grid")
-                    .num_columns(2)
-                    .spacing([40.0, 4.0])
-                    .striped(true)
-                    .show(ui, |ui| {
-                        let payload = state.graph_section.g.node(node_index).unwrap().payload();
-                        ui.label("Node type".to_string());
-                        ui.horizontal(|ui| {
-                            ui.label(payload.get_type().to_string());
-                            ui.add_sized(ui.available_size(), egui::Label::new("".to_string()));
-                        });
-                        ui.end_row();
+    // let node_payload = state.graph_section.g.node(node_index).unwrap().payload();
 
-                        ui.label("Vendor".to_string());
-                        ui.label(payload.vendor.to_string());
+    Window::new(format!(
+        "Node {}",
+        state
+            .graph_section
+            .g
+            .node(node_index)
+            .unwrap()
+            .payload()
+            .wg_id
+            .clone()
+    ))
+    .collapsible(true)
+    .resizable(true)
+    .default_width(200.0)
+    .default_height(100.0)
+    .show(ctx, |ui| {
+        ScrollArea::vertical().show(ui, |ui| {
+            ui.expand_to_include_rect(ui.available_rect_before_wrap());
+            egui::Grid::new("my_grid")
+                .num_columns(2)
+                .spacing([40.0, 4.0])
+                .striped(true)
+                .show(ui, |ui| {
+                    let payload = state.graph_section.g.node(node_index).unwrap().payload();
+                    ui.label("Node type".to_string());
+                    ui.horizontal(|ui| {
+                        ui.label(payload.get_type().to_string());
+                        ui.add_sized(ui.available_size(), egui::Label::new("".to_string()));
+                    });
+                    ui.end_row();
 
-                        ui.end_row();
+                    ui.label("Vendor".to_string());
+                    ui.label(payload.vendor.to_string());
 
-                        if ui.button("Close").clicked() {
-                            println!(
-                                "closing {:?} of {:?}",
-                                node_index, state.node_info_section.opened_windows
-                            );
-                            state.node_info_section.opened_windows.remove(&node_index);
-                        }
-                        if ui.button("Close others").clicked() {
-                            state
-                                .node_info_section
-                                .opened_windows
-                                .retain(|opened_index, _| *opened_index == node_index)
-                        }
-                        ui.end_row();
-                        ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
-                            // ui.separator();
-                            ui.spacing();
-                        });
-                        ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
-                            // ui.separator();
-                            ui.spacing();
-                        });
-                        ui.end_row();
+                    ui.end_row();
 
-                        if let Some(graph_node) = state.graph_section.g.node_mut(node_index) {
-                            let ui_node = graph_node.payload_mut();
-                            match &ui_node.node_type {
-                                UiNodeType::Server(ui_server_node) => {}
-                                UiNodeType::Client(ui_client_node) => {}
-                                UiNodeType::Drone(ui_drone_node) => {
-                                    draw_drone_specific(
-                                        ui,
-                                        node_index,
-                                        state,
-                                        simulation_controller,
-                                    );
-                                }
+                    if ui.button("Close").clicked() {
+                        println!(
+                            "closing {:?} of {:?}",
+                            node_index, state.node_info_section.opened_windows
+                        );
+                        state.node_info_section.opened_windows.remove(&node_index);
+                    }
+                    if ui.button("Close others").clicked() {
+                        state
+                            .node_info_section
+                            .opened_windows
+                            .retain(|opened_index, _| *opened_index == node_index)
+                    }
+                    ui.end_row();
+                    ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
+                        // ui.separator();
+                        ui.spacing();
+                    });
+                    ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
+                        // ui.separator();
+                        ui.spacing();
+                    });
+                    ui.end_row();
+
+                    if let Some(graph_node) = state.graph_section.g.node_mut(node_index) {
+                        let ui_node = graph_node.payload_mut();
+                        match &ui_node.node_type {
+                            UiNodeType::Server(ui_server_node) => {}
+                            UiNodeType::Client(ui_client_node) => {}
+                            UiNodeType::Drone(ui_drone_node) => {
+                                draw_drone_specific(ui, node_index, state, simulation_controller);
                             }
                         }
-                    });
+                    }
+                });
 
-                CollapsingHeader::new("Logs")
-                    .default_open(true)
-                    .show(ui, |ui| {
-                        ScrollArea::vertical().show(ui, |ui| {
-                            for x in state.events.get_events_list(DisplayOptions::from_index(
-                                state.graph_section.wg_id(node_index).unwrap(),
-                            )) {
-                                ui.label(
-                                    egui::RichText::new(format!("{:?}", x))
-                                        .color(egui::Color32::LIGHT_GRAY),
-                                );
-                            }
-                        })
-                    });
-            });
+            CollapsingHeader::new("Logs")
+                .default_open(true)
+                .show(ui, |ui| {
+                    ScrollArea::vertical()
+                        .auto_shrink([false, false])
+                        .show(ui, |ui| {
+                            //TODO draw node events
+                            // ui.label(egui::RichText::new("This is red text!").color(egui::Color32::LIGHT_GRAY));
+                            let events = state.events.get_events_list(DisplayOptions::ALL);
+                            let text_height = ui.text_style_height(&egui::TextStyle::Body);
+                            let payload = state
+                                .graph_section
+                                .g
+                                .node(node_index)
+                                .unwrap()
+                                .payload()
+                                .clone();
+
+                            TableBuilder::new(ui)
+                                .column(Column::auto().resizable(true))
+                                .column(Column::auto().resizable(true))
+                                .column(Column::auto().resizable(true))
+                                .column(Column::remainder())
+                                .striped(true)
+                                .header(text_height, |mut header| {
+                                    header.col(|ui| {
+                                        ui.label("Sender");
+                                    });
+                                    header.col(|ui| {
+                                        ui.label("Type");
+                                    });
+                                    header.col(|ui| {
+                                        ui.label("Session id");
+                                    });
+                                    header.col(|ui| {
+                                        ui.label("Other infos");
+                                    });
+                                })
+                                .body(|mut body| {
+                                    let mut hover_index = None;
+                                    for (index, event) in state
+                                        .events
+                                        .get_events_list(DisplayOptions::from_index(payload.wg_id))
+                                        .iter()
+                                        .enumerate()
+                                    {
+                                        body.row(30.0, |mut row| {
+                                            match state.console_section.hovered_row {
+                                                Some(hovered_index) => {
+                                                    if index == hovered_index {
+                                                        row.set_selected(true);
+                                                    }
+                                                }
+                                                None => row.set_selected(false),
+                                            }
+
+                                            event.draw(&mut row, state);
+                                            if row.response().contains_pointer() {
+                                                hover_index = Some(index);
+                                            }
+                                        });
+                                    }
+                                    state.console_section.hovered_row = hover_index;
+                                });
+
+                            // let mut table = TableBuilder::new(ui)
+                            //     .striped(self.striped)
+                            //     .resizable(self.resizable)
+                            //     .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
+                            //     .column(Column::auto())
+                            //     .column(
+                            //         Column::remainder()
+                            //             .at_least(40.0)
+                            //             .clip(true)
+                            //             .resizable(true),
+                            //     )
+                            //     .column(Column::auto())
+                            //     .column(Column::remainder())
+                            //     .column(Column::remainder())
+                            //     .min_scrolled_height(0.0)
+                            //     .max_scroll_height(available_height);
+                            //
+                            // egui::Grid::new("my_grid")
+                            //     .num_columns(2)
+                            //     .spacing([40.0, 4.0])
+                            //     .striped(true)
+                            //     .show(ui, |ui| {
+                            //         for event in state.events.get_events_list(DisplayOptions::ALL) {
+                            //             // ui.label(egui::RichText::new(format!("{:?}", event)).color(egui::Color32::LIGHT_GRAY));
+                            //             event.draw(ui, state)
+                            //         }
+                            //     });
+
+                            // ui.label(
+                            //     egui::RichText::new("This is green bold text!")
+                            //         .color(egui::Color32::LIGHT_GRAY)
+                            //         .strong(),
+                            // );
+                            //
+                            // ui.label(
+                            //     egui::RichText::new("This is blue italic text!")
+                            //         .color(egui::Color32::LIGHT_GRAY)
+                            //         .italics(),
+                            // );
+                        });
+
+                    // ScrollArea::vertical().show(ui, |ui| {
+                    //     for x in state.events.get_events_list(DisplayOptions::from_index(
+                    //         state.graph_section.wg_id(node_index).unwrap(),
+                    //     )) {
+                    //         ui.label(
+                    //             egui::RichText::new(format!("{:?}", x))
+                    //                 .color(egui::Color32::LIGHT_GRAY),
+                    //         );
+                    //     }
+                    // })
+                });
         });
+    });
 }
 
 fn draw_drone_specific(
