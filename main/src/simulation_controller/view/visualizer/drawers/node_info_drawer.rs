@@ -394,6 +394,7 @@ fn draw_client_specific(
                     format!("Select client"),
                 );
             });
+        {}
     });
 }
 

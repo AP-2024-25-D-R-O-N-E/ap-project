@@ -60,12 +60,12 @@ pub struct DroneState {
     pub crash_status_flag: StatusFlag,
 }
 
-#[derive(Debug, Clone)]
-#[derive(Default)]
+#[derive(Debug, Clone, Default)]
 pub struct ClientState {
     pub available_peers: Vec<NodeId>,
     pub curr_msg: String,
     pub current_peer: Option<NodeId>,
+    pub last_peer: Option<NodeId>,
 }
 
 #[derive(Debug, Clone)]
@@ -78,7 +78,6 @@ pub enum NodeState {
     Drone(DroneState),
 }
 
-
 impl Default for NodeState {
     fn default() -> Self {
         Self::Drone(DroneState {
@@ -87,7 +86,6 @@ impl Default for NodeState {
         })
     }
 }
-
 
 impl<'a> TryInto<&'a mut DroneState> for &'a mut NodeState {
     type Error = &'static str;
@@ -108,6 +106,7 @@ impl<'a> TryInto<&'a mut ClientState> for &'a mut NodeState {
         }
     }
 }
+
 impl<'a> TryInto<&'a mut ServerState> for &'a mut NodeState {
     type Error = &'static str;
     fn try_into(self) -> Result<&'a mut ServerState, Self::Error> {
