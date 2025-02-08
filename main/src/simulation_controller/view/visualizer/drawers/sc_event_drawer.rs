@@ -49,7 +49,7 @@ impl SCEvent {
                     ui.label(egui::RichText::new("Packet sent").color(colors::MUTED_GREEN))
                 }
                 ClientEvent::PacketReceived(packet) => {
-                    ui.label(egui::RichText::new("Packet dropped").color(colors::YELLOW))
+                    ui.label(egui::RichText::new("Packet received").color(colors::MUTED_GREEN))
                 }
                 ClientEvent::TextMessage { from, to, text } => ui.label(
                     egui::RichText::new(format!("Recieved text message from {}\n{}", from, text))
