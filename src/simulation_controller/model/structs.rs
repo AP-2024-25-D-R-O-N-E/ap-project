@@ -28,7 +28,18 @@ pub enum ClientEvent {
     },
     UnregisteredSenderError,
     UnregisteredRecipientError,
-    UnsupportedMessageTypeError
+    UnsupportedMessageTypeError,
+    TextMessage{
+        from: NodeId,
+        to: NodeId,
+        text: String
+    },
+    FileMessage {
+        from: NodeId,
+        to: NodeId,
+        file: Vec<u8>,
+        file_name: String,
+    },
 }
 
 /// From controller to client
@@ -111,7 +122,7 @@ impl SCEvent {
                 ClientEvent::UnsupportedMessageTypeError => todo!(),
                 ClientEvent::TextMessage { from, to, text } => todo!(),
                 ClientEvent::FileMessage { from, to, file, file_name } => todo!(),
-
+                
             },
             SCEvent::ServerEvent(server_event) => match server_event {
                 ServerEvent::PacketSent(packet) => packet,
