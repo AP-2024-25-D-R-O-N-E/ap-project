@@ -400,12 +400,7 @@ pub fn remove_node(
 }
 
 pub fn bfs_with_disabled_edges<N>(
-    graph: &StableGraph<
-        N,
-        // Node<UiNodePayload, UiEdgePayload, Undirected, DefaultIx, CustomNodeShape>,
-        Edge<UiNodePayload, UiEdgePayload, Undirected, DefaultIx, CustomNodeShape, CustomEdgeShape>,
-        Undirected,
-    >,
+    graph: ModelGraph<N, ModelEdgePayload>,
     start: NodeIndex,
 ) -> usize
 where
@@ -443,18 +438,14 @@ where
 }
 
 pub fn is_connected_without_edge_set(
-    graph: &StableGraph<
-        Node<UiNodePayload, UiEdgePayload, Undirected, DefaultIx, CustomNodeShape>,
-        Edge<UiNodePayload, UiEdgePayload, Undirected, DefaultIx, CustomNodeShape, CustomEdgeShape>,
-        Undirected,
-    >,
+    graph: &DefaultModelGraph,
     excluded_edges: HashSet<EdgeIndex>,
 ) -> bool
 where
 {
     let mut queue = VecDeque::new();
     let mut visited = HashSet::new();
-    
+
     let first_node = match graph.node_indices().next() {
         Some(first_node_unwrapped) => first_node_unwrapped,
         None => return true,
@@ -496,11 +487,7 @@ where
 }
 
 pub fn is_connected_without_node_set<E>(
-    graph: &StableGraph<
-        Node<UiNodePayload, UiEdgePayload, Undirected, DefaultIx, CustomNodeShape>,
-        E,
-        Undirected,
-    >,
+    graph: &ModelGraph<ModelNodePayload, E>,
     excluded_nodes: HashSet<NodeIndex>,
 ) -> bool
 where
@@ -559,11 +546,7 @@ where
 }
 
 pub fn get_neigbors_with_disabled_edges<N>(
-    graph: &StableGraph<
-        N,
-        Edge<UiNodePayload, UiEdgePayload, Undirected, DefaultIx, CustomNodeShape, CustomEdgeShape>,
-        Undirected,
-    >,
+    graph: &ModelGraph<N, ModelEdgePayload>,
     node: NodeIndex,
 ) -> Vec<NodeIndex> {
     let neighbors: Vec<NodeIndex> = graph.neighbors_undirected(node).collect();
@@ -582,13 +565,7 @@ pub fn get_neigbors_with_disabled_edges<N>(
         .collect()
 }
 
-pub fn is_well_formed(
-    graph: &StableGraph<
-        Node<UiNodePayload, UiEdgePayload, Undirected, DefaultIx, CustomNodeShape>,
-        Edge<UiNodePayload, UiEdgePayload, Undirected, DefaultIx, CustomNodeShape, CustomEdgeShape>,
-        Undirected,
-    >,
-) -> Result<String, String> {
+pub fn is_well_formed(graph: &DefaultModelGraph) -> Result<String, String> {
     // Connected
     if !is_connected_without_edge_set(graph, HashSet::new()) {
         return Err("Graph is not connected".to_string());
@@ -628,14 +605,7 @@ pub fn is_well_formed(
     Ok("Well formed".to_string())
 }
 
-pub fn is_crashed_drone<E>(
-    graph: &StableGraph<
-        Node<UiNodePayload, UiEdgePayload, Undirected, DefaultIx, CustomNodeShape>,
-        E,
-        Undirected,
-    >,
-    node: NodeIndex,
-) -> bool {
+pub fn is_crashed_drone<E>(graph: &ModelGraph<ModelNodePayload, E>, node: NodeIndex) -> bool {
     match &graph.node_weight(node) {
         Some(node) => match &node.payload().node_type {
             UiNodeType::Server(_) => false,
@@ -646,14 +616,7 @@ pub fn is_crashed_drone<E>(
     }
 }
 
-pub fn is_client<E>(
-    graph: &StableGraph<
-        Node<UiNodePayload, UiEdgePayload, Undirected, DefaultIx, CustomNodeShape>,
-        E,
-        Undirected,
-    >,
-    node: NodeIndex,
-) -> bool {
+pub fn is_client<E>(graph: &ModelGraph<ModelNodePayload, E>, node: NodeIndex) -> bool {
     match &graph.node_weight(node) {
         Some(node) => match &node.payload().node_type {
             UiNodeType::Server(_) => false,
@@ -664,14 +627,7 @@ pub fn is_client<E>(
     }
 }
 
-pub fn is_server<E>(
-    graph: &StableGraph<
-        Node<UiNodePayload, UiEdgePayload, Undirected, DefaultIx, CustomNodeShape>,
-        E,
-        Undirected,
-    >,
-    node: NodeIndex,
-) -> bool {
+pub fn is_server<E>(graph: &ModelGraph<ModelNodePayload, E>, node: NodeIndex) -> bool {
     match &graph.node_weight(node) {
         Some(node) => match &node.payload().node_type {
             UiNodeType::Server(_) => true,

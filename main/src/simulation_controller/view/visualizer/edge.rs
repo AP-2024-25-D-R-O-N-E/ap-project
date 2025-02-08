@@ -42,23 +42,21 @@ impl<N: Clone, Ty: EdgeType, Ix: IndexType, D: DisplayNode<N, UiEdgePayload, Ty,
         let (start, end) = (start.location(), end.location());
         let points = [start, end].map(|p| ctx.meta.canvas_to_screen_pos(p));
 
-        let line;
         let stroke_width = ctx.meta.canvas_to_screen_size(self.default_impl.width / 2.);
+
         if self.payload.is_active {
-            line = vec![Shape::line_segment(
+            vec![Shape::line_segment(
                 points,
                 Stroke::new(stroke_width, colors::OFF_WHITE),
-            )];
+            )]
         } else {
-            line = Shape::dashed_line(
+            Shape::dashed_line(
                 &points,
                 Stroke::new(stroke_width, colors::GRAY_WHITE),
                 10.,
                 5.,
-            );
+            )
         }
-
-        line
     }
 
     fn update(&mut self, props: &egui_graphs::EdgeProps<UiEdgePayload>) {
