@@ -4,7 +4,7 @@ use petgraph::graph::{EdgeIndex, NodeIndex};
 
 use crate::simulation_controller::{
     node::{UiDroneNode, UiNodePayload, UiNodeType},
-    state::{DisplayOptions, NodeInfoSectionState, State},
+    state::{ClientState, DisplayOptions, DroneState, NodeInfoSectionState, ServerState, State},
     util::{self, check_node_removal, colors, remove_node},
     SimulationController,
 };
@@ -18,7 +18,7 @@ pub fn draw_infos_for_selected_nodes(
     state: &mut State,
     simulation_controller: &SimulationController,
 ) {
-    for (node_index, _) in state.node_info_section.opened_windows.clone().iter() {
+    for node_index in state.node_info_section.opened_windows.clone().iter() {
         draw_node_info(ctx, *node_index, state, simulation_controller);
     }
 }
@@ -78,7 +78,7 @@ pub fn draw_node_info(
                         state
                             .node_info_section
                             .opened_windows
-                            .retain(|opened_index, _| *opened_index == node_index)
+                            .retain(|opened_index| *opened_index == node_index)
                     }
                     ui.end_row();
                     ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
@@ -221,71 +221,25 @@ fn draw_drone_specific(
     simulation_controller: &SimulationController,
 ) {
     let curr_node_wg_id = get_payload_from_state(state, node_index).unwrap().wg_id;
+
     if ui.button("Crash").clicked() {
         match check_node_removal(&mut state.graph_section.g, node_index) {
-            Ok(_) => remove_node(
-                &mut state.graph_section.g,
-                &mut state
-                    .node_info_section
-                    .opened_windows
-                    .get_mut(&node_index)
-                    .unwrap()
-                    .crash_status_flag,
-                node_index,
-                &simulation_controller,
-            ),
+            Ok(_) => {
+                let status_flag =
+                    &mut get_drone_node_state(&mut state.node_info_section, node_index)
+                        .crash_status_flag;
+                remove_node(
+                    &mut state.graph_section.g,
+                    status_flag,
+                    node_index,
+                    &simulation_controller,
+                )
+            }
             Err(err) => {
-                state
-                    .node_info_section
-                    .opened_windows
-                    .get_mut(&node_index)
-                    .unwrap()
-                    .crash_status_flag = Some(Err(err))
+                get_drone_node_state(&mut state.node_info_section, node_index).crash_status_flag =
+                    Some(Err(err))
             }
         }
-
-        // get_drone_node_from_state(state, node_index).crashed = true;
-        // simulation_controller.send_crash_command(get_payload_from_state_mut(state, node_index).unwrap().wg_id);
-        // let neighbors: Vec<NodeIndex> = state
-        //     .graph_section
-        //     .g
-        //     .g
-        //     .neighbors_undirected(node_index)
-        //     .collect();
-        // for node in neighbors {
-        //     let node_to = state.graph_section.g.node(node).unwrap().payload().wg_id;
-        //
-        //     let edges: Vec<EdgeIndex> = state
-        //         .graph_section
-        //         .g
-        //         .edges_connecting(node_index, node)
-        //         .map(|e| e.0)
-        //         .collect();
-        //     for edge in edges {
-        //         state
-        //             .graph_section
-        //             .g
-        //             .edge_mut(edge)
-        //             .unwrap()
-        //             .payload_mut()
-        //             .is_active = false;
-        //     }
-        //
-        //     match state
-        //         .graph_section
-        //         .g
-        //         .node(node)
-        //         .unwrap()
-        //         .payload()
-        //         .node_type
-        //     {
-        //         UiNodeType::Drone(_) => {
-        //             simulation_controller.send_remove_sender_command(node_to, curr_node_wg_id);
-        //         }
-        //         _ => {}
-        //     }
-        // }
-        // node_payload.wg_id
     }
     if get_drone_node_from_state(state, node_index).crashed {
         ui.horizontal(|ui| {
@@ -299,20 +253,17 @@ fn draw_drone_specific(
         });
     }
     ui.end_row();
-    match &state.node_info_section.opened_windows.get(&node_index) {
-        Some(node_state) => match &node_state.crash_status_flag {
-            Some(status) => match status {
-                Ok(s) => {
-                    ui.label(RichText::new(s).color(colors::MUTED_GREEN));
-                }
-                Err(s) => {
-                    ui.label(RichText::new(s).color(colors::MUTED_RED));
-                }
-            },
-            None => (),
+    match &get_drone_node_state(&mut state.node_info_section, node_index).crash_status_flag {
+        Some(status) => match status {
+            Ok(s) => {
+                ui.label(RichText::new(s).color(colors::MUTED_GREEN));
+            }
+            Err(s) => {
+                ui.label(RichText::new(s).color(colors::MUTED_RED));
+            }
         },
         None => (),
-    }
+    };
 
     ui.end_row();
 
@@ -373,8 +324,33 @@ fn draw_client_specific(
     });
     ui.end_row();
     ui.label("Available peers");
+
     ui.label(format!(
         "{:?}",
-        state.node_info_section.opened_clients.get(NodeIndex)
+        get_client_node_state(&mut state.node_info_section, node_index).available_peers
     ));
+}
+
+fn get_drone_node_state(
+    state: &mut NodeInfoSectionState,
+    node_index: NodeIndex,
+) -> &mut DroneState {
+    let x = state.states.get_mut(&node_index).unwrap();
+    x.try_into().expect("Expected drone")
+}
+
+fn get_client_node_state(
+    state: &mut NodeInfoSectionState,
+    node_index: NodeIndex,
+) -> &mut ClientState {
+    let x = state.states.get_mut(&node_index).unwrap();
+    x.try_into().expect("Expected client")
+}
+
+fn get_server_node_state(
+    state: &mut NodeInfoSectionState,
+    node_index: NodeIndex,
+) -> &mut ServerState {
+    let x = state.states.get_mut(&node_index).unwrap();
+    x.try_into().expect("Expected server")
 }

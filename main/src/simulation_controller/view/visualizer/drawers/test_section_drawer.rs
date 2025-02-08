@@ -1,3 +1,4 @@
+use super::utils::display_status_flag;
 use egui::{CollapsingHeader, Color32, RichText, Ui};
 use egui_graphs::{Edge, Node};
 use petgraph::{
@@ -392,19 +393,5 @@ fn get_path_between_selected_nodes(state: &mut State) -> Result<String, String> 
             }
             None => Err("Cannot find path. Is the graph connected?".to_string()),
         }
-    }
-}
-
-fn display_status_flag(status_flag: &StatusFlag, ui: &mut Ui) {
-    match &status_flag {
-        Some(status) => match status {
-            Ok(s) => {
-                ui.label(RichText::new(s).color(colors::MUTED_GREEN));
-            }
-            Err(s) => {
-                ui.label(RichText::new(s).color(colors::MUTED_RED));
-            }
-        },
-        None => (),
     }
 }
