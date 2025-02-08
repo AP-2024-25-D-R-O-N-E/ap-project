@@ -16,12 +16,12 @@ use wg_2024::{
     },
 };
 
+use super::ClientTrait;
+use crate::fragmentation::message::{ChatMessage, MessageData};
 use crate::{
     fragmentation::{message::Message, Fragmenter},
     simulation_controller::structs::{ClientCommand, ClientEvent},
 };
-use crate::fragmentation::message::{ChatMessage, MessageData};
-use super::ClientTrait;
 
 pub struct ClientLuca {
     id: NodeId,
@@ -35,7 +35,7 @@ pub struct ClientLuca {
     ack_packet_buffer: Arc<Mutex<HashMap<(u64, u64), Packet>>>, //stores packets waiting for an ack
     topology_modified: Arc<Mutex<bool>>, // checks if the topology has been modified
     edge_nodes: Arc<RwLock<HashSet<NodeId>>>, // edge_nodes can't be used in a route
-    server_id: NodeId, // stores the server_id (it's only one)
+    server_id: NodeId,                   // stores the server_id (it's only one)
 }
 
 impl ClientTrait for ClientLuca {
@@ -148,7 +148,11 @@ impl Fragmenter for ClientLuca {
 }
 
 impl ClientLuca {
-    fn receiver_thread(&mut self, nack_s: Sender<Packet>, fragment_s: Sender<(NodeId, u64, Fragment)>){
+    fn receiver_thread(
+        &mut self,
+        nack_s: Sender<Packet>,
+        fragment_s: Sender<(NodeId, u64, Fragment)>,
+    ) {
         let mut session_id: u64 = 0;
         loop {
             select_biased!(
@@ -163,7 +167,7 @@ impl ClientLuca {
                             ClientCommand::UnregisterAsClient => self.unregister(),
                             ClientCommand::OpenChatWith(id) => self.open_chat_with(id),
                             ClientCommand::SendTextMessageTo {receiver, message} => self.send_text_msg(receiver, message),
-                            ClientCommand::SendFileMessageTo {receiver: NodeId, file: File} => todo!(),
+                            ClientCommand::SendFileMessageTo {receiver, file} => todo!(),
                             };
                         if let Some(message) = msg{
                             let fragments = Self::disassemble(message);
@@ -269,7 +273,6 @@ impl ClientLuca {
             );
         }
     }
-
 }
 
 //Thread: receiver
@@ -391,32 +394,52 @@ impl ClientLuca {
 
                 // if the buffer is full, assemble the fragments and pass the message to the manage_assemble_msg
                 if frag_buffer.len() == total_frags as usize {
-                    let message = Self::assemble(fragment_buffer_lock.get(&(packet_source, packet_msg_id)).unwrap().clone());
+                    let message = Self::assemble(
+                        fragment_buffer_lock
+                            .get(&(packet_source, packet_msg_id))
+                            .unwrap()
+                            .clone(),
+                    );
                     self.manage_assemble_msg(message);
                 }
             } else {
                 fragment_buffer_lock.insert((packet_source, packet_msg_id), vec![fragment]);
                 // if the total frags is 1, assemble and pass the message to the manage_assemble_msg
                 if total_frags == 1 {
-                    let message = Self::assemble(fragment_buffer_lock.get(&(packet_source, packet_msg_id)).unwrap().clone());
+                    let message = Self::assemble(
+                        fragment_buffer_lock
+                            .get(&(packet_source, packet_msg_id))
+                            .unwrap()
+                            .clone(),
+                    );
                     self.manage_assemble_msg(message);
                 }
             }
         }
     }
 
-    fn manage_assemble_msg(&self, message: Message){
+    fn manage_assemble_msg(&self, message: Message) {
         match message.message_data {
             MessageData::RegisterAsClient(_) => {}
             MessageData::UnregisterAsClient(_) => {}
             MessageData::RequestClients(_) => {}
             MessageData::RequestHistory { .. } => {}
             MessageData::TextMessage { from, to, text } => {
-                let event = ClientEvent::TextMessage {from, to, text};
+                let event = ClientEvent::TextMessage { from, to, text };
                 self.scs.send(event);
             }
-            MessageData::FileMessage { from, to, file, file_name } => {
-                let event = ClientEvent::FileMessage {from, to, file, file_name};
+            MessageData::FileMessage {
+                from,
+                to,
+                file,
+                file_name,
+            } => {
+                let event = ClientEvent::FileMessage {
+                    from,
+                    to,
+                    file,
+                    file_name,
+                };
                 self.scs.send(event);
             }
             MessageData::ResponseClients(clients) => {
@@ -428,7 +451,7 @@ impl ClientLuca {
                 self.scs.send(event);
             }
             MessageData::ResponseHistory { partner, history } => {
-                let event = ClientEvent::ResponseHistoryReceived {partner, history};
+                let event = ClientEvent::ResponseHistoryReceived { partner, history };
                 self.scs.send(event);
             }
             MessageData::UnregisteredSenderError => {
@@ -529,7 +552,7 @@ impl ClientLuca {
         }
     }
 
-    fn initiate_flood(&mut self)->Option<Message> {
+    fn initiate_flood(&mut self) -> Option<Message> {
         for (id, sender) in self.packet_s.read().unwrap().iter() {
             let packet = Packet {
                 pack_type: PacketType::FloodRequest(FloodRequest {
@@ -556,7 +579,7 @@ impl ClientLuca {
         None
     }
 
-    fn add_sender(&mut self, id: NodeId, sender: Sender<Packet>)->Option<Message> {
+    fn add_sender(&mut self, id: NodeId, sender: Sender<Packet>) -> Option<Message> {
         self.packet_s.write().unwrap().insert(id, sender);
         None
     }
@@ -566,36 +589,57 @@ impl ClientLuca {
         None
     }
 
-    fn register(&mut self) -> Option<Message>{
-        let msg = Message::new(self.id, self.server_id, MessageData::RegisterAsClient(self.id));
+    fn register(&mut self) -> Option<Message> {
+        let msg = Message::new(
+            self.id,
+            self.server_id,
+            MessageData::RegisterAsClient(self.id),
+        );
         Some(msg)
     }
 
-    fn unregister(&mut self)->Option<Message>{
-        let msg =  Message::new(self.id, self.server_id, MessageData::UnregisterAsClient(self.id));
+    fn unregister(&mut self) -> Option<Message> {
+        let msg = Message::new(
+            self.id,
+            self.server_id,
+            MessageData::UnregisterAsClient(self.id),
+        );
         Some(msg)
     }
 
-    fn request_clients(&self) -> Option<Message>{
-        let msg = Message::new(self.id, self.server_id, MessageData::RequestClients(self.id));
+    fn request_clients(&self) -> Option<Message> {
+        let msg = Message::new(
+            self.id,
+            self.server_id,
+            MessageData::RequestClients(self.id),
+        );
         Some(msg)
     }
 
-    fn open_chat_with(&self, id: NodeId) -> Option<Message>{
-        let msg = Message::new(self.id, self.server_id, MessageData::RequestHistory { requester: self.id, partner:id });
+    fn open_chat_with(&self, id: NodeId) -> Option<Message> {
+        let msg = Message::new(
+            self.id,
+            self.server_id,
+            MessageData::RequestHistory {
+                requester: self.id,
+                partner: id,
+            },
+        );
         Some(msg)
     }
 
-    fn send_text_msg(&self, receiver: NodeId, message: String) -> Option<Message>{
-        let msg = Message::new(self.id, receiver, MessageData::TextMessage {
-            from: self.id,
-            to: receiver,
-            text: message,
-        });
+    fn send_text_msg(&self, receiver: NodeId, message: String) -> Option<Message> {
+        let msg = Message::new(
+            self.id,
+            receiver,
+            MessageData::TextMessage {
+                from: self.id,
+                to: receiver,
+                text: message,
+            },
+        );
         Some(msg)
     }
-
-
 }
 
 //Thread: Sender
@@ -658,6 +702,4 @@ impl ClientLuca {
             scs.send(ClientEvent::PacketSent(packet));
         }
     }
-
-
 }

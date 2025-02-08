@@ -1,29 +1,32 @@
-use std::collections::VecDeque;
-use wg_2024::packet::{Fragment, FRAGMENT_DSIZE};
 use crate::fragmentation::message::{Message, MessageData};
 use bincode;
-
+use std::collections::VecDeque;
+use wg_2024::packet::{Fragment, FRAGMENT_DSIZE};
 
 #[test]
 
-
-
-
-
-fn disassemble(){
-    let msg = Message::new(0, 3, MessageData::TextMessage { from: 5, to: 2, text: "ciao come stai".to_string() });
+fn disassemble() {
+    let msg = Message::new(
+        0,
+        3,
+        MessageData::TextMessage {
+            from: 5,
+            to: 2,
+            text: "ciao come stai".to_string(),
+        },
+    );
 
     let mut fragments_u8 = msg.into_u8();
 
     //reversing so popping gets the first element
     fragments_u8.reverse();
-    
+
     let mut send_fragments: VecDeque<Fragment> = VecDeque::new();
-    
+
     //frag_number is the number of fragments needed to send the message
     let frag_number = (fragments_u8.len() as f64 / FRAGMENT_DSIZE as f64).ceil() as u64;
 
-    for i in 0..frag_number{
+    for i in 0..frag_number {
         let mut len: u8 = 0;
         let mut data: [u8; FRAGMENT_DSIZE] = [0; FRAGMENT_DSIZE];
 
@@ -36,12 +39,16 @@ fn disassemble(){
             }
         }
 
-        send_fragments.push_back(Fragment { fragment_index: i, total_n_fragments: frag_number, length: len, data: data });
-        
+        send_fragments.push_back(Fragment {
+            fragment_index: i,
+            total_n_fragments: frag_number,
+            length: len,
+            data: data,
+        });
     }
-    println!("{:?}",send_fragments );
+    println!("{:?}", send_fragments);
     let message = assemble(send_fragments.into());
-    println!("{:?}",message);
+    println!("{:?}", message);
 }
 
 fn assemble(mut fragments: Vec<Fragment>) -> Message {

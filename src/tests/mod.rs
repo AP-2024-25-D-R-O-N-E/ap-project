@@ -1,10 +1,10 @@
+pub mod assembler_test;
+pub mod client_test;
 pub mod crash_test;
 pub mod send_ack;
 pub mod send_flood_request;
 pub mod send_msg;
 pub mod simulation;
-pub mod client_test;
-pub mod assembler_test;
 
 pub mod message_serialization_test;
 pub mod server_features;

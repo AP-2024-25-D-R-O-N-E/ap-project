@@ -11,7 +11,13 @@ use crate::fragmentation::message::ChatMessage;
 pub enum ClientEvent {
     PacketSent(Packet),
     PacketDropped(Packet),
-    TextMessage{from: NodeId, to: NodeId, text: String},
+    TextMessage {
+        from: NodeId,
+        to: NodeId,
+        text: String,
+    },
+
+    // the file message is only temporary and will be modified later
     FileMessage {
         from: NodeId,
         to: NodeId,
@@ -19,12 +25,11 @@ pub enum ClientEvent {
         file_name: String,
     },
 
-
     ResponseClientsReceived(Vec<NodeId>),
     AcknolewdgedAsClient,
-    ResponseHistoryReceived{
+    ResponseHistoryReceived {
         partner: NodeId,
-        history: Vec<ChatMessage>
+        history: Vec<ChatMessage>,
     },
     UnregisteredSenderError,
     UnregisteredRecipientError,
@@ -43,14 +48,9 @@ pub enum ClientCommand {
     RegisterAsClient,
     UnregisterAsClient,
     OpenChatWith(NodeId),
-    SendTextMessageTo{
-        receiver: NodeId,
-        message: String,
-    },
-    SendFileMessageTo{
-        receiver: NodeId,
-        file: File
-    }
+    SendTextMessageTo { receiver: NodeId, message: String },
+    // the file message is only temporary and will be modified later
+    SendFileMessageTo { receiver: NodeId, file: File },
 }
 
 /// From server to controller
@@ -110,8 +110,12 @@ impl SCEvent {
                 ClientEvent::UnregisteredRecipientError => todo!(),
                 ClientEvent::UnsupportedMessageTypeError => todo!(),
                 ClientEvent::TextMessage { from, to, text } => todo!(),
-                ClientEvent::FileMessage { from, to, file, file_name } => todo!(),
-                
+                ClientEvent::FileMessage {
+                    from,
+                    to,
+                    file,
+                    file_name,
+                } => todo!(),
             },
             SCEvent::ServerEvent(server_event) => match server_event {
                 ServerEvent::PacketSent(packet) => packet,

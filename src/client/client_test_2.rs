@@ -34,7 +34,7 @@ impl ClientTrait for Client2 {
         packet_send: HashMap<NodeId, Sender<Packet>>,
     ) -> Self {
         Client2 {
-            id: id,
+            id,
             scs: sim_contr_send,
             scr: sim_contr_recv,
             pr: packet_recv,

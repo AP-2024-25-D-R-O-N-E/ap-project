@@ -14,13 +14,17 @@ use crossbeam::{
 use eframe::glow::PACK_ROW_LENGTH;
 use egui::accesskit::Node;
 use petgraph::{
-    algo, data::Build, prelude::{GraphMap, StableGraph}, Undirected
+    algo,
+    data::Build,
+    prelude::{GraphMap, StableGraph},
+    Undirected,
 };
 use serde::de::DeserializeSeed;
 use wg_2024::{
     network::{NodeId, SourceRoutingHeader},
     packet::{
-        self, Ack, FloodRequest, FloodResponse, Fragment, Nack, NodeType, Packet, PacketType, FRAGMENT_DSIZE,
+        self, Ack, FloodRequest, FloodResponse, Fragment, Nack, NodeType, Packet, PacketType,
+        FRAGMENT_DSIZE,
     },
 };
 
@@ -31,7 +35,7 @@ use crate::{
         message::{self, ChatMessage, Message, MessageData},
         Fragmenter,
     },
-    simulation_controller::{structs::{ClientCommand, ClientEvent}},
+    simulation_controller::structs::{ClientCommand, ClientEvent},
 };
 
 use super::ClientTrait;
@@ -53,15 +57,15 @@ pub struct ClientLeonardo {
 
     //buffers for the fragments
     fragment_buffer: Arc<RwLock<HashMap<(NodeId, u64), Vec<Fragment>>>>,
-    ack_buffer: Arc<Mutex<HashMap<(u64, u64), Packet>>>, 
-    topology_modified: Arc<Mutex<bool>>, 
-    edge_nodes: Arc<RwLock<HashSet<NodeId>>>, 
-    
+    ack_buffer: Arc<Mutex<HashMap<(u64, u64), Packet>>>,
+    topology_modified: Arc<Mutex<bool>>,
+    edge_nodes: Arc<RwLock<HashSet<NodeId>>>,
+
     //chat history with other clients
     history: HashMap<NodeId, Vec<ChatMessage>>,
 }
 
-impl ClientTrait for ClientLeonardo{
+impl ClientTrait for ClientLeonardo {
     fn new(
         id: NodeId,
         sim_contr_send: Sender<ClientEvent>,
@@ -70,8 +74,9 @@ impl ClientTrait for ClientLeonardo{
         packet_send: HashMap<NodeId, Sender<Packet>>,
     ) -> Self
     where
-        Self: Sized {
-        return ClientLeonardo{
+        Self: Sized,
+    {
+        ClientLeonardo {
             id,
             flood_id: 0,
             chat_server_id: 0,
@@ -91,7 +96,7 @@ impl ClientTrait for ClientLeonardo{
     fn run(&mut self) {
         //cloning all the parameters for each thread
 
-        let (ready_for_receiver, ready_for_handler) =  unbounded::<(NodeId, u64)>();
+        let (ready_for_receiver, ready_for_handler) = unbounded::<(NodeId, u64)>();
         let (thread_sender, thread_receiver) = unbounded::<Message>();
         let (fragment_sender, fragment_receiver) = unbounded::<(NodeId, u64, Fragment)>();
 
@@ -126,8 +131,6 @@ impl ClientTrait for ClientLeonardo{
         let thread_receiver = thread_receiver.clone();
         let sim_control_send = self.sim_contr_send.clone();
         let fragment_sender = fragment_sender.clone();
-        
-
 
         thread::spawn(move || {
             Self::message_handler_thread(
@@ -142,10 +145,7 @@ impl ClientTrait for ClientLeonardo{
 
         self.receiver_thread(ready_for_receiver, thread_sender, nacks);
     }
-
-    
 }
-
 
 // ---------------Threads Functions-----------------//
 
@@ -155,89 +155,79 @@ impl ClientLeonardo {
             - Sender thread: calculates routes and sends packets
             - Receiver thread: receives packets and sends simple messages (acks, floods, etc), also manages the buffers
             - Controller thread: receives commands from the simulation controller and sends events to it
-        
+
     */
-    fn receiver_thread(&mut self, ready: Sender<(NodeId, u64)>, thread_sender: Sender<Message>, nacks: Sender<Packet>){
+    fn receiver_thread(
+        &mut self,
+        ready: Sender<(NodeId, u64)>,
+        thread_sender: Sender<Message>,
+        nacks: Sender<Packet>,
+    ) {
         loop {
             select_biased!(
                 recv(self.sim_contr_recv) -> msg => {
-                    match msg {
-                        Ok(c) => {
-                            match c {
-                                ClientCommand::StartFlooding => {
-                                    self.initiate_flood();
-                                },
-                                ClientCommand::AddSender(id, sender) => {
-                                    self.add_sender(id, sender);
-                                },
-                                ClientCommand::RemoveSender(id) => {
-                                    self.remove_sender(id);
-                                },
-                                ClientCommand::GetResponseClient => {
-                                    self.get_response_clients(thread_sender.clone());
-                                },
-                                ClientCommand::RegisterAsClient => {
-                                    self.register_as_client(thread_sender.clone());
-                                },
-                                ClientCommand::UnregisterAsClient => {
-                                    self.unregister_as_client(thread_sender.clone());
-                                },
-                                ClientCommand::OpenChatWith(partner) => {
-                                    let history = self.history.get(&partner).cloned().unwrap_or_default();
-                                    self.get_response_history(partner, history, thread_sender.clone());
-                                },
-                                ClientCommand::SendTextMessageTo{receiver, message} => {
-                                    self.send_text_message_to(receiver, message, thread_sender.clone());
-                                },
-                                ClientCommand::SendFileMessageTo{receiver, file} => {
-                                    todo!();
-                                },
-                            }
-                        },
-                        _ => ()
+                    if let Ok(c) = msg {
+                        match c {
+                            ClientCommand::StartFlooding => {
+                                self.initiate_flood();
+                            },
+                            ClientCommand::AddSender(id, sender) => {
+                                self.add_sender(id, sender);
+                            },
+                            ClientCommand::RemoveSender(id) => {
+                                self.remove_sender(id);
+                            },
+                            ClientCommand::GetResponseClient => {
+                                self.get_response_clients(thread_sender.clone());
+                            },
+                            ClientCommand::RegisterAsClient => {
+                                self.register_as_client(thread_sender.clone());
+                            },
+                            ClientCommand::UnregisterAsClient => {
+                                self.unregister_as_client(thread_sender.clone());
+                            },
+                            ClientCommand::OpenChatWith(partner) => {
+                                let history = self.history.get(&partner).cloned().unwrap_or_default();
+                                self.get_response_history(partner, history, thread_sender.clone());
+                            },
+                            ClientCommand::SendTextMessageTo{receiver, message} => {
+                                self.send_text_message_to(receiver, message, thread_sender.clone());
+                            },
+                            ClientCommand::SendFileMessageTo{receiver, file} => {
+                                todo!();
+                            },
+                        }
                     }
                 },
                 recv(self.packet_recv) -> packet => {
-                    match packet {
-                        Ok(p) => {
-                            let header_vec = p.routing_header.hops.clone();
-                            match p.pack_type {
-                                PacketType::Ack(ack) => {
-                                    self.manage_ack(header_vec, ack, p.session_id);
-                                },
-                                PacketType::Nack(nack) => {
-                                    self.manage_nack(header_vec, nack, p.session_id, nacks.clone());
-                                },
-                                PacketType::FloodRequest(_) => {
-                                    self.manage_flood_request(p);
-                                },
-                                PacketType::FloodResponse(flood_res) => {
-                                    self.manage_flood_response(flood_res);
-                                },
-                                PacketType::MsgFragment(_) => {
-                                    self.manage_msg_fragment(p, ready.clone());
-                                },
-                                _ => {}
-                            }
-                        },
-                        _ => {}
+
+                    if let Ok(p) = packet {
+                        let header_vec = p.routing_header.hops.clone();
+                        match p.pack_type {
+                            PacketType::Ack(ack) => {
+                                self.manage_ack(header_vec, ack, p.session_id);
+                            },
+                            PacketType::Nack(nack) => {
+                                self.manage_nack(header_vec, nack, p.session_id, nacks.clone());
+                            },
+                            PacketType::FloodRequest(_) => {
+                                self.manage_flood_request(p);
+                            },
+                            PacketType::FloodResponse(flood_res) => {
+                                self.manage_flood_response(flood_res);
+                            },
+                            PacketType::MsgFragment(_) => {
+                                self.manage_msg_fragment(p, ready.clone());
+                            },
+                            _ => {}
+                        }
                     }
                 }
-
-
-
-
             )
-
-
-
-
-
-
         }
     }
 
-    fn sender_thread (
+    fn sender_thread(
         id: NodeId,
         packet_sender: Arc<RwLock<HashMap<u8, Sender<Packet>>>>,
         sim_contr_send: Sender<ClientEvent>,
@@ -248,8 +238,6 @@ impl ClientLeonardo {
         topology: Arc<RwLock<GraphMap<NodeId, f64, Undirected>>>,
         edge_nodes: Arc<RwLock<HashSet<NodeId>>>,
     ) {
-
-
         // temporary number
         const MAX_OUTPUT_BUFFER: usize = 10;
 
@@ -281,10 +269,10 @@ impl ClientLeonardo {
                         // receives normal packets
 
                         // choose the route for the packet
-                        
+
                         // if the routing table doesn't have the next hop, then we need to update the routing table
                         let route = Self::find_route(id, destination, edge_nodes.clone(), topology.clone());
-                        
+
 
                         let fragment_index = fragment.fragment_index;
 
@@ -320,16 +308,15 @@ impl ClientLeonardo {
         fragment_sender: Sender<(NodeId, u64, Fragment)>,
         sim_send: Sender<ClientEvent>,
     ) {
-
         let mut session_id = 1;
 
         loop {
             select_biased!(
                 recv(command_recv) -> frag_res => {
                     //disassembly of the message and send to sender thread
-                    
+
                     let fragments = Self::disassemble(frag_res.unwrap());
-                    
+
                     for fragment in fragments {
                         fragment_sender.send((id, session_id, fragment));
                     }
@@ -343,8 +330,8 @@ impl ClientLeonardo {
                         let fragment_buffer_lock = fragment_buffers.read().unwrap();
                         let buffer = fragment_buffer_lock.get(&(source, session_id)).unwrap().clone();
                         let message = Self::assemble(buffer);
-                        
-                        
+
+
                         match message.message_data {
                             MessageData::ResponseClients(res) => {
                                 Self::send_response(res, sim_send.clone());
@@ -377,35 +364,39 @@ impl ClientLeonardo {
     }
 }
 
-
-
-
-
-
 //-----------------Function Implementations-----------------//
 
 impl ClientLeonardo {
+    //-------------------Sender Thread-------------------//
 
-     //-------------------Sender Thread-------------------//
-
-    fn find_route(start_id: NodeId, destination_id: NodeId, avoid_nodes: Arc<RwLock<HashSet<NodeId>>>, topology: Arc<RwLock<GraphMap<NodeId, f64, Undirected>>>) -> Vec<NodeId> {
+    fn find_route(
+        start_id: NodeId,
+        destination_id: NodeId,
+        avoid_nodes: Arc<RwLock<HashSet<NodeId>>>,
+        topology: Arc<RwLock<GraphMap<NodeId, f64, Undirected>>>,
+    ) -> Vec<NodeId> {
         let topology_lock = topology.read().unwrap();
 
-        let path = algo::astar(&*topology_lock, start_id, |end| {end == destination_id}, |(a,b,weight)| {
-            if(destination_id == b || destination_id == a){
-                return 1;
-            }
-            let avoid_nodes_lock = avoid_nodes.read().unwrap();
-            if avoid_nodes_lock.contains(&a) || avoid_nodes_lock.contains(&b){
-                return topology_lock.edge_count();
-            } else {
-                1
-            }
-        }, |_| 0);
+        let path = algo::astar(
+            &*topology_lock,
+            start_id,
+            |end| end == destination_id,
+            |(a, b, weight)| {
+                if (destination_id == b || destination_id == a) {
+                    return 1;
+                }
+                let avoid_nodes_lock = avoid_nodes.read().unwrap();
+                if avoid_nodes_lock.contains(&a) || avoid_nodes_lock.contains(&b) {
+                    return topology_lock.edge_count();
+                } else {
+                    1
+                }
+            },
+            |_| 0,
+        );
 
-        return path.unwrap().1;
+        path.unwrap().1
     }
-
 
     fn send_msg_packet(
         id: NodeId,
@@ -432,18 +423,27 @@ impl ClientLeonardo {
         }
     }
 
-
     //------------------Receiver Thread------------------//
 
     fn manage_ack(&self, header_vec: Vec<NodeId>, ack: Ack, s_id: u64) {
         let mut ack_buffer_lock = self.ack_buffer.lock().unwrap();
         let key = (s_id, ack.fragment_index);
-        
+
         //if receiving ack then removing it from the the ack buffer
         if let Some(p) = ack_buffer_lock.remove(&key) {
-            log::debug!("{} Ack received for fragment {} of message {}","↳ client".purple(), ack.fragment_index, s_id);
+            log::debug!(
+                "{} Ack received for fragment {} of message {}",
+                "↳ client".purple(),
+                ack.fragment_index,
+                s_id
+            );
         } else {
-            log::error!("{} Ack received for fragment {} of message {} but it was not found in the buffer","↳ client".purple(), ack.fragment_index, s_id);
+            log::error!(
+                "{} Ack received for fragment {} of message {} but it was not found in the buffer",
+                "↳ client".purple(),
+                ack.fragment_index,
+                s_id
+            );
         }
 
         for i in 0..header_vec.len() - 1 {
@@ -455,18 +455,22 @@ impl ClientLeonardo {
         }
     }
 
-    fn manage_nack(&self, header_vec: Vec<NodeId>, nack: Nack, s_id: u64, resend: Sender<Packet>){
-        
-        match &nack.nack_type{
+    fn manage_nack(&self, header_vec: Vec<NodeId>, nack: Nack, s_id: u64, resend: Sender<Packet>) {
+        match &nack.nack_type {
             packet::NackType::ErrorInRouting(n) => {
                 self.topology.write().unwrap().remove_node(*n);
                 *self.topology_modified.lock().unwrap() = true;
-                log::error!("{} Error in routing {}","↳ client".purple(), n);
-            },
+                log::error!("{} Error in routing {}", "↳ client".purple(), n);
+            }
             packet::NackType::DestinationIsDrone => {
-                log::error!("{} Destination is a drone: {} {}","↳ client".purple(), nack.fragment_index, s_id);
+                log::error!(
+                    "{} Destination is a drone: {} {}",
+                    "↳ client".purple(),
+                    nack.fragment_index,
+                    s_id
+                );
                 return;
-            },
+            }
             packet::NackType::Dropped => {
                 for i in 0..header_vec.len() - 1 {
                     let h1 = header_vec[i];
@@ -475,31 +479,45 @@ impl ClientLeonardo {
                     let mut curr_weight = *topology_lock.edge_weight(h1, h2).unwrap();
                     topology_lock.update_edge(h1, h2, (curr_weight * 0.60) + 0.40);
                 }
-            },
+            }
             packet::NackType::UnexpectedRecipient(_) => {
-                log::error!("{} Unexpected recipient","↳ client".purple());
-            },
+                log::error!("{} Unexpected recipient", "↳ client".purple());
+            }
         }
-
 
         let mut ack_buffer_lock = self.ack_buffer.lock().unwrap();
         let key = (s_id, nack.fragment_index);
 
         if let Some(p) = ack_buffer_lock.remove(&key) {
-            log::debug!("{} Nack received for fragment {} of message {}","↳ client".purple(), nack.fragment_index, s_id);
+            log::debug!(
+                "{} Nack received for fragment {} of message {}",
+                "↳ client".purple(),
+                nack.fragment_index,
+                s_id
+            );
             resend.send(p);
         } else {
-            log::error!("{} Nack received for fragment {} of message {} but it was not found in the buffer","↳ client".red(), nack.fragment_index, s_id);
+            log::error!(
+                "{} Nack received for fragment {} of message {} but it was not found in the buffer",
+                "↳ client".red(),
+                nack.fragment_index,
+                s_id
+            );
         }
     }
 
-    fn manage_flood_request(&self, p: Packet){
-        log::debug!("{} {} Flood request received: {}","↳ client".purple(), self.id, p.pack_type);
+    fn manage_flood_request(&self, p: Packet) {
+        log::debug!(
+            "{} {} Flood request received: {}",
+            "↳ client".purple(),
+            self.id,
+            p.pack_type
+        );
 
         if let PacketType::FloodRequest(mut flood) = p.pack_type {
             flood.path_trace.push((self.id, NodeType::Client));
 
-            let flood_res = FloodResponse{
+            let flood_res = FloodResponse {
                 path_trace: flood.path_trace,
                 flood_id: flood.flood_id,
             };
@@ -507,38 +525,43 @@ impl ClientLeonardo {
             let mut route: Vec<NodeId> = flood_res.path_trace.iter().map(|(id, _)| *id).collect();
             route.reverse();
 
-            let packet = Packet{
-                routing_header: SourceRoutingHeader{hops: route, hop_index: 1},
+            let packet = Packet {
+                routing_header: SourceRoutingHeader {
+                    hops: route,
+                    hop_index: 1,
+                },
                 session_id: 0,
                 pack_type: PacketType::FloodResponse(flood_res),
             };
 
             self.send_packet(packet);
         }
-
-
     }
 
-    fn manage_flood_response(&mut self, flood_res: FloodResponse){
-        log::debug!("{} {} Flood response received: {}","↳ client".purple(), self.id, flood_res);
+    fn manage_flood_response(&mut self, flood_res: FloodResponse) {
+        log::debug!(
+            "{} {} Flood response received: {}",
+            "↳ client".purple(),
+            self.id,
+            flood_res
+        );
 
         let mut topology_lock = self.topology.write().unwrap();
         let mut edge_nodes_lock = self.edge_nodes.write().unwrap();
         let mut topology_modified_lock = self.topology_modified.lock().unwrap();
         let mut index = topology_lock.add_node(self.id);
 
-        for(id, node_type) in flood_res.path_trace.iter(){
+        for (id, node_type) in flood_res.path_trace.iter() {
             let next = topology_lock.add_node(*id);
             match node_type {
-                NodeType::Client  => {
+                NodeType::Client => {
                     edge_nodes_lock.insert(*id);
-                },
+                }
                 NodeType::Server => {
                     edge_nodes_lock.insert(*id);
                     self.chat_server_id = *id;
                 }
                 _ => {}
-
             }
 
             //inizializza tutti i weight a 1
@@ -549,8 +572,13 @@ impl ClientLeonardo {
     }
 
     //sender to the the message handling
-    fn manage_msg_fragment(&self, p: Packet, ready: Sender<(NodeId, u64)>){
-        log::debug!("{} {} Message fragment received: {}","↳ client".purple(), self.id, p.pack_type);
+    fn manage_msg_fragment(&self, p: Packet, ready: Sender<(NodeId, u64)>) {
+        log::debug!(
+            "{} {} Message fragment received: {}",
+            "↳ client".purple(),
+            self.id,
+            p.pack_type
+        );
 
         let p_source = p.routing_header.hops[0];
         let id = p.session_id;
@@ -560,23 +588,22 @@ impl ClientLeonardo {
         route.reverse();
 
         if let PacketType::MsgFragment(f) = p.pack_type {
-            
             //sending the Ack
-            let ack = Packet{
-                pack_type: PacketType::Ack(Ack{
-                        fragment_index: f.fragment_index,
+            let ack = Packet {
+                pack_type: PacketType::Ack(Ack {
+                    fragment_index: f.fragment_index,
                 }),
-                routing_header: SourceRoutingHeader{
+                routing_header: SourceRoutingHeader {
                     hops: route,
                     hop_index: 1,
                 },
                 session_id: id,
             };
-        
+
             self.send_packet(ack);
 
-            //update fragment buffer and manage the cases 
-        
+            //update fragment buffer and manage the cases
+
             let mut fragment_buffer_lock = self.fragment_buffer.write().unwrap();
             let tot = f.total_n_fragments;
 
@@ -594,14 +621,10 @@ impl ClientLeonardo {
                     ready.send((p_source, id));
                 }
             }
-        
         }
-
     }
 
-
-
-    fn send_packet(&self, packet: Packet){
+    fn send_packet(&self, packet: Packet) {
         let next = packet.routing_header.hops[packet.routing_header.hop_index];
         let send_channel = &self.packet_send.read().unwrap()[&next]; //no need for arc and mutex
 
@@ -622,57 +645,53 @@ impl ClientLeonardo {
         }
     }
 
-    
-
-
-
-
-
-
-   
-    
     //-----------------Controller Thread-----------------//
 
     //events to simulation controller
 
-    fn send_response( res:Vec<u8>, sim_send: Sender<ClientEvent>){
+    fn send_response(res: Vec<u8>, sim_send: Sender<ClientEvent>) {
         sim_send.send(ClientEvent::ResponseClientsReceived(res));
     }
 
-    fn client_ack( sim_send: Sender<ClientEvent>){
+    fn client_ack(sim_send: Sender<ClientEvent>) {
         sim_send.send(ClientEvent::AcknolewdgedAsClient);
     }
 
-    fn response_history( partner: NodeId, history: Vec<ChatMessage>, sim_send: Sender<ClientEvent>){
-        sim_send.send(ClientEvent::ResponseHistoryReceived{partner, history});
+    fn response_history(partner: NodeId, history: Vec<ChatMessage>, sim_send: Sender<ClientEvent>) {
+        sim_send.send(ClientEvent::ResponseHistoryReceived { partner, history });
     }
 
-    fn unregistered_sender_error( sim_send: Sender<ClientEvent>){
+    fn unregistered_sender_error(sim_send: Sender<ClientEvent>) {
         sim_send.send(ClientEvent::UnregisteredSenderError);
     }
 
-    fn unregistered_recipient_error( sim_send: Sender<ClientEvent>){
+    fn unregistered_recipient_error(sim_send: Sender<ClientEvent>) {
         sim_send.send(ClientEvent::UnregisteredRecipientError);
     }
 
-    fn unsupported_message_type_error( sim_send: Sender<ClientEvent>){
+    fn unsupported_message_type_error(sim_send: Sender<ClientEvent>) {
         sim_send.send(ClientEvent::UnsupportedMessageTypeError);
     }
 
-    fn text_message_received( from: NodeId, to: NodeId, text: String, sim_send: Sender<ClientEvent>){
-        sim_send.send(ClientEvent::TextMessage{from, to, text});
+    fn text_message_received(
+        from: NodeId,
+        to: NodeId,
+        text: String,
+        sim_send: Sender<ClientEvent>,
+    ) {
+        sim_send.send(ClientEvent::TextMessage { from, to, text });
     }
-    //commands from simulation controller 
+    //commands from simulation controller
 
-    fn initiate_flood(&mut self){
-        for(id, recv) in self.packet_send.read().unwrap().iter(){
-            let packet = Packet{
-                routing_header: SourceRoutingHeader{
+    fn initiate_flood(&mut self) {
+        for (id, recv) in self.packet_send.read().unwrap().iter() {
+            let packet = Packet {
+                routing_header: SourceRoutingHeader {
                     hops: vec![],
                     hop_index: 1,
                 },
                 session_id: 0,
-                pack_type: PacketType::FloodRequest(FloodRequest{
+                pack_type: PacketType::FloodRequest(FloodRequest {
                     path_trace: vec![(self.id, NodeType::Client)],
                     flood_id: self.flood_id,
                     initiator_id: self.id,
@@ -691,24 +710,24 @@ impl ClientLeonardo {
         }
     }
 
-    fn add_sender(&mut self, id: NodeId, sender: Sender<Packet>){
+    fn add_sender(&mut self, id: NodeId, sender: Sender<Packet>) {
         self.packet_send.write().unwrap().insert(id, sender);
     }
 
-    fn remove_sender(&mut self, id: NodeId){
+    fn remove_sender(&mut self, id: NodeId) {
         self.packet_send.write().unwrap().remove(&id);
     }
-    
-    fn get_response_clients(&self, sender: Sender<Message>){
+
+    fn get_response_clients(&self, sender: Sender<Message>) {
         let m = Message::new(
             self.id,
             self.chat_server_id,
-            MessageData::RequestClients(self.id), 
+            MessageData::RequestClients(self.id),
         );
         sender.send(m);
     }
 
-    fn register_as_client(&self, sender: Sender<Message>){
+    fn register_as_client(&self, sender: Sender<Message>) {
         let m = Message::new(
             self.id,
             self.chat_server_id,
@@ -717,7 +736,7 @@ impl ClientLeonardo {
         sender.send(m);
     }
 
-    fn unregister_as_client(&self, sender: Sender<Message>){
+    fn unregister_as_client(&self, sender: Sender<Message>) {
         let m = Message::new(
             self.id,
             self.chat_server_id,
@@ -726,11 +745,16 @@ impl ClientLeonardo {
         sender.send(m);
     }
 
-    fn get_response_history(&self, partner: NodeId, history: Vec<ChatMessage>, sender: Sender<Message>){
+    fn get_response_history(
+        &self,
+        partner: NodeId,
+        history: Vec<ChatMessage>,
+        sender: Sender<Message>,
+    ) {
         let m = Message::new(
             self.id,
             partner,
-            MessageData::ResponseHistory{
+            MessageData::ResponseHistory {
                 partner: self.id,
                 history,
             },
@@ -738,11 +762,11 @@ impl ClientLeonardo {
         sender.send(m);
     }
 
-    fn send_text_message_to(&self, receiver: NodeId, message: String, sender: Sender<Message>){
+    fn send_text_message_to(&self, receiver: NodeId, message: String, sender: Sender<Message>) {
         let m = Message::new(
             self.id,
             receiver,
-            MessageData::TextMessage{
+            MessageData::TextMessage {
                 from: self.id,
                 to: receiver,
                 text: message,
@@ -750,13 +774,9 @@ impl ClientLeonardo {
         );
         sender.send(m);
     }
-
-
-
 }
 
 impl Fragmenter for ClientLeonardo {
-
     fn assemble(mut message_fragments: Vec<Fragment>) -> Message {
         message_fragments.sort_by(|a, b| a.fragment_index.cmp(&b.fragment_index));
         let mut data = Vec::new();
@@ -772,13 +792,13 @@ impl Fragmenter for ClientLeonardo {
 
         //reversing so popping gets the first element
         fragments_u8.reverse();
-        
+
         let mut send_fragments: VecDeque<Fragment> = VecDeque::new();
-        
+
         //frag_number is the number of fragments needed to send the message
         let frag_number = (fragments_u8.len() as f64 / FRAGMENT_DSIZE as f64).ceil() as u64;
 
-        for i in 0..frag_number{
+        for i in 0..frag_number {
             let mut len: u8 = 0;
             let mut data: [u8; FRAGMENT_DSIZE] = [0; FRAGMENT_DSIZE];
 
@@ -790,12 +810,15 @@ impl Fragmenter for ClientLeonardo {
                     break;
                 }
             }
-            
-            send_fragments.push_back(Fragment { fragment_index: i, total_n_fragments: frag_number, length: len, data: data });
-        
+
+            send_fragments.push_back(Fragment {
+                fragment_index: i,
+                total_n_fragments: frag_number,
+                length: len,
+                data,
+            });
         }
 
-        return send_fragments
+        return send_fragments;
     }
-
 }

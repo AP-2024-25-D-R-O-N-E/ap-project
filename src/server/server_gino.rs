@@ -12,7 +12,9 @@ use crossbeam::{
     select,
 };
 use petgraph::{
-    algo, prelude::{GraphMap, StableGraph}, Directed, Undirected
+    algo,
+    prelude::{GraphMap, StableGraph},
+    Directed, Undirected,
 };
 use serde::de::DeserializeSeed;
 use wg_2024::{
@@ -447,10 +449,9 @@ impl ChatServer {
             let mut topology_modified_lock = self.topology_modified.lock().unwrap();
             let mut pdr_estimation_lock = self.pdr_estimation.write().unwrap();
 
-
             let mut current_index = topology_lock.add_node(self.id);
             pdr_estimation_lock.insert(self.id, (1.0, 0, 0));
-            
+
             for (node_id, node_type) in fr.path_trace.iter().skip(1) {
                 let next_index = topology_lock.add_node(*node_id);
                 // add the edge nodes to the edge_nodes set
@@ -555,7 +556,7 @@ impl ChatServer {
             for nodes in packet.routing_header.hops.windows(2) {
                 let (ratio, mut success, failure) = *pdr_estimation_lock.get(&nodes[0]).unwrap();
                 success += 1;
-                let new_ratio = success as f64/(success + failure) as f64;
+                let new_ratio = success as f64 / (success + failure) as f64;
                 // this allows a drone to drop a few packets without tanking its estimated PDR
                 let updated_ratio = 0.2 * new_ratio + 0.8 * ratio;
                 pdr_estimation_lock.insert(nodes[0], (updated_ratio, success, failure));
@@ -563,7 +564,13 @@ impl ChatServer {
         }
     }
 
-    fn manage_nack(&self, nack_routing: Vec<NodeId>, session_id: u64, nack: Nack, nack_send: Sender<Packet>) {
+    fn manage_nack(
+        &self,
+        nack_routing: Vec<NodeId>,
+        session_id: u64,
+        nack: Nack,
+        nack_send: Sender<Packet>,
+    ) {
         log::debug!(
             "{} {} received a nack: {:?}",
             "↳ server".green(),
@@ -610,7 +617,7 @@ impl ChatServer {
             let dropped_node = nack_routing[0];
             let (ratio, success, mut failure) = *pdr_estimation_lock.get(&dropped_node).unwrap();
             failure += 1;
-            let new_ratio = success as f64/(success + failure) as f64;
+            let new_ratio = success as f64 / (success + failure) as f64;
             // this allows a drone to drop a few packets without tanking its estimated PDR
             let updated_ratio = 0.2 * new_ratio + 0.8 * ratio;
             pdr_estimation_lock.insert(dropped_node, (updated_ratio, success, failure));
@@ -705,11 +712,11 @@ impl ChatServer {
                 // if a node is an edge node, then the weight should be "infinite" as it can't be used
                 let edge_nodes_lock = edge_nodes.read().unwrap();
                 if edge_nodes_lock.contains(&b) || edge_nodes_lock.contains(&a) {
-                    topology_lock.edge_count() as f64  * 100.0f64 // 100 equivale ad una success ratio di 1/100.
+                    topology_lock.edge_count() as f64 * 100.0f64 // 100 equivale ad una success ratio di 1/100.
                 } else {
                     let pdr_estimation_lock = pdr_estimation.read().unwrap();
                     let ratio = pdr_estimation_lock.get(&b).unwrap().0;
-                    let inverse_ratio = 1.0/ratio;
+                    let inverse_ratio = 1.0 / ratio;
                     topology_lock.edge_count() as f64 * inverse_ratio
                 }
             },

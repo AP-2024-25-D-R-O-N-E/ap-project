@@ -47,7 +47,7 @@ impl ClientTrait for Client {
         topology.add_node((id, HashableNodeType::Edge));
 
         Client {
-            id: id,
+            id,
             scs: sim_contr_send,
             scr: sim_contr_recv,
             pr: packet_recv,

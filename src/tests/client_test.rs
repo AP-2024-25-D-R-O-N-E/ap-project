@@ -38,12 +38,13 @@ fn client_test() {
 
     sleep(Duration::from_secs(4));
 
-    sc.client_command_channels[&0].send(ClientCommand::SendTextMessageTo { receiver: 7, message: "hello".to_string() });
+    sc.client_command_channels[&0].send(ClientCommand::SendTextMessageTo {
+        receiver: 7,
+        message: "hello".to_string(),
+    });
 
     sleep(Duration::from_secs(4));
-
 }
-
 
 /*
 fn register_client2(sc: &SimulationController) {
