@@ -15,7 +15,7 @@ use crate::initializer::{
     network_initializer::{spawn_drone_thread, spawn_drone_thread_by_vendor},
 };
 
-use super::simulation_controller::SimulationController;
+use super::{simulation_controller::SimulationController, ServerCommand};
 
 impl SimulationController {
     pub fn send_default_msg_fragment(&self, node_id: NodeId) {

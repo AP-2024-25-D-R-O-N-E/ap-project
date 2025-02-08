@@ -27,7 +27,10 @@ impl SCEvent {
         });
 
         row.col(|ui| {
-            ui.label(self.get_packet().session_id.to_string());
+            match self.get_packet() {
+                Some(packet) => ui.label(packet.session_id.to_string()),
+                None => ui.label("None"),
+            };
         });
 
         row.col(|ui| {

@@ -26,7 +26,7 @@ rusty_drones = { git = "https://github.com/rusty-drone-2024/rusty-drone.git" }
 rust-roveri = { git = "https://github.com/RustRoveri/rust-roveri.git" }
 rustbusters-drone = { git = "https://github.com/Rustbusters/drone.git" }
 rustafarian-drone = { git = "https://github.com/Rustafarian-Unitn/rustafarian-drone"}
-# missing sky link
+skylink = { git = "https://github.com/Suge42/Skylink_drone.git" }
 LeDron_James = { git = "https://github.com/anass03/LeDron_James.git"}
 getdroned = { git = "https://github.com/GetDroned/Drone.git", features = ["log"] }
 rusteze_drone = { git = "https://github.com/Rusteze-AP/drone.git", branch = "main" }

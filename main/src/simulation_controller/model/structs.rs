@@ -1,8 +1,13 @@
+use std::fs::File;
+
+use crossbeam::channel::Sender;
 use wg_2024::{
     controller::DroneEvent,
     network::NodeId,
     packet::{self, Packet},
 };
+
+use crate::fragmentation::message::ChatMessage;
 
 /// From client to controller
 #[derive(Debug, Clone)]
@@ -100,27 +105,36 @@ impl From<DroneEvent> for SCEventType {
 
 impl SCEventType {
     pub fn get_sender_node_index(&self) -> Option<u8> {
-        self.get_packet().routing_header.previous_hop()
+        match self.get_packet() {
+            Some(packet) => packet.routing_header.previous_hop(),
+            None => None,
+        }
     }
 
-    pub fn get_packet(&self) -> Packet {
-        let packet = match self {
+    pub fn get_packet(&self) -> Option<Packet> {
+        match self {
             SCEventType::ClientEvent(client_event) => match client_event {
-                ClientEvent::PacketSent(packet) => packet,
-                ClientEvent::PacketDropped(packet) => packet,
+                ClientEvent::PacketSent(packet) => Some(packet.clone()),
+                ClientEvent::PacketDropped(packet) => Some(packet.clone()),
+                ClientEvent::TextMessage { .. } => None,
+                ClientEvent::FileMessage { .. } => None,
+                ClientEvent::ResponseClientsReceived(..) => None,
+                ClientEvent::AcknolewdgedAsClient => None,
+                ClientEvent::ResponseHistoryReceived { .. } => None,
+                ClientEvent::UnregisteredSenderError => None,
+                ClientEvent::UnregisteredRecipientError => None,
+                ClientEvent::UnsupportedMessageTypeError => None,
             },
             SCEventType::ServerEvent(server_event) => match server_event {
-                ServerEvent::PacketSent(packet) => packet,
-                ServerEvent::PacketDropped(packet) => packet,
+                ServerEvent::PacketSent(packet) => Some(packet.clone()),
+                ServerEvent::PacketReceived(packet) => None,
             },
             SCEventType::DroneEvent(drone_event) => match drone_event {
-                DroneEvent::PacketSent(packet) => packet,
-                DroneEvent::PacketDropped(packet) => packet,
-                DroneEvent::ControllerShortcut(packet) => packet,
+                DroneEvent::PacketSent(packet) => Some(packet.clone()),
+                DroneEvent::PacketDropped(packet) => Some(packet.clone()),
+                DroneEvent::ControllerShortcut(packet) => Some(packet.clone()),
             },
-        };
-
-        packet.clone()
+        }
     }
 
     pub fn get_sender_type(&self) -> String {
@@ -146,15 +160,21 @@ impl SCEventType {
         .to_string()
     }
 
-    pub fn get_packet_type(&self) -> String {
-        match self.get_packet().pack_type {
-            packet::PacketType::MsgFragment(fragment) => "MsgFragment",
-            packet::PacketType::Ack(ack) => "Ack",
-            packet::PacketType::Nack(nack) => "Nack",
-            packet::PacketType::FloodRequest(flood_request) => "FlooadRequest",
-            packet::PacketType::FloodResponse(flood_response) => "FloodResponse",
+    pub fn get_packet_type(&self) -> Option<String> {
+        match self.get_packet() {
+            Some(packet) => Some(
+                match packet.pack_type {
+                    packet::PacketType::MsgFragment(fragment) => "MsgFragment",
+                    packet::PacketType::Ack(ack) => "Ack",
+                    packet::PacketType::Nack(nack) => "Nack",
+                    packet::PacketType::FloodRequest(flood_request) => "FlooadRequest",
+                    packet::PacketType::FloodResponse(flood_response) => "FloodResponse",
+                }
+                .to_string(),
+            ),
+
+            None => None,
         }
-        .to_string()
     }
 }
 
@@ -163,7 +183,7 @@ impl SCEvent {
         self.event_type.get_sender_node_index()
     }
 
-    pub fn get_packet(&self) -> Packet {
+    pub fn get_packet(&self) -> Option<Packet> {
         self.event_type.get_packet()
     }
 
@@ -188,7 +208,7 @@ impl SCEvent {
 
 impl std::fmt::Display for SCEventType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.get_packet())
+        write!(f, "{:?}", self.get_packet())
     }
 }
 

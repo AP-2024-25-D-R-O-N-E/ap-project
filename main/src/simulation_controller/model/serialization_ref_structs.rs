@@ -1,6 +1,8 @@
 use crossbeam::channel::Sender;
 use macros::IntoSerializable;
 
+use crate::fragmentation::message::ChatMessage;
+
 use super::structs::*;
 use wg_2024::controller::*;
 use wg_2024::network::*;
@@ -38,6 +40,13 @@ impl IntoSerializable for u64 {
     }
 }
 
+impl IntoSerializable for String {
+    type Output = String;
+    fn into_serializable(&self) -> Self::Output {
+        self.clone()
+    }
+}
+
 impl<const N: usize> IntoSerializable for [u8; N] {
     type Output = [u8; N];
     fn into_serializable(&self) -> Self::Output {
@@ -66,6 +75,16 @@ where
     type Output = Vec<<T as IntoSerializable>::Output>;
     fn into_serializable(&self) -> Self::Output {
         self.iter().map(|item| item.into_serializable()).collect()
+    }
+}
+
+impl<T> IntoSerializable for Sender<T>
+where
+    T: Clone,
+{
+    type Output = Sender<T>;
+    fn into_serializable(&self) -> Self::Output {
+        self.clone()
     }
 }
 
@@ -173,14 +192,77 @@ impl Serialize for FragmentRef {
 pub enum ClientEventRef {
     PacketSent(PacketRef),
     PacketDropped(PacketRef),
+    TextMessage {
+        from: NodeId,
+        to: NodeId,
+        text: String,
+    },
+
+    // the file message is only temporary and will be modified later
+    FileMessage {
+        from: NodeId,
+        to: NodeId,
+        file: Vec<u8>,
+        file_name: String,
+    },
+
+    ResponseClientsReceived(Vec<NodeId>),
+    AcknolewdgedAsClient,
+    ResponseHistoryReceived {
+        partner: NodeId,
+        history: Vec<ChatMessageRef>,
+    },
+    UnregisteredSenderError,
+    UnregisteredRecipientError,
+    UnsupportedMessageTypeError,
 }
+
+#[derive(IntoSerializable, Serialize, Debug, PartialEq, Clone)]
+pub enum ChatMessageRef {
+    TextMessage {
+        from: NodeId,
+        to: NodeId,
+        text: String,
+    },
+    FileMessage {
+        from: NodeId,
+        to: NodeId,
+        file: Vec<u8>,
+        file_name: String,
+    },
+}
+
+/// From controller to client
+// #[derive(Debug)]
+// pub enum ClientCommandRef {
+//     StartFlooding,
+//
+//     AddSender(NodeId, Sender<Packet>),
+//     RemoveSender(NodeId),
+//
+//     GetResponseClient,
+//     RegisterAsClient,
+//     UnregisterAsClient,
+//     OpenChatWith(NodeId),
+//     SendTextMessageTo { receiver: NodeId, message: String },
+//     // the file message is only temporary and will be modified later
+//     SendFileMessageTo { receiver: NodeId, file: File },
+// }
 
 /// From server to controller
 #[derive(IntoSerializable, Serialize, Debug, Clone)]
 pub enum ServerEventRef {
     PacketSent(PacketRef),
-    PacketDropped(PacketRef),
+    PacketReceived(PacketRef),
 }
+
+/// From controller to server
+// #[derive(IntoSerializable, Debug, Clone)]
+// pub enum ServerCommandRef {
+//     NetworkInitialized,
+//     AddSender(NodeId, Sender<Packet>),
+//     RemoveSender(NodeId),
+// }
 
 #[derive(IntoSerializable, Serialize, Debug, Clone)]
 pub enum DroneEventRef {

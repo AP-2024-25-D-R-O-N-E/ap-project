@@ -383,7 +383,7 @@ impl NetworkInitializer {
         }
     }
 
-fn create_drone(
+    fn create_drone(
         drone_index: usize, // index determines which implementation of drone to use
         id: NodeId,
         controller_send: Sender<DroneEvent>,
@@ -486,89 +486,88 @@ fn create_drone(
     }
 }
 
-    pub fn create_drone_from_vendor(
-        drone_vendor: DroneVendor,
-        id: NodeId,
-        controller_send: Sender<DroneEvent>,
-        controller_recv: Receiver<DroneCommand>,
-        packet_recv: Receiver<Packet>,
-        packet_send: HashMap<NodeId, Sender<Packet>>,
-        pdr: f32,
-    ) -> Box<dyn Drone> {
-        match drone_vendor {
-            DroneVendor::RustafarianDrone => Box::new(RustafarianDrone::new(
-                id,
-                controller_send,
-                controller_recv,
-                packet_recv,
-                packet_send,
-                pdr,
-            )),
-            DroneVendor::LockheedRustin => Box::new(LockheedRustin::new(
-                id,
-                controller_send,
-                controller_recv,
-                packet_recv,
-                packet_send,
-                pdr,
-            )),
-            DroneVendor::RustyDrone => Box::new(RustyDrone::new(
-                id,
-                controller_send,
-                controller_recv,
-                packet_recv,
-                packet_send,
-                pdr,
-            )),
-            DroneVendor::RustBustersDrone => Box::new(RustBustersDrone::new(
-                id,
-                controller_send,
-                controller_recv,
-                packet_recv,
-                packet_send,
-                pdr,
-            )),
-            DroneVendor::CppEnjoyersDrone => Box::new(CppEnjoyersDrone::new(
-                id,
-                controller_send,
-                controller_recv,
-                packet_recv,
-                packet_send,
-                pdr,
-            )),
-            DroneVendor::RustezeDrone => Box::new(RustezeDrone::new(
-                id,
-                controller_send,
-                controller_recv,
-                packet_recv,
-                packet_send,
-                pdr,
-            )),
-            DroneVendor::GetDroned => Box::new(GetDroned::new(
-                id,
-                controller_send,
-                controller_recv,
-                packet_recv,
-                packet_send,
-                pdr,
-            )),
-            DroneVendor::RustRoveri => Box::new(RustRoveri::new(
-                id,
-                controller_send,
-                controller_recv,
-                packet_recv,
-                packet_send,
-                pdr,
-            )),
-            _ => Box::new(MyDrone::new(
-                id,
-                controller_send,
-                controller_recv,
-                packet_recv,
-                packet_send,
-                pdr,
-            )),
-        }
+pub fn create_drone_from_vendor(
+    drone_vendor: DroneVendor,
+    id: NodeId,
+    controller_send: Sender<DroneEvent>,
+    controller_recv: Receiver<DroneCommand>,
+    packet_recv: Receiver<Packet>,
+    packet_send: HashMap<NodeId, Sender<Packet>>,
+    pdr: f32,
+) -> Box<dyn Drone> {
+    match drone_vendor {
+        DroneVendor::RustafarianDrone => Box::new(RustafarianDrone::new(
+            id,
+            controller_send,
+            controller_recv,
+            packet_recv,
+            packet_send,
+            pdr,
+        )),
+        DroneVendor::LockheedRustin => Box::new(LockheedRustin::new(
+            id,
+            controller_send,
+            controller_recv,
+            packet_recv,
+            packet_send,
+            pdr,
+        )),
+        DroneVendor::RustyDrone => Box::new(RustyDrone::new(
+            id,
+            controller_send,
+            controller_recv,
+            packet_recv,
+            packet_send,
+            pdr,
+        )),
+        DroneVendor::RustBustersDrone => Box::new(RustBustersDrone::new(
+            id,
+            controller_send,
+            controller_recv,
+            packet_recv,
+            packet_send,
+            pdr,
+        )),
+        DroneVendor::CppEnjoyersDrone => Box::new(CppEnjoyersDrone::new(
+            id,
+            controller_send,
+            controller_recv,
+            packet_recv,
+            packet_send,
+            pdr,
+        )),
+        DroneVendor::RustezeDrone => Box::new(RustezeDrone::new(
+            id,
+            controller_send,
+            controller_recv,
+            packet_recv,
+            packet_send,
+            pdr,
+        )),
+        DroneVendor::GetDroned => Box::new(GetDroned::new(
+            id,
+            controller_send,
+            controller_recv,
+            packet_recv,
+            packet_send,
+            pdr,
+        )),
+        DroneVendor::RustRoveri => Box::new(RustRoveri::new(
+            id,
+            controller_send,
+            controller_recv,
+            packet_recv,
+            packet_send,
+            pdr,
+        )),
+        _ => Box::new(MyDrone::new(
+            id,
+            controller_send,
+            controller_recv,
+            packet_recv,
+            packet_send,
+            pdr,
+        )),
     }
 }
 

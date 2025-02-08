@@ -56,8 +56,25 @@ pub fn into_serializable_derive(input: TokenStream) -> TokenStream {
                 // let variant_ref_ident = Ident::new(variant_string.as_str(), Span::call_site());
 
                 match &variant.fields {
-                    Fields::Named(_) => {
-                        panic!("Named enums are not supported")
+                    Fields::Named(fields_named) => {
+                        let named_fields = fields_named.named.iter().map(|field| {
+                            let ident = field.ident.clone().unwrap();
+                            let rv = quote! { #ident };
+                            rv
+                        });
+                        let expanded_fields_names = quote! {  #(#named_fields),*  };
+
+                        let named_fields_into = fields_named.named.iter().map(|field| {
+                            let ident = field.ident.clone().unwrap();
+                            let rv = quote! { #ident : #ident.into_serializable() };
+                            rv
+                        });
+                        let expanded_fields_names_into = quote! {  #(#named_fields_into),*  };
+
+                        let rv = quote! { #enum_name_ref_ident :: #variant_ident {#expanded_fields_names} =>  #enum_name_ident :: #variant_ident {#expanded_fields_names_into} };
+                        eprintln!("{}", rv);
+                        enum_fields.push(rv);
+                        // panic!("Named enums are not supported")
                     }
                     Fields::Unnamed(fields_unnamed) => {
                         let unnamed_fields =
@@ -136,6 +153,7 @@ pub fn into_serializable_derive(input: TokenStream) -> TokenStream {
                 }
             };
 
+            eprintln!("{}", output);
             return output.into();
         }
         _ => panic!("Only structs and enums are supported"),
