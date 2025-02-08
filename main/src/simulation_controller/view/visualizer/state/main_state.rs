@@ -22,11 +22,17 @@ pub struct State {
 
 impl State {
     pub fn from(sc: &SimulationController) -> State {
-        let mut default_state = State::default();
-        default_state.graph_section = GraphSectionState::new(sc.topology.clone());
-        default_state.node_info_section = NodeInfoSectionState::from(&sc.topology);
-
-        default_state
+        State {
+            test_section: TestSectionState::default(),
+            debug_section: DebugSectionState::default(),
+            settings_section: SettingsSectionState::default(),
+            graph_section: GraphSectionState::new(sc.topology.clone()),
+            events: Default::default(),
+            toolbar_section: Default::default(),
+            node_info_section: NodeInfoSectionState::from(&sc.topology),
+            console_section: Default::default(),
+            modify_topology_section: Default::default(),
+        }
     }
 }
 

@@ -21,9 +21,9 @@ impl EventsState {
                 .clone()
                 .into_iter()
                 .filter(|e| match &e.event_type {
-                    SCEventType::ClientEvent(client_event) => display_options.clients,
-                    SCEventType::ServerEvent(server_event) => display_options.servers,
-                    SCEventType::DroneEvent(drone_event) => display_options.drones,
+                    SCEventType::Client(client_event) => display_options.clients,
+                    SCEventType::Server(server_event) => display_options.servers,
+                    SCEventType::Drone(drone_event) => display_options.drones,
                 })
                 .collect(),
         }

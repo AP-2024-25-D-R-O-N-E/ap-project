@@ -107,10 +107,12 @@ impl SCGui {
 
     fn handle_sc_shortcut(&self, event: &SCEvent) {
         if self.state.toolbar_section.handle_shortcuts {
-            if let SCEventType::DroneEvent(drone_event) = &event.event_type { if let DroneEvent::ControllerShortcut(packet) = &drone_event {
+            if let SCEventType::Drone(DroneEvent::ControllerShortcut(packet)) =
+                &event.event_type
+            {
                 self.simulation_controller
                     .handle_sc_shortcut(packet.clone());
-            } }
+            }
         }
     }
 

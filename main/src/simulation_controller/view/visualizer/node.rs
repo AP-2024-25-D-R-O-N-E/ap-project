@@ -76,12 +76,12 @@ impl Default for UiDroneNode {
     }
 }
 
-impl ToString for UiNodePayload {
-    fn to_string(&self) -> String {
+impl std::fmt::Display for UiNodePayload {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match &self.node_type {
-            UiNodeType::Server(_server_node) => "Server[]".to_string(),
-            UiNodeType::Client(_client_node) => "Client[]".to_string(),
-            UiNodeType::Drone(_drone_node) => "Drone[]".to_string(),
+            UiNodeType::Server(_server_node) => write!(f, "Server[]"),
+            UiNodeType::Client(_client_node) => write!(f, "Client[]"),
+            UiNodeType::Drone(_drone_node) => write!(f, "Drone[]"),
         }
     }
 }
@@ -188,35 +188,25 @@ impl DrawShape for CustomNodeShape {
                 }
             }
             UiNodeType::Drone(drone_node) => {
-                let circle_fill;
-                if drone_node.crashed {
-                    circle_fill = Shape::circle_filled(
-                        center,
-                        drone_node.radius,
-                        Color32::from_rgb(130, 0, 0),
-                    );
+                let circle_fill = if drone_node.crashed {
+                    Shape::circle_filled(center, drone_node.radius, Color32::from_rgb(130, 0, 0))
                 } else {
-                    circle_fill = Shape::circle_filled(
+                    Shape::circle_filled(
                         center,
                         drone_node.radius,
                         util::colors::DARK_BACKGROUND_GRAY,
-                    );
-                }
+                    )
+                };
 
-                let circle_stroke;
-                if self.selected {
-                    circle_stroke = Shape::circle_stroke(
-                        center,
-                        drone_node.radius,
-                        Stroke::new(2., Color32::WHITE),
-                    );
+                let circle_stroke = if self.selected {
+                    Shape::circle_stroke(center, drone_node.radius, Stroke::new(2., Color32::WHITE))
                 } else {
-                    circle_stroke = Shape::circle_stroke(
+                    Shape::circle_stroke(
                         center,
                         drone_node.radius,
                         Stroke::new(1., util::colors::LIGHT_BACKGROUND_GRAY),
-                    );
-                }
+                    )
+                };
 
                 let pdr_label =
                     get_text(ctx, drone_node.pdr.to_string(), center + Vec2::new(0., 5.));

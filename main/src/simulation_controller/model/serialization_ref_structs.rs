@@ -167,13 +167,13 @@ impl Serialize for FragmentRef {
         let mut first_5 = String::new();
         let mut last_5 = String::new();
         let v = &self.data;
-        for i in 0..4 {
-            first_5.push_str(format!("{},", v[i]).as_str());
+        for item in v.iter().take(4) {
+            first_5.push_str(format!("{},", item).as_str());
         }
         first_5.push_str(format!("{}", v[5]).as_str());
 
-        for i in v.len() - 5..v.len() - 1 {
-            last_5.push_str(format!("{},", v[i]).as_str());
+        for item in v.iter().take(v.len() - 1).skip(v.len() - 5) {
+            last_5.push_str(format!("{},", item).as_str());
         }
         last_5.push_str(format!("{}", v[v.len() - 1]).as_str());
 
@@ -232,37 +232,11 @@ pub enum ChatMessageRef {
     },
 }
 
-/// From controller to client
-// #[derive(Debug)]
-// pub enum ClientCommandRef {
-//     StartFlooding,
-//
-//     AddSender(NodeId, Sender<Packet>),
-//     RemoveSender(NodeId),
-//
-//     GetResponseClient,
-//     RegisterAsClient,
-//     UnregisterAsClient,
-//     OpenChatWith(NodeId),
-//     SendTextMessageTo { receiver: NodeId, message: String },
-//     // the file message is only temporary and will be modified later
-//     SendFileMessageTo { receiver: NodeId, file: File },
-// }
-
-/// From server to controller
 #[derive(IntoSerializable, Serialize, Debug, Clone)]
 pub enum ServerEventRef {
     PacketSent(PacketRef),
     PacketReceived(PacketRef),
 }
-
-/// From controller to server
-// #[derive(IntoSerializable, Debug, Clone)]
-// pub enum ServerCommandRef {
-//     NetworkInitialized,
-//     AddSender(NodeId, Sender<Packet>),
-//     RemoveSender(NodeId),
-// }
 
 #[derive(IntoSerializable, Serialize, Debug, Clone)]
 pub enum DroneEventRef {
@@ -271,12 +245,11 @@ pub enum DroneEventRef {
     ControllerShortcut(PacketRef),
 }
 
-/// Common interface for events
 #[derive(IntoSerializable, Serialize, Debug, Clone)]
 pub enum SCEventTypeRef {
-    ClientEvent(ClientEventRef),
-    ServerEvent(ServerEventRef),
-    DroneEvent(DroneEventRef),
+    Client(ClientEventRef),
+    Server(ServerEventRef),
+    Drone(DroneEventRef),
 }
 
 #[derive(IntoSerializable, Serialize, Debug, Clone)]

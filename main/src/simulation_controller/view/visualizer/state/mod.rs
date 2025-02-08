@@ -4,7 +4,7 @@ pub mod events_state;
 pub mod modify_topology_state;
 pub mod node_info_section_state;
 pub mod settings_section_state;
-pub mod state;
+pub mod main_state;
 pub mod test_section_state;
 pub mod toolbar_section_state;
 
@@ -16,6 +16,6 @@ pub use graph_section_state::*;
 pub use modify_topology_state::*;
 pub use node_info_section_state::*;
 pub use settings_section_state::*;
-pub use state::*;
+pub use main_state::*;
 pub use test_section_state::*;
 pub use toolbar_section_state::*;

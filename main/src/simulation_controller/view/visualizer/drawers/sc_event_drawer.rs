@@ -44,7 +44,7 @@ impl SCEvent {
 
     fn draw_additional_infos(&self, ui: &mut Ui) -> Response {
         match &self.event_type {
-            SCEventType::ClientEvent(client_event) => match client_event {
+            SCEventType::Client(client_event) => match client_event {
                 ClientEvent::PacketSent(packet) => {
                     ui.label(egui::RichText::new("Packet sent").color(colors::MUTED_GREEN))
                 }
@@ -100,7 +100,7 @@ impl SCEvent {
                 ),
             },
 
-            SCEventType::ServerEvent(server_event) => match server_event {
+            SCEventType::Server(server_event) => match server_event {
                 ServerEvent::PacketSent(packet) => {
                     ui.horizontal(|ui| {
                         ui.label(egui::RichText::new("PacketSent").color(colors::MUTED_GREEN));
@@ -116,7 +116,7 @@ impl SCEvent {
                     .response
                 }
             },
-            SCEventType::DroneEvent(drone_event) => {
+            SCEventType::Drone(drone_event) => {
                 ui.horizontal(|ui| {
                     let (packet, response) = match drone_event {
                         controller::DroneEvent::PacketSent(packet) => (

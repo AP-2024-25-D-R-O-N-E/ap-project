@@ -74,9 +74,9 @@ pub enum ServerCommand {
 /// Common interface for events
 #[derive(Debug, Clone)]
 pub enum SCEventType {
-    ClientEvent(ClientEvent),
-    ServerEvent(ServerEvent),
-    DroneEvent(DroneEvent),
+    Client(ClientEvent),
+    Server(ServerEvent),
+    Drone(DroneEvent),
 }
 
 #[derive(Debug, Clone)]
@@ -87,19 +87,19 @@ pub struct SCEvent {
 
 impl From<ClientEvent> for SCEventType {
     fn from(event: ClientEvent) -> Self {
-        SCEventType::ClientEvent(event)
+        SCEventType::Client(event)
     }
 }
 
 impl From<ServerEvent> for SCEventType {
     fn from(event: ServerEvent) -> Self {
-        SCEventType::ServerEvent(event)
+        SCEventType::Server(event)
     }
 }
 
 impl From<DroneEvent> for SCEventType {
     fn from(event: DroneEvent) -> Self {
-        SCEventType::DroneEvent(event)
+        SCEventType::Drone(event)
     }
 }
 
@@ -113,7 +113,7 @@ impl SCEventType {
 
     pub fn get_packet(&self) -> Option<Packet> {
         match self {
-            SCEventType::ClientEvent(client_event) => match client_event {
+            SCEventType::Client(client_event) => match client_event {
                 ClientEvent::PacketSent(packet) => Some(packet.clone()),
                 ClientEvent::PacketReceived(packet) => Some(packet.clone()),
                 ClientEvent::TextMessage { .. } => None,
@@ -125,11 +125,11 @@ impl SCEventType {
                 ClientEvent::UnregisteredRecipientError => None,
                 ClientEvent::UnsupportedMessageTypeError => None,
             },
-            SCEventType::ServerEvent(server_event) => match server_event {
+            SCEventType::Server(server_event) => match server_event {
                 ServerEvent::PacketSent(packet) => Some(packet.clone()),
                 ServerEvent::PacketReceived(packet) => None,
             },
-            SCEventType::DroneEvent(drone_event) => match drone_event {
+            SCEventType::Drone(drone_event) => match drone_event {
                 DroneEvent::PacketSent(packet) => Some(packet.clone()),
                 DroneEvent::PacketDropped(packet) => Some(packet.clone()),
                 DroneEvent::ControllerShortcut(packet) => Some(packet.clone()),
@@ -139,16 +139,16 @@ impl SCEventType {
 
     pub fn get_sender_type(&self) -> String {
         match self {
-            SCEventType::ClientEvent(client_event) => "Client",
-            SCEventType::ServerEvent(server_event) => "Server",
-            SCEventType::DroneEvent(drone_event) => "Drone",
+            SCEventType::Client(client_event) => "Client",
+            SCEventType::Server(server_event) => "Server",
+            SCEventType::Drone(drone_event) => "Drone",
         }
         .to_string()
     }
 
     pub fn get_event_type(&self) -> String {
         match self {
-            SCEventType::ClientEvent(client_event) => match client_event {
+            SCEventType::Client(client_event) => match client_event {
                 ClientEvent::PacketSent(packet) => "PacketSent",
                 ClientEvent::PacketReceived(packet) => "PacketDropped",
                 ClientEvent::TextMessage { .. } => "TextMessage",
@@ -160,11 +160,11 @@ impl SCEventType {
                 ClientEvent::UnregisteredRecipientError => "UnregisteredRecipientError",
                 ClientEvent::UnsupportedMessageTypeError => "UnsupportedMessageTypeError",
             },
-            SCEventType::ServerEvent(server_event) => match server_event {
+            SCEventType::Server(server_event) => match server_event {
                 ServerEvent::PacketSent(packet) => "PacketSent",
                 ServerEvent::PacketReceived(packet) => "PacketReceived",
             },
-            SCEventType::DroneEvent(drone_event) => match drone_event {
+            SCEventType::Drone(drone_event) => match drone_event {
                 DroneEvent::PacketSent(packet) => "PacketSent",
                 DroneEvent::PacketDropped(packet) => "PacketDropped",
                 DroneEvent::ControllerShortcut(packet) => "ControllerShortcut",
