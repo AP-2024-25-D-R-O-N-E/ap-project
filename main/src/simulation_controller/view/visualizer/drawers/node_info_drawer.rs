@@ -253,14 +253,18 @@ fn draw_drone_specific(
         });
     }
     ui.end_row();
-    if let Some(status) = &get_drone_node_state(&mut state.node_info_section, node_index).crash_status_flag { match status {
-        Ok(s) => {
-            ui.label(RichText::new(s).color(colors::MUTED_GREEN));
+    if let Some(status) =
+        &get_drone_node_state(&mut state.node_info_section, node_index).crash_status_flag
+    {
+        match status {
+            Ok(s) => {
+                ui.label(RichText::new(s).color(colors::MUTED_GREEN));
+            }
+            Err(s) => {
+                ui.label(RichText::new(s).color(colors::MUTED_RED));
+            }
         }
-        Err(s) => {
-            ui.label(RichText::new(s).color(colors::MUTED_RED));
-        }
-    } };
+    };
 
     ui.end_row();
 
@@ -327,23 +331,70 @@ fn draw_client_specific(
     ui.horizontal(|ui| {
         if ui.button("Start flood".to_string()).clicked() {
             simulation_controller.send_client_start_flood(curr_node_wg_id);
-            // let curr_peer = get_client_node_state(&mut state.node_info_section, node_index).current_peer);
-            // match curr_peer {
-            //     Some(curr_peer) => simulation_controller.register(curr_peer);
-            //     None => todo!(),
-            // }
         }
         if ui.button("Get peers".to_string()).clicked() {
             simulation_controller.send_get_peers(curr_node_wg_id);
         }
     });
     ui.end_row();
+
     ui.label("Available peers");
 
     ui.label(format!(
         "{:?}",
         get_client_node_state(&mut state.node_info_section, node_index).available_peers
     ));
+
+    ui.end_row();
+    ui.text_edit_singleline(
+        &mut get_client_node_state(&mut state.node_info_section, node_index).curr_msg,
+    );
+
+    ui.horizontal(|ui| {
+        if ui.button("Send to".to_string()).clicked() {
+            let state = get_client_node_state(&mut state.node_info_section, node_index);
+
+            if let Some(curr_node_wg_id) = state.current_peer {
+                simulation_controller.send_txt_msg(
+                    curr_node_wg_id,
+                    curr_node_wg_id,
+                    state.curr_msg.clone(),
+                );
+            } else {
+                println!("No peer selected");
+            }
+        }
+
+        // make a combo box with the values from state.
+        let selected_text =
+            match get_client_node_state(&mut state.node_info_section, node_index).current_peer {
+                Some(id) => format!("Client {}", id),
+                None => format!("Select client"),
+            };
+
+        egui::ComboBox::from_label("")
+            .selected_text(selected_text)
+            .show_ui(ui, |ui| {
+                for node_id in get_client_node_state(&mut state.node_info_section, node_index)
+                    .available_peers
+                    .clone()
+                {
+                    ui.selectable_value(
+                        &mut get_client_node_state(&mut state.node_info_section, node_index)
+                            .current_peer,
+                        Some(node_id),
+                        format!("Client {}", node_id),
+                    );
+                }
+
+                ui.selectable_value(
+                    &mut get_client_node_state(&mut state.node_info_section, node_index)
+                        .current_peer,
+                    None,
+                    format!("Select client"),
+                );
+            });
+    });
 }
 
 fn get_drone_node_state(
