@@ -43,7 +43,7 @@ use super::ClientTrait;
 pub struct ClientLeonardo {
     id: NodeId,
     flood_id: u64,
-    chat_server_id: NodeId,
+    chat_server_id: Arc<Mutex<NodeId>>,
 
     //channels with sim controller
     sim_contr_send: Sender<ClientEvent>,
@@ -79,7 +79,7 @@ impl ClientTrait for ClientLeonardo {
         ClientLeonardo {
             id,
             flood_id: 0,
-            chat_server_id: 0,
+            chat_server_id: Arc::new(Mutex::new(0)),
             sim_contr_send,
             sim_contr_recv,
             packet_recv,
@@ -131,10 +131,12 @@ impl ClientTrait for ClientLeonardo {
         let thread_receiver = thread_receiver.clone();
         let sim_control_send = self.sim_contr_send.clone();
         let fragment_sender = fragment_sender.clone();
+        let chat_server_id = self.chat_server_id.clone();
 
         thread::spawn(move || {
             Self::message_handler_thread(
                 id,
+                chat_server_id,
                 fragment_buffer,
                 ready_for_handler,
                 thread_receiver,
@@ -303,6 +305,7 @@ impl ClientLeonardo {
 
     fn message_handler_thread(
         id: NodeId,
+        server_id: Arc<Mutex<NodeId>>,
         fragment_buffers: Arc<RwLock<HashMap<(NodeId, u64), Vec<Fragment>>>>,
         ready: Receiver<(NodeId, u64)>,
         command_recv: Receiver<Message>,
@@ -318,8 +321,10 @@ impl ClientLeonardo {
 
                     let fragments = Self::disassemble(frag_res.unwrap());
 
+                    let chat_server_id = *server_id.lock().unwrap();
+
                     for fragment in fragments {
-                        fragment_sender.send((id, session_id, fragment));
+                        fragment_sender.send((chat_server_id, session_id, fragment));
                     }
 
                     //increment session_id
@@ -565,7 +570,8 @@ impl ClientLeonardo {
                 }
                 NodeType::Server => {
                     edge_nodes_lock.insert(*id);
-                    self.chat_server_id = *id;
+                    let mut server_id_lock = self.chat_server_id.lock().unwrap();
+                    *server_id_lock = *id;
                 }
                 _ => {}
             }
@@ -728,7 +734,7 @@ impl ClientLeonardo {
     fn get_response_clients(&self, sender: Sender<Message>) {
         let m = Message::new(
             self.id,
-            self.chat_server_id,
+            *self.chat_server_id.lock().unwrap(),
             MessageData::RequestClients(self.id),
         );
         sender.send(m);
@@ -737,7 +743,7 @@ impl ClientLeonardo {
     fn register_as_client(&self, sender: Sender<Message>) {
         let m = Message::new(
             self.id,
-            self.chat_server_id,
+            *self.chat_server_id.lock().unwrap(),
             MessageData::RegisterAsClient(self.id),
         );
         sender.send(m);
@@ -746,7 +752,7 @@ impl ClientLeonardo {
     fn unregister_as_client(&self, sender: Sender<Message>) {
         let m = Message::new(
             self.id,
-            self.chat_server_id,
+            *self.chat_server_id.lock().unwrap(),
             MessageData::UnregisterAsClient(self.id),
         );
         sender.send(m);
