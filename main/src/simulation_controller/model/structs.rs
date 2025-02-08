@@ -13,7 +13,7 @@ use crate::fragmentation::message::ChatMessage;
 #[derive(Debug, Clone)]
 pub enum ClientEvent {
     PacketSent(Packet),
-    PacketDropped(Packet),
+    PacketReceived(Packet),
     TextMessage {
         from: NodeId,
         to: NodeId,
@@ -115,7 +115,7 @@ impl SCEventType {
         match self {
             SCEventType::ClientEvent(client_event) => match client_event {
                 ClientEvent::PacketSent(packet) => Some(packet.clone()),
-                ClientEvent::PacketDropped(packet) => Some(packet.clone()),
+                ClientEvent::PacketReceived(packet) => Some(packet.clone()),
                 ClientEvent::TextMessage { .. } => None,
                 ClientEvent::FileMessage { .. } => None,
                 ClientEvent::ResponseClientsReceived(..) => None,
@@ -150,7 +150,7 @@ impl SCEventType {
         match self {
             SCEventType::ClientEvent(client_event) => match client_event {
                 ClientEvent::PacketSent(packet) => "PacketSent",
-                ClientEvent::PacketDropped(packet) => "PacketDropped",
+                ClientEvent::PacketReceived(packet) => "PacketDropped",
                 ClientEvent::TextMessage { .. } => "TextMessage",
                 ClientEvent::FileMessage { .. } => "FileMessage",
                 ClientEvent::ResponseClientsReceived(..) => "ResponseClientsReceived",

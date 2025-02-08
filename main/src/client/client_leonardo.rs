@@ -202,6 +202,7 @@ impl ClientLeonardo {
                 recv(self.packet_recv) -> packet => {
 
                     if let Ok(p) = packet {
+                        self.sim_contr_send.send(ClientEvent::PacketReceived(p.clone()));
                         let header_vec = p.routing_header.hops.clone();
                         match p.pack_type {
                             PacketType::Ack(ack) => {
@@ -554,7 +555,7 @@ impl ClientLeonardo {
         let mut topology_modified_lock = self.topology_modified.lock().unwrap();
         let mut index = topology_lock.add_node(self.id);
 
-        for (id, node_type) in flood_res.path_trace.iter() {
+        for (id, node_type) in flood_res.path_trace.iter().skip(1) {
             let next = topology_lock.add_node(*id);
             match node_type {
                 NodeType::Client => {
@@ -571,6 +572,7 @@ impl ClientLeonardo {
 
             //inizializza tutti i weight a 1
             topology_lock.add_edge(index, next, 0.0);
+            index = next;
         }
 
         *topology_modified_lock = true;
