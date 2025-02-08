@@ -4,6 +4,8 @@ pub struct ToolbarSectionState {
     pub debug_open: bool,
     pub settings_open: bool,
     pub modify_topology_open: bool,
+    pub handle_shortcuts: bool,
+    pub events_json_open : bool
 }
 
 impl Default for ToolbarSectionState {
@@ -14,6 +16,8 @@ impl Default for ToolbarSectionState {
             debug_open: false,
             settings_open: false,
             modify_topology_open: false,
+            handle_shortcuts: true,
+            events_json_open: false,
         }
     }
 }

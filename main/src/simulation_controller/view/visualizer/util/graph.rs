@@ -598,7 +598,7 @@ pub fn is_well_formed(
         Edge<UiNodePayload, UiEdgePayload, Undirected, DefaultIx, CustomNodeShape, CustomEdgeShape>,
         Undirected,
     >,
-) -> Result<(), String> {
+) -> Result<String, String> {
     // Connected
     if !is_connected_without_edge_set(&graph, HashSet::new()) {
         return Err("Graph is not connected".to_string());
@@ -637,7 +637,7 @@ pub fn is_well_formed(
         }
     }
 
-    Ok(())
+    Ok("Well formed".to_string())
 }
 
 pub fn is_crashed_drone<E>(

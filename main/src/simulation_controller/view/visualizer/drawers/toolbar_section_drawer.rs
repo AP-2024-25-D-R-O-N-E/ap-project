@@ -1,4 +1,4 @@
-use egui::{Layout, Response, Ui};
+use egui::{Layout, Response, Ui, Widget};
 
 use crate::simulation_controller::{
     node::{UiDroneNode, UiNodePayload},
@@ -6,6 +6,8 @@ use crate::simulation_controller::{
     state::{DisplayOptions, State},
     util,
 };
+
+use super::{display_status_flag, get_result_flag_widget, get_status_flag_widget, toggle_compact};
 
 //Emojis 🧪📋🛠️❌📂
 pub fn draw_toolbar_section(ui: &mut Ui, state: &mut State) {
@@ -41,6 +43,15 @@ pub fn draw_toolbar_section(ui: &mut Ui, state: &mut State) {
 
         ui.separator();
 
+        if ui
+            .selectable_label(state.toolbar_section.events_json_open, "Events json")
+            .clicked()
+        {
+            state.toolbar_section.events_json_open = !state.toolbar_section.events_json_open;
+        }
+
+        ui.separator();
+
         // Toggle button: Settings
         if ui
             .selectable_label(state.toolbar_section.settings_open, "Settings")
@@ -59,7 +70,7 @@ pub fn draw_toolbar_section(ui: &mut Ui, state: &mut State) {
             state.toolbar_section.debug_open = !state.toolbar_section.debug_open;
         }
 
-        ui.separator();
+        ui.add_space(30.0);
         // Regular button: Close all
         if ui.button("Close all").clicked() {
             state.node_info_section.opened_windows.clear();
@@ -76,6 +87,18 @@ pub fn draw_toolbar_section(ui: &mut Ui, state: &mut State) {
         if ui.button("Clear events").clicked() {
             state.events.events.clear();
         }
+
+        ui.add_space(30.0);
+
+        toggle_compact::toggle_ui_compact(ui, &mut state.toolbar_section.handle_shortcuts);
+        ui.label("Handle shortcuts");
+
+        ui.separator();
+
+        ui.add(get_result_flag_widget(
+            &state.graph_section.well_formedness_flag,
+        ))
+
         // if ui.button("Spawn").clicked() {
         //     state.graph_section.g.add_node(UiNodePayload {
         //         node_type: UiDroneNode::default()
@@ -88,37 +111,5 @@ pub fn draw_toolbar_section(ui: &mut Ui, state: &mut State) {
         // }
         // }
         //
-        // state
-        //                 .events
-        //                 .get_events_list(DisplayOptions::ALL)
-        //                 .iter()
-        //                 .enumerate()
-
-        match &state.graph_section.well_formedness_flag {
-            Ok(_) => {
-                add_right_aligned_label(
-                    ui,
-                    egui::RichText::new("Ok".to_string()).color(util::colors::MUTED_GREEN),
-                )
-                .on_hover_text("Topology is well-formed");
-            }
-            Err(err) => {
-                add_right_aligned_label(
-                    ui,
-                    egui::RichText::new("Malformed topology".to_string())
-                        .color(util::colors::MUTED_RED),
-                )
-                .on_hover_text(err);
-            }
-        }
     });
-}
-
-fn add_right_aligned_label(ui: &mut Ui, text: egui::RichText) -> Response {
-    let label1 = egui::Label::new(text.clone());
-    let label2 = egui::Label::new(text);
-    let res = label1.layout_in_ui(ui).2;
-    let label_width = res.intrinsic_size.unwrap().x;
-    ui.add_space(ui.available_size().x - label_width);
-    ui.add(label2)
 }

@@ -32,7 +32,7 @@ pub struct GraphSectionState {
 
     pub graph_event_publisher: Sender<Event>,
     pub graph_event_consumer: Receiver<Event>,
-    pub well_formedness_flag: Result<(), String>,
+    pub well_formedness_flag: Result<String, String>,
 
     pub node_id_map: HashMap<wg_2024::network::NodeId, petgraph::graph::NodeIndex>,
 }
@@ -77,7 +77,7 @@ impl Default for GraphSectionState {
             graph_event_publisher: event_publisher,
             graph_event_consumer: event_consumer,
             node_id_map: get_node_id_map(&graph),
-            well_formedness_flag: Ok(()),
+            well_formedness_flag: Ok("Well formed".to_string()),
         }
     }
 }

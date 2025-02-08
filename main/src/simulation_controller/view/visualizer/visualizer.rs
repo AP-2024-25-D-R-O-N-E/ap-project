@@ -106,15 +106,17 @@ impl SCGui {
     }
 
     fn handle_sc_shortcut(&self, event: &SCEvent) {
-        match &event.event_type {
-            SCEventType::DroneEvent(drone_event) => match &drone_event {
-                DroneEvent::ControllerShortcut(packet) => {
-                    self.simulation_controller
-                        .handle_sc_shortcut(packet.clone());
-                }
+        if self.state.toolbar_section.handle_shortcuts {
+            match &event.event_type {
+                SCEventType::DroneEvent(drone_event) => match &drone_event {
+                    DroneEvent::ControllerShortcut(packet) => {
+                        self.simulation_controller
+                            .handle_sc_shortcut(packet.clone());
+                    }
+                    _ => (),
+                },
                 _ => (),
-            },
-            _ => (),
+            }
         }
     }
 
@@ -450,18 +452,20 @@ impl App for SCGui {
                 });
         }
 
-        Window::new("Events json")
-            .collapsible(true)
-            .resizable(true)
-            .default_width(200.0)
-            .default_height(150.0)
-            .default_open(true)
-            .show(ctx, |ui| {
-                ScrollArea::vertical().show(ui, |ui| {
-                    // Load syntax and theme
-                    draw_all_events_as_json(ui, &self.state);
+        if self.state.toolbar_section.events_json_open {
+            Window::new("Events json")
+                .collapsible(true)
+                .resizable(true)
+                .default_width(200.0)
+                .default_height(150.0)
+                .default_open(true)
+                .show(ctx, |ui| {
+                    ScrollArea::vertical().show(ui, |ui| {
+                        // Load syntax and theme
+                        draw_all_events_as_json(ui, &self.state);
+                    });
                 });
-            });
+        }
 
         // self.sync();
         // self.update_simulation();
