@@ -1,10 +1,13 @@
 use petgraph::graph::NodeIndex;
 use std::collections::{HashMap, HashSet};
+use wg_2024::network::NodeId;
 
 use crate::simulation_controller::util::StatusFlag;
 
 pub struct NodeInfoSectionState {
     pub opened_windows: HashMap<NodeIndex, NodeState>,
+    pub opened_clients: HashMap<NodeIndex, NodeState>,
+    pub opened_servers: HashMap<NodeIndex, NodeState>,
     // pub node_states: HashMap<NodeIndex, NodeState>,
 }
 
@@ -34,4 +37,10 @@ impl Default for NodeInfoSectionState {
             opened_windows: HashMap::new(),
         }
     }
+}
+
+pub struct ClientState {
+    pub available_peers: Vec<NodeId>,
+    pub curr_msg: String,
+    pub current_peer: Option<NodeId>,
 }

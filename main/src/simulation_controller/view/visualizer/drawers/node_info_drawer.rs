@@ -94,8 +94,12 @@ pub fn draw_node_info(
                     if let Some(graph_node) = state.graph_section.g.node_mut(node_index) {
                         let ui_node = graph_node.payload_mut();
                         match &ui_node.node_type {
-                            UiNodeType::Server(ui_server_node) => {}
-                            UiNodeType::Client(ui_client_node) => {}
+                            UiNodeType::Server(ui_server_node) => {
+                                draw_server_specific(ui, node_index, state, simulation_controller);
+                            }
+                            UiNodeType::Client(ui_client_node) => {
+                                draw_client_specific(ui, node_index, state, simulation_controller);
+                            }
                             UiNodeType::Drone(ui_drone_node) => {
                                 draw_drone_specific(ui, node_index, state, simulation_controller);
                             }
@@ -343,4 +347,34 @@ fn draw_drone_specific(
             );
         };
     });
+}
+
+fn draw_server_specific(
+    ui: &mut Ui,
+    node_index: NodeIndex,
+    state: &mut State,
+    simulation_controller: &SimulationController,
+) {
+}
+
+fn draw_client_specific(
+    ui: &mut Ui,
+    node_index: NodeIndex,
+    state: &mut State,
+    simulation_controller: &SimulationController,
+) {
+    ui.horizontal(|ui| {
+        if ui.button("Register".to_string()).clicked() {}
+        if ui.button("Unregister".to_string()).clicked() {}
+    });
+    ui.horizontal(|ui| {
+        if ui.button("Start flood".to_string()).clicked() {}
+        if ui.button("Get peers".to_string()).clicked() {}
+    });
+    ui.end_row();
+    ui.label("Available peers");
+    ui.label(format!(
+        "{:?}",
+        state.node_info_section.opened_clients.get(NodeIndex)
+    ));
 }
