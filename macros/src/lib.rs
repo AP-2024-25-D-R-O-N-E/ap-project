@@ -72,7 +72,7 @@ pub fn into_serializable_derive(input: TokenStream) -> TokenStream {
                         let expanded_fields_names_into = quote! {  #(#named_fields_into),*  };
 
                         let rv = quote! { #enum_name_ref_ident :: #variant_ident {#expanded_fields_names} =>  #enum_name_ident :: #variant_ident {#expanded_fields_names_into} };
-                        eprintln!("{}", rv);
+                        // eprintln!("{}", rv);
                         enum_fields.push(rv);
                         // panic!("Named enums are not supported")
                     }
@@ -153,7 +153,7 @@ pub fn into_serializable_derive(input: TokenStream) -> TokenStream {
                 }
             };
 
-            eprintln!("{}", output);
+            // eprintln!("{}", output);
             return output.into();
         }
         _ => panic!("Only structs and enums are supported"),

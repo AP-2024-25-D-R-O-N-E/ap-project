@@ -3512,7 +3512,7 @@ dependencies = [
 [[package]]
 name = "skylink"
 version = "0.1.0"
-source = "git+https://github.com/Suge42/Skylink_drone.git#1a02fb19ee44a82b60227ebeb39b1358efda92a2"
+source = "git+https://github.com/Suge42/Skylink_drone.git#e3c3973177739cfbcbc3374cbe24c934a9b286c9"
 dependencies = [
  "crossbeam-channel",
  "fastrand",

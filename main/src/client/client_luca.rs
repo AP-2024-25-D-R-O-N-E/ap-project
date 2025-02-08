@@ -332,7 +332,9 @@ impl ClientLuca {
                 // add the edge nodes to the edge_nodes set
                 match node_type {
                     NodeType::Client => {
-                        edge_nodes_lock.insert(*node_id);
+                        if node_id != &self.id {
+                            edge_nodes_lock.insert(*node_id);
+                        }
                     }
                     NodeType::Drone => {}
                     NodeType::Server => {
