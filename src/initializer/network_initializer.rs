@@ -33,7 +33,7 @@ use wg_2024::{
 use d_r_o_n_e_drone::MyDrone;
 
 use crate::{
-    client::{client_test::Client, client_test_2::Client2, ClientTrait},
+    client::{client_luca::ClientLuca, client_test::Client, client_test_2::Client2, ClientTrait},
     server::{server_gino::ChatServer, ServerTrait},
     simulation_controller::{
         node::{UiClientNode, UiDroneNode, UiNodePayload, UiNodeType, UiServerNode},
@@ -359,7 +359,7 @@ impl NetworkInitializer {
         client_id: u8,
     ) -> Box<dyn ClientTrait> {
         match index {
-            0 => Box::new(Client::new(
+            0 => Box::new(ClientLuca::new(
                 client_id,
                 command_send,
                 command_receiver,

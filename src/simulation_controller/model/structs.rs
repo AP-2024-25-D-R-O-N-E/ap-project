@@ -11,7 +11,15 @@ use crate::fragmentation::message::ChatMessage;
 pub enum ClientEvent {
     PacketSent(Packet),
     PacketDropped(Packet),
-    
+    TextMessage{from: NodeId, to: NodeId, text: String},
+    FileMessage {
+        from: NodeId,
+        to: NodeId,
+        file: Vec<u8>,
+        file_name: String,
+    },
+
+
     ResponseClientsReceived(Vec<NodeId>),
     AcknolewdgedAsClient,
     ResponseHistoryReceived{
@@ -21,17 +29,6 @@ pub enum ClientEvent {
     UnregisteredSenderError,
     UnregisteredRecipientError,
     UnsupportedMessageTypeError,
-    TextMessage{
-        from: NodeId,
-        to: NodeId,
-        text: String
-    },
-    FileMessage {
-        from: NodeId,
-        to: NodeId,
-        file: Vec<u8>,
-        file_name: String,
-    },
 }
 
 /// From controller to client
