@@ -180,6 +180,9 @@ impl ClientLuca {
                 },
                 recv(self.packet_r) -> res => {
                     if let Ok(mut packet) = res {
+
+                        self.scs.send(ClientEvent::PacketReceived(packet.clone()));
+
                         match packet.pack_type {
                             PacketType::MsgFragment(_) => self.manage_msg_fragment(packet),
                             PacketType::Ack(ack) => self.manage_ack(packet.session_id, ack),
