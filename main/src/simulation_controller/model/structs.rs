@@ -147,10 +147,23 @@ impl SCEventType {
     }
 
     pub fn get_event_type(&self) -> String {
-        // TODO implement unimplemented
         match self {
-            SCEventType::ClientEvent(client_event) => "Unimplemented",
-            SCEventType::ServerEvent(server_event) => "Unimplemented",
+            SCEventType::ClientEvent(client_event) => match client_event {
+                ClientEvent::PacketSent(packet) => "PacketSent",
+                ClientEvent::PacketDropped(packet) => "PacketDropped",
+                ClientEvent::TextMessage { .. } => "TextMessage",
+                ClientEvent::FileMessage { .. } => "FileMessage",
+                ClientEvent::ResponseClientsReceived(..) => "ResponseClientsReceived",
+                ClientEvent::AcknolewdgedAsClient => "AcknolewdgedAsClient",
+                ClientEvent::ResponseHistoryReceived { .. } => "ResponseHistoryReceived",
+                ClientEvent::UnregisteredSenderError => "UnregisteredSenderError",
+                ClientEvent::UnregisteredRecipientError => "UnregisteredRecipientError",
+                ClientEvent::UnsupportedMessageTypeError => "UnsupportedMessageTypeError",
+            },
+            SCEventType::ServerEvent(server_event) => match server_event {
+                ServerEvent::PacketSent(packet) => "PacketSent",
+                ServerEvent::PacketReceived(packet) => "PacketReceived",
+            },
             SCEventType::DroneEvent(drone_event) => match drone_event {
                 DroneEvent::PacketSent(packet) => "PacketSent",
                 DroneEvent::PacketDropped(packet) => "PacketDropped",
