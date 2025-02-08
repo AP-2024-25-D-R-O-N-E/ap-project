@@ -1,5 +1,6 @@
 pub mod client_test;
 pub mod client_test_2;
+pub mod client_leonardo;
 
 use std::{collections::HashMap, fmt::Debug};
 
