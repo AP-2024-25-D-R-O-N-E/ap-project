@@ -12,6 +12,8 @@ use rustafarian_drone::RustafarianDrone;
 use rustbusters_drone::RustBustersDrone;
 use rusteze_drone::RustezeDrone;
 use rusty_drones::RustyDrone;
+use skylink::SkyLinkDrone;
+use LeDron_James::Drone as LeDron_JamesDrone;
 
 use std::{
     collections::{HashMap, HashSet},
@@ -31,8 +33,11 @@ use wg_2024::{
 use d_r_o_n_e_drone::MyDrone;
 
 use crate::{
-    client::{client_test::Client, client_test_2::Client2, ClientTrait},
-    server::{server_test::Server, ServerTrait},
+    client::{
+        client_leonardo::ClientLeonardo, client_luca::ClientLuca, client_test::Client,
+        client_test_2::Client2, ClientTrait,
+    },
+    server::{server_gino::ChatServer, ServerTrait},
     simulation_controller::{
         edge::UiEdgePayload,
         node::{UiClientNode, UiDroneNode, UiNodePayload, UiNodeType, UiServerNode},
@@ -131,16 +136,22 @@ impl NetworkInitializer {
             let barrier_clone: Arc<Barrier> = Arc::clone(&drone_barrier);
             self.handles.insert(
                 drone_id,
-                Self::create_drone_thread(
-                    index,
-                    drone_id,
-                    command_send,
-                    command_receiver,
-                    packet_recv,
-                    packet_send,
-                    pdr,
-                    barrier_clone,
-                ),
+                thread::spawn(move || {
+                    let mut drone = Self::create_drone(
+                        index,
+                        drone_id,
+                        command_send,
+                        command_receiver,
+                        packet_recv,
+                        packet_send,
+                        pdr,
+                    );
+
+                    log::info!("{}", format!("Initialized drone {}", index).purple());
+                    barrier_clone.wait();
+                    // run function is where the logic of the drone runs.
+                    drone.run();
+                }),
             );
         }
         drone_barrier.wait();
@@ -336,7 +347,7 @@ impl NetworkInitializer {
         server_id: u8,
     ) -> Box<dyn ServerTrait> {
         match index {
-            _ => Box::new(Server::new(
+            _ => Box::new(ChatServer::new(
                 server_id,
                 command_send,
                 command_receiver,
@@ -355,14 +366,14 @@ impl NetworkInitializer {
         client_id: u8,
     ) -> Box<dyn ClientTrait> {
         match index {
-            0 => Box::new(Client::new(
+            0 => Box::new(ClientLuca::new(
                 client_id,
                 command_send,
                 command_receiver,
                 packet_recv,
                 packet_send,
             )),
-            _ => Box::new(Client2::new(
+            _ => Box::new(ClientLeonardo::new(
                 client_id,
                 command_send,
                 command_receiver,
@@ -372,8 +383,7 @@ impl NetworkInitializer {
         }
     }
 
-    //creates a thread with a new drone inside it
-    pub fn create_drone_thread(
+fn create_drone(
         drone_index: usize, // index determines which implementation of drone to use
         id: NodeId,
         controller_send: Sender<DroneEvent>,
@@ -381,102 +391,100 @@ impl NetworkInitializer {
         packet_recv: Receiver<Packet>,
         packet_send: HashMap<NodeId, Sender<Packet>>,
         pdr: f32,
-        barrier_clone: Arc<Barrier>,
-    ) -> JoinHandle<()> {
+    ) -> Box<dyn Drone> {
         let final_index = drone_index % 10;
-        spawn_drone_thread::<MyDrone>(
-            id,
-            controller_send,
-            controller_recv,
-            packet_recv,
-            packet_send,
-            pdr,
-            barrier_clone,
-        )
-        // match final_index {
-        //     0 => spawn_drone_thread::<RustafarianDrone>(
-        //         id,
-        //         controller_send,
-        //         controller_recv,
-        //         packet_recv,
-        //         packet_send,
-        //         pdr,
-        //         barrier_clone,
-        //     ),
-        //     1 => spawn_drone_thread::<LockheedRustin>(
-        //         id,
-        //         controller_send,
-        //         controller_recv,
-        //         packet_recv,
-        //         packet_send,
-        //         pdr,
-        //         barrier_clone,
-        //     ),
-        //     2 => spawn_drone_thread::<RustyDrone>(
-        //         id,
-        //         controller_send,
-        //         controller_recv,
-        //         packet_recv,
-        //         packet_send,
-        //         pdr,
-        //         barrier_clone,
-        //     ),
-        //     3 => spawn_drone_thread::<RustBustersDrone>(
-        //         id,
-        //         controller_send,
-        //         controller_recv,
-        //         packet_recv,
-        //         packet_send,
-        //         pdr,
-        //         barrier_clone,
-        //     ),
-        //     4 => spawn_drone_thread::<CppEnjoyersDrone>(
-        //         id,
-        //         controller_send,
-        //         controller_recv,
-        //         packet_recv,
-        //         packet_send,
-        //         pdr,
-        //         barrier_clone,
-        //     ),
-        //     5 => spawn_drone_thread::<RustezeDrone>(
-        //         id,
-        //         controller_send,
-        //         controller_recv,
-        //         packet_recv,
-        //         packet_send,
-        //         pdr,
-        //         barrier_clone,
-        //     ),
-        //     6 => spawn_drone_thread::<GetDroned>(
-        //         id,
-        //         controller_send,
-        //         controller_recv,
-        //         packet_recv,
-        //         packet_send,
-        //         pdr,
-        //         barrier_clone,
-        //     ),
-        //     7 => spawn_drone_thread::<RustRoveri>(
-        //         id,
-        //         controller_send,
-        //         controller_recv,
-        //         packet_recv,
-        //         packet_send,
-        //         pdr,
-        //         barrier_clone,
-        //     ),
-        //     _ => spawn_drone_thread::<MyDrone>(
-        //         id,
-        //         controller_send,
-        //         controller_recv,
-        //         packet_recv,
-        //         packet_send,
-        //         pdr,
-        //         barrier_clone,
-        //     ),
-        // }
+        match final_index {
+            0 => Box::new(RustafarianDrone::new(
+                id,
+                controller_send,
+                controller_recv,
+                packet_recv,
+                packet_send,
+                pdr,
+            )),
+            1 => Box::new(LockheedRustin::new(
+                id,
+                controller_send,
+                controller_recv,
+                packet_recv,
+                packet_send,
+                pdr,
+            )),
+            2 => Box::new(RustyDrone::new(
+                id,
+                controller_send,
+                controller_recv,
+                packet_recv,
+                packet_send,
+                pdr,
+            )),
+            3 => Box::new(RustBustersDrone::new(
+                id,
+                controller_send,
+                controller_recv,
+                packet_recv,
+                packet_send,
+                pdr,
+            )),
+            4 => Box::new(CppEnjoyersDrone::new(
+                id,
+                controller_send,
+                controller_recv,
+                packet_recv,
+                packet_send,
+                pdr,
+            )),
+            5 => Box::new(RustezeDrone::new(
+                id,
+                controller_send,
+                controller_recv,
+                packet_recv,
+                packet_send,
+                pdr,
+            )),
+            6 => Box::new(GetDroned::new(
+                id,
+                controller_send,
+                controller_recv,
+                packet_recv,
+                packet_send,
+                pdr,
+            )),
+            7 => Box::new(RustRoveri::new(
+                id,
+                controller_send,
+                controller_recv,
+                packet_recv,
+                packet_send,
+                pdr,
+            )),
+            8 => Box::new(SkyLinkDrone::new(
+                id,
+                controller_send,
+                controller_recv,
+                packet_recv,
+                packet_send,
+                pdr,
+            )),
+            9 => Box::new(LeDron_JamesDrone::new(
+                id,
+                controller_send,
+                controller_recv,
+                packet_recv,
+                packet_send,
+                pdr,
+            )),
+            _ => Box::new(MyDrone::new(
+                id,
+                controller_send,
+                controller_recv,
+                packet_recv,
+                packet_send,
+                pdr,
+            )),
+        }
     }
+}
 
     pub fn create_drone_from_vendor(
         drone_vendor: DroneVendor,

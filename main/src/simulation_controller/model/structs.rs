@@ -9,22 +9,62 @@ use wg_2024::{
 pub enum ClientEvent {
     PacketSent(Packet),
     PacketDropped(Packet),
+    TextMessage {
+        from: NodeId,
+        to: NodeId,
+        text: String,
+    },
+
+    // the file message is only temporary and will be modified later
+    FileMessage {
+        from: NodeId,
+        to: NodeId,
+        file: Vec<u8>,
+        file_name: String,
+    },
+
+    ResponseClientsReceived(Vec<NodeId>),
+    AcknolewdgedAsClient,
+    ResponseHistoryReceived {
+        partner: NodeId,
+        history: Vec<ChatMessage>,
+    },
+    UnregisteredSenderError,
+    UnregisteredRecipientError,
+    UnsupportedMessageTypeError,
 }
 
 /// From controller to client
-#[derive(Debug, Clone, serde::Serialize)]
-pub enum ClientCommand {}
+#[derive(Debug)]
+pub enum ClientCommand {
+    StartFlooding,
+
+    AddSender(NodeId, Sender<Packet>),
+    RemoveSender(NodeId),
+
+    GetResponseClient,
+    RegisterAsClient,
+    UnregisterAsClient,
+    OpenChatWith(NodeId),
+    SendTextMessageTo { receiver: NodeId, message: String },
+    // the file message is only temporary and will be modified later
+    SendFileMessageTo { receiver: NodeId, file: File },
+}
 
 /// From server to controller
 #[derive(Debug, Clone)]
 pub enum ServerEvent {
     PacketSent(Packet),
-    PacketDropped(Packet),
+    PacketReceived(Packet),
 }
 
 /// From controller to server
 #[derive(Debug, Clone)]
-pub enum ServerCommand {}
+pub enum ServerCommand {
+    NetworkInitialized,
+    AddSender(NodeId, Sender<Packet>),
+    RemoveSender(NodeId),
+}
 
 /// Common interface for events
 #[derive(Debug, Clone)]

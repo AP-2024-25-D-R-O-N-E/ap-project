@@ -1,9 +1,11 @@
+pub mod client_leonardo;
+pub mod client_luca;
 pub mod client_test;
 pub mod client_test_2;
 
 use std::{collections::HashMap, fmt::Debug};
 
-use client_test::Client;
+use client_luca::ClientLuca;
 use colored::Colorize;
 use crossbeam::channel::{select_biased, Receiver, Sender};
 use wg_2024::{

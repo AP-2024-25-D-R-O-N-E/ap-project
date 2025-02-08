@@ -47,7 +47,7 @@ impl ClientTrait for Client {
         topology.add_node((id, HashableNodeType::Edge));
 
         Client {
-            id: id,
+            id,
             scs: sim_contr_send,
             scr: sim_contr_recv,
             pr: packet_recv,
@@ -74,7 +74,7 @@ impl ClientTrait for Client {
                             match &packet.pack_type {
                                 PacketType::Nack(nack)=>self.manage_nack(nack),
                                 PacketType::Ack(ack)=>self.manage_ack(ack),
-                                PacketType::MsgFragment(fragment)=>self.manage_msg_fragment(fragment),
+                                PacketType::MsgFragment(fragment)=>self.manage_msg_fragment(packet.routing_header.hops.clone(), packet.session_id, fragment),
                                 //  ...these two are jet to be defined...
                                 PacketType::FloodRequest(flood_request) => self.manage_flood_request(packet),
                                 PacketType::FloodResponse(flood_response) => self.manage_flood_response(flood_response),
@@ -96,11 +96,23 @@ impl ClientTrait for Client {
 }
 
 impl Fragmenter for Client {
-    fn disassemble(msg: Message) -> std::collections::HashMap<u64, wg_2024::packet::Fragment> {
-        todo!()
+    fn assemble(mut fragments: Vec<Fragment>) -> Message {
+        // sort fragments by index before assembling
+        fragments.sort_by(|a, b| a.fragment_index.cmp(&b.fragment_index));
+
+        let mut message_data: Vec<u8> = Vec::new();
+        for fragment in fragments {
+            if fragment.length < 128 {
+                message_data.extend(&fragment.data[0..fragment.length as usize]);
+            } else {
+                message_data.extend(&fragment.data);
+            }
+        }
+
+        Message::from_u8(message_data)
     }
 
-    fn assemble(fragments: Vec<wg_2024::packet::Fragment>) -> Message {
+    fn disassemble(msg: Message) -> std::collections::VecDeque<Fragment> {
         todo!()
     }
 }
@@ -126,14 +138,48 @@ impl Client {
         );
     }
 
-    fn manage_msg_fragment(&self, msg: &Fragment) {
+    fn manage_msg_fragment(&self, hops: Vec<NodeId>, packet_msg_id: u64, msg: &Fragment) {
         //call to the assembler
-        log::debug!(
-            "{} {} received a fragment: {:?}",
-            "↳ client".green(),
-            self.id,
-            msg
-        );
+        // log::debug!(
+        //     "{} {} received a fragment: {:?}",
+        //     "↳ client".green(),
+        //     self.id,
+        //     msg
+        // );
+
+        // inverse route calculation for the ack
+        let mut inverse_route = hops.clone();
+        inverse_route.reverse();
+
+        let packet = Packet {
+            pack_type: PacketType::Ack(Ack {
+                fragment_index: msg.fragment_index,
+            }),
+            routing_header: SourceRoutingHeader {
+                hops: inverse_route,
+                hop_index: 0,
+            },
+            session_id: packet_msg_id,
+        };
+
+        self.forward_packet(packet);
+
+        // this is 100% a test function and shouldn't be used like this
+        if msg.total_n_fragments == 1 {
+            log::debug!(
+                "{} {} {:?}",
+                "↳ client".green(),
+                self.id,
+                Self::assemble(vec![msg.clone()])
+            );
+        } else {
+            log::debug!(
+                "{} {} received a fragment: {:?}",
+                "↳ client".green(),
+                self.id,
+                msg
+            );
+        }
     }
 
     fn manage_flood_request(&self, mut packet: Packet) {
