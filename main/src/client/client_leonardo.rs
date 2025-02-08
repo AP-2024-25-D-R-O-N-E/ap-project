@@ -401,8 +401,6 @@ impl ClientLeonardo {
             |_| 0,
         );
 
-        // println!("{:?}", topology_lock.neighbors(7));
-        // println!("Avoid nodes {:?}", avoid_nodes);
         path.unwrap().1
     }
 
@@ -412,7 +410,6 @@ impl ClientLeonardo {
         sim_contr_send: Sender<ClientEvent>,
         packet: Packet,
     ) {
-        println!("PACKET: {:?}", packet);
         let next_node = packet.routing_header.hops[packet.routing_header.hop_index];
         let send_channel = &packet_sender.read().unwrap()[&next_node];
 
