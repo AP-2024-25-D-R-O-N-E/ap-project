@@ -306,6 +306,10 @@ fn draw_server_specific(
     state: &mut State,
     simulation_controller: &SimulationController,
 ) {
+    let curr_node_wg_id = get_payload_from_state(state, node_index).unwrap().wg_id;
+    if ui.button("Start flood".to_string()).clicked() {
+        simulation_controller.send_server_start_flood(curr_node_wg_id)
+    }
 }
 
 fn draw_client_specific(
@@ -325,7 +329,7 @@ fn draw_client_specific(
     });
     ui.horizontal(|ui| {
         if ui.button("Start flood".to_string()).clicked() {
-            simulation_controller.send_start_flood(curr_node_wg_id);
+            simulation_controller.send_client_start_flood(curr_node_wg_id);
             // let curr_peer = get_client_node_state(&mut state.node_info_section, node_index).current_peer);
             // match curr_peer {
             //     Some(curr_peer) => simulation_controller.register(curr_peer);
