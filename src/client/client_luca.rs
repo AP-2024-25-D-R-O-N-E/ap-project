@@ -29,13 +29,13 @@ pub struct ClientLuca {
     scr: Receiver<ClientCommand>,
     packet_r: Receiver<Packet>,
     packet_s: Arc<RwLock<HashMap<NodeId, Sender<Packet>>>>,
-    flood_id: u64,
+    flood_id: u64, //current flood index
     topology: Arc<RwLock<GraphMap<NodeId, (), Undirected>>>,
-    fragment_buffer: Arc<RwLock<HashMap<(NodeId, u64), Vec<Fragment>>>>,
-    ack_packet_buffer: Arc<Mutex<HashMap<(u64, u64), Packet>>>,
-    topology_modified: Arc<Mutex<bool>>,
-    edge_nodes: Arc<RwLock<HashSet<NodeId>>>,
-    server_id: NodeId,
+    fragment_buffer: Arc<RwLock<HashMap<(NodeId, u64), Vec<Fragment>>>>, //stores the fragments that need to be assembled
+    ack_packet_buffer: Arc<Mutex<HashMap<(u64, u64), Packet>>>, //stores packets waiting for an ack
+    topology_modified: Arc<Mutex<bool>>, // checks if the topology has been modified
+    edge_nodes: Arc<RwLock<HashSet<NodeId>>>, // edge_nodes can't be used in a route
+    server_id: NodeId, // stores the server_id (it's only one)
 }
 
 impl ClientTrait for ClientLuca {
@@ -61,7 +61,7 @@ impl ClientTrait for ClientLuca {
             ack_packet_buffer: Arc::new(Mutex::new(HashMap::new())),
             topology_modified: Arc::new(Mutex::new(false)),
             edge_nodes: Arc::new(RwLock::new(HashSet::new())),
-            server_id: 0,
+            server_id: 0, //initialized to 0, but we always know its real value thanks to the initial flooding
         }
     }
 
@@ -102,7 +102,6 @@ impl ClientTrait for ClientLuca {
 
 impl Fragmenter for ClientLuca {
     fn assemble(mut fragments: Vec<Fragment>) -> Message {
-        // sort fragments by index before assembling
         fragments.sort_by(|a, b| a.fragment_index.cmp(&b.fragment_index));
 
         let mut message_data: Vec<u8> = Vec::new();

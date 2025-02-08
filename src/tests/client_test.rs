@@ -32,7 +32,7 @@ fn client_test() {
 
     //sleep(Duration::from_secs(4));
 
-    register_client2(&sc);
+    //register_client2(&sc);
 
     sc.client_command_channels[&0].send(ClientCommand::OpenChatWith(7));
 
@@ -45,7 +45,7 @@ fn client_test() {
 }
 
 
-
+/*
 fn register_client2(sc: &SimulationController) {
     let message = Message::new(7, 3, MessageData::RegisterAsClient(7));
 
@@ -110,3 +110,4 @@ fn disassemble(msg: Message) -> std::collections::VecDeque<Fragment> {
     }
     fragments
 }
+*/
