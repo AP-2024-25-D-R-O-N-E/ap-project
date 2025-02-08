@@ -191,7 +191,7 @@ impl Serialize for FragmentRef {
 #[derive(IntoSerializable, Serialize, Debug, Clone)]
 pub enum ClientEventRef {
     PacketSent(PacketRef),
-    PacketDropped(PacketRef),
+    PacketReceived(PacketRef),
     TextMessage {
         from: NodeId,
         to: NodeId,
