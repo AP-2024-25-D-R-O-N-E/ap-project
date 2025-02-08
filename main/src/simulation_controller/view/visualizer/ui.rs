@@ -1,6 +1,6 @@
 use std::time::Instant;
 
-use super::state::events_state;
+use super::state::{events_state, NodeState};
 use crate::simulation_controller::serialization_ref_structs::IntoSerializable;
 use crate::simulation_controller::{
     ClientEvent, SCEvent, SCEventType, ServerEvent, SimulationController,
@@ -107,263 +107,69 @@ impl SCGui {
 
     fn handle_sc_shortcut(&self, event: &SCEvent) {
         if self.state.toolbar_section.handle_shortcuts {
-            if let SCEventType::Drone(DroneEvent::ControllerShortcut(packet)) =
-                &event.event_type
-            {
+            if let SCEventType::Drone(DroneEvent::ControllerShortcut(packet)) = &event.event_type {
                 self.simulation_controller
                     .handle_sc_shortcut(packet.clone());
             }
         }
     }
 
-    fn handle_sc_events(&mut self) {
-        for (node_id, channel) in self.simulation_controller.node_event_channels.iter() {
-            let events: Vec<SCEvent> = channel
-                .try_iter()
-                .map(|e| SCEvent::new(*node_id, e.into()))
-                .collect();
-
-            // println!("{}", events.len());
-            for sc_event in events {
-                self.handle_sc_shortcut(&sc_event);
-                self.state
-                    .events
-                    .add_with_limit(sc_event, MAIN_CONSOLE_SCROLLBACK_LIMIT);
-            }
-        }
-
-        for (node_id, channel) in self.simulation_controller.client_event_channels.iter() {
-            let events: Vec<SCEvent> = channel
-                .try_iter()
-                .map(|e| SCEvent::new(*node_id, e.into()))
-                .collect();
-
-            for sc_event in events {
-                self.handle_sc_shortcut(&sc_event);
-                self.state
-                    .events
-                    .add_with_limit(sc_event, MAIN_CONSOLE_SCROLLBACK_LIMIT);
-            }
-        }
-
-        for (node_id, channel) in self.simulation_controller.server_event_channels.iter() {
-            let events: Vec<SCEvent> = channel
-                .try_iter()
-                .map(|e| SCEvent::new(*node_id, e.into()))
-                .collect();
-
-            for sc_event in events {
-                self.handle_sc_shortcut(&sc_event);
-                self.state
-                    .events
-                    .add_with_limit(sc_event, MAIN_CONSOLE_SCROLLBACK_LIMIT);
+    fn handle_available_peers_update(&mut self, event: &SCEvent) {
+        if let SCEventType::Client(ClientEvent::ResponseClientsReceived(ids)) = &event.event_type {
+            let sender_node_index = self
+                .state
+                .graph_section
+                .node_id_map
+                .get(&event.sender_id)
+                .unwrap();
+            if let NodeState::Client(client_state) = self
+                .state
+                .node_info_section
+                .states
+                .get_mut(&sender_node_index)
+                .unwrap()
+            {
+                client_state.available_peers = ids.to_vec();
             }
         }
     }
 
-    // fn random_node_idx(&self) -> Option<NodeIndex> {
-    //     let nodes_cnt = self.g.node_count();
-    //     if nodes_cnt == 0 {
-    //         return None;
-    //     }
-    //
-    //     let random_n_idx = rand::thread_rng().gen_range(0..nodes_cnt);
-    //     self.g.g.node_indices().nth(random_n_idx)
-    // }
-    //
-    // fn random_edge_idx(&self) -> Option<EdgeIndex> {
-    //     let edges_cnt = self.g.edge_count();
-    //     if edges_cnt == 0 {
-    //         return None;
-    //     }
-    //
-    //     let random_e_idx = rand::thread_rng().gen_range(0..edges_cnt);
-    //     self.g.g.edge_indices().nth(random_e_idx)
-    // }
-    //
-    // fn remove_random_node(&mut self) {
-    //     let idx = self.random_node_idx().unwrap();
-    //     self.remove_node(idx);
-    // }
-    //
-    // fn add_random_node(&mut self) {
-    //     let random_n_idx = self.random_node_idx();
-    //     if random_n_idx.is_none() {
-    //         return;
-    //     }
-    //
-    //     let random_n = self.g.node(random_n_idx.unwrap()).unwrap();
-    //
-    //     // location of new node is in in the closest surrounding of random existing node
-    //     let mut rng = rand::thread_rng();
-    //     let location = Pos2::new(
-    //         random_n.location().x + 10. + rng.gen_range(0. ..50.),
-    //         random_n.location().y + 10. + rng.gen_range(0. ..50.),
-    //     );
-    //
-    //     let g_idx = self.g.add_node_with_location((), location);
-    //
-    //     // let sim_node = egui_graphs::Node::new(());
-    //     let sim_node_loc = fdg::nalgebra::Point2::new(location.x, location.y);
-    //
-    //     // let sim_idx = self.sim.add_node((sim_node, sim_node_loc));
-    //
-    //     // assert_eq!(g_idx, sim_idx);
-    // }
-    //
-    // fn remove_node(&mut self, idx: NodeIndex) {
-    //     self.g.remove_node(idx);
-    //
-    //     // self.sim.remove_node(idx).unwrap();
-    //
-    //     // update edges count
-    //     self.settings_graph.count_edge = self.g.edge_count();
-    // }
-    //
-    // fn add_random_edge(&mut self) {
-    //     let random_start = self.random_node_idx().unwrap();
-    //     let random_end = self.random_node_idx().unwrap();
-    //
-    //     self.add_edge(random_start, random_end);
-    // }
-    //
-    // fn add_edge(&mut self, start: NodeIndex, end: NodeIndex) {
-    //     self.g.add_edge(start, end, ());
-    //
-    //     // self.sim.add_edge(start, end, egui_graphs::Edge::new(()));
-    // }
-    //
-    // fn remove_random_edge(&mut self) {
-    //     let random_e_idx = self.random_edge_idx();
-    //     if random_e_idx.is_none() {
-    //         return;
-    //     }
-    //     let endpoints = self.g.edge_endpoints(random_e_idx.unwrap()).unwrap();
-    //
-    //     self.remove_edge(endpoints.0, endpoints.1);
-    // }
-    //
-    // fn remove_edge(&mut self, start: NodeIndex, end: NodeIndex) {
-    //     let (g_idx, _) = self.g.edges_connecting(start, end).next().unwrap();
-    //     self.g.remove_edge(g_idx);
-    //
-    //     // let sim_idx = self.sim.find_edge(start, end).unwrap();
-    //     // self.sim.remove_edge(sim_idx).unwrap();
-    // }
-    //
-    // fn draw_section_simulation(&mut self, ui: &mut Ui) {
-    //     ui.horizontal_wrapped(|ui| {
-    //         ui.style_mut().spacing.item_spacing = Vec2::new(0., 0.);
-    //         ui.label("Force-Directed Simulation is done with ");
-    //         ui.hyperlink_to("fdg project", "https://github.com/grantshandy/fdg");
-    //     });
-    //
-    //     ui.separator();
-    //
-    //     drawers::draw_start_reset_buttons(
-    //         ui,
-    //         drawers::ValuesConfigButtonsStartReset {
-    //             simulation_stopped: self.simulation_stopped,
-    //         },
-    //         |simulation_stopped: bool, reset_pressed: bool| {
-    //             self.simulation_stopped = simulation_stopped;
-    //             if reset_pressed {
-    //                 self.reset()
-    //             };
-    //         },
-    //     );
-    //
-    //     ui.add_space(10.);
-    //
-    //     drawers::draw_simulation_config_sliders(
-    //         ui,
-    //         drawers::ValuesConfigSlidersSimulation {
-    //             dt: self.settings_simulation.dt,
-    //             cooloff_factor: self.settings_simulation.cooloff_factor,
-    //             scale: self.settings_simulation.scale,
-    //         },
-    //         |delta_dt: f32, delta_cooloff_factor: f32, delta_scale: f32| {
-    //             self.settings_simulation.dt += delta_dt;
-    //             self.settings_simulation.cooloff_factor += delta_cooloff_factor;
-    //             self.settings_simulation.scale += delta_scale;
-    //
-    //             // self.force = init_force(&self.settings_simulation);
-    //         },
-    //     );
-    //
-    //     ui.add_space(10.);
-    //
-    //     drawers::draw_counts_sliders(
-    //         ui,
-    //         drawers::ValuesConfigSlidersGraph {
-    //             node_cnt: self.settings_graph.count_node,
-    //             edge_cnt: self.settings_graph.count_edge,
-    //         },
-    //         |delta_nodes, delta_edges| {
-    //             self.settings_graph.count_node += delta_nodes as usize;
-    //             self.settings_graph.count_edge += delta_edges as usize;
-    //
-    //             if delta_nodes != 0 {
-    //                 if delta_nodes > 0 {
-    //                     (0..delta_nodes).for_each(|_| self.add_random_node());
-    //                 } else {
-    //                     (0..delta_nodes.abs()).for_each(|_| self.remove_random_node());
-    //                 }
-    //             }
-    //
-    //             if delta_edges != 0 {
-    //                 if delta_edges > 0 {
-    //                     (0..delta_edges).for_each(|_| self.add_random_edge());
-    //                 } else {
-    //                     (0..delta_edges.abs()).for_each(|_| self.remove_random_edge());
-    //                 }
-    //             }
-    //         },
-    //     );
-    // }
+    fn handle_sc_events(&mut self) {
+        let mut events = vec![];
+        for (node_id, channel) in self.simulation_controller.node_event_channels.iter() {
+            let curr_events: Vec<SCEvent> = channel
+                .try_iter()
+                .map(|e| SCEvent::new(*node_id, e.into()))
+                .collect();
 
-    // fn update_simulation(&mut self) {
-    //     if self.simulation_stopped {
-    //         return;
-    //     }
-    //
-    //     // self.force.apply(&mut self.sim);
-    // }
+            events.extend_from_slice(&curr_events);
+        }
 
-    //sync locations computed by the simulation with egui_graphs::Graph nodes.
-    // fn sync(&mut self) {
-    //     self.g.g.node_weights_mut().for_each(|node| {
-    //         let sim_computed_point: OPoint<f32, Const<2>> =
-    //             self.sim.node_weight(node.id()).unwrap().1;
-    //         node.set_location(Pos2::new(
-    //             sim_computed_point.coords.x,
-    //             sim_computed_point.coords.y,
-    //         ));
-    //     });
-    // }
+        for (node_id, channel) in self.simulation_controller.client_event_channels.iter() {
+            let curr_events: Vec<SCEvent> = channel
+                .try_iter()
+                .map(|e| SCEvent::new(*node_id, e.into()))
+                .collect();
 
-    // fn reset(&mut self) {
-    //     let settings_graph = settings::SettingsGraph::default();
-    //     let settings_simulation = settings::SettingsSimulation::default();
-    //
-    //     let g = Graph::from(&Self::generate_graph());
-    //
-    //     // let mut force = init_force(&self.settings_simulation);
-    //     // let mut sim = fdg::init_force_graph_uniform(g.g.clone(), 1.0);
-    //     // force.apply(&mut sim);
-    //     // g.g.node_weights_mut().for_each(|node| {
-    //     //     let point: fdg::nalgebra::OPoint<f32, fdg::nalgebra::Const<2>> =
-    //     //         sim.node_weight(node.id()).unwrap().1;
-    //     //     node.set_location(Pos2::new(point.coords.x, point.coords.y));
-    //     // });
-    //
-    //     self.settings_simulation = settings_simulation;
-    //     self.settings_graph = settings_graph;
-    //
-    //     // self.sim = sim;
-    //     self.g = g;
-    //     // self.force = force;
-    // }
+            events.extend_from_slice(&curr_events);
+        }
+
+        for (node_id, channel) in self.simulation_controller.server_event_channels.iter() {
+            let curr_events: Vec<SCEvent> = channel
+                .try_iter()
+                .map(|e| SCEvent::new(*node_id, e.into()))
+                .collect();
+            events.extend_from_slice(&curr_events);
+        }
+
+        for sc_event in events {
+            self.handle_sc_shortcut(&sc_event);
+            self.handle_available_peers_update(&sc_event);
+            self.state
+                .events
+                .add_with_limit(sc_event, MAIN_CONSOLE_SCROLLBACK_LIMIT);
+        }
+    }
 }
 
 impl App for SCGui {

@@ -1,7 +1,7 @@
 use egui_graphs::Graph;
 use std::collections::HashMap;
 
-use crate::simulation_controller::SimulationController;
+use crate::simulation_controller::{node::UiNodeType, SimulationController};
 
 use super::{
     ConsoleSectionState, DebugSectionState, EventsState, GraphSectionState, ModifyTopologyState,
@@ -22,6 +22,14 @@ pub struct State {
 
 impl State {
     pub fn from(sc: &SimulationController) -> State {
+        for node in sc.topology.node_weights() {
+            match &node.node_type {
+                UiNodeType::Server(ui_server_node) => sc.send_server_start_flood(node.wg_id),
+                UiNodeType::Client(ui_client_node) => sc.send_client_start_flood(node.wg_id),
+                UiNodeType::Drone(ui_drone_node) => (),
+            }
+        }
+
         State {
             test_section: TestSectionState::default(),
             debug_section: DebugSectionState::default(),
