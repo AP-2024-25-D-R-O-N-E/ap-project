@@ -2,7 +2,9 @@ use std::time::Instant;
 
 use super::state::events_state;
 use crate::simulation_controller::serialization_ref_structs::IntoSerializable;
-use crate::simulation_controller::{ClientEvent, SCEvent, ServerEvent, SimulationController};
+use crate::simulation_controller::{
+    ClientEvent, SCEvent, SCEventType, ServerEvent, SimulationController,
+};
 
 use super::state::EventsState;
 use eframe::{run_native, App, CreationContext, NativeOptions};
@@ -20,9 +22,9 @@ use syntect::util::as_24_bit_terminal_escaped;
 use wg_2024::controller::DroneEvent;
 
 use super::drawers::{
-    draw_infos_for_selected_nodes, draw_all_events_as_json, draw_modify_topology_section, draw_section_console,
-    draw_section_debug, draw_section_graph, draw_section_settings, draw_section_testing,
-    draw_toolbar_section,
+    draw_all_events_as_json, draw_infos_for_selected_nodes, draw_modify_topology_section,
+    draw_section_console, draw_section_debug, draw_section_graph, draw_section_settings,
+    draw_section_testing, draw_toolbar_section,
 };
 use super::state::State;
 
@@ -103,32 +105,61 @@ impl SCGui {
             });
     }
 
+    fn handle_sc_shortcut(&self, event: &SCEvent) {
+        match &event.event_type {
+            SCEventType::DroneEvent(drone_event) => match &drone_event {
+                DroneEvent::ControllerShortcut(packet) => {
+                    self.simulation_controller
+                        .handle_sc_shortcut(packet.clone());
+                }
+                _ => (),
+            },
+            _ => (),
+        }
+    }
+
     fn handle_sc_events(&mut self) {
         for (node_id, channel) in self.simulation_controller.node_event_channels.iter() {
-            channel.try_iter().for_each(|e| {
-                self.state.events.add_with_limit(
-                    SCEvent::new(*node_id, e.into()),
-                    MAIN_CONSOLE_SCROLLBACK_LIMIT,
-                );
-            })
+            let events: Vec<SCEvent> = channel
+                .try_iter()
+                .map(|e| SCEvent::new(*node_id, e.into()))
+                .collect();
+
+            // println!("{}", events.len());
+            for sc_event in events {
+                self.handle_sc_shortcut(&sc_event);
+                self.state
+                    .events
+                    .add_with_limit(sc_event, MAIN_CONSOLE_SCROLLBACK_LIMIT);
+            }
         }
 
         for (node_id, channel) in self.simulation_controller.client_event_channels.iter() {
-            channel.try_iter().for_each(|e| {
-                self.state.events.add_with_limit(
-                    SCEvent::new(*node_id, e.into()),
-                    MAIN_CONSOLE_SCROLLBACK_LIMIT,
-                );
-            })
+            let events: Vec<SCEvent> = channel
+                .try_iter()
+                .map(|e| SCEvent::new(*node_id, e.into()))
+                .collect();
+
+            for sc_event in events {
+                self.handle_sc_shortcut(&sc_event);
+                self.state
+                    .events
+                    .add_with_limit(sc_event, MAIN_CONSOLE_SCROLLBACK_LIMIT);
+            }
         }
 
         for (node_id, channel) in self.simulation_controller.server_event_channels.iter() {
-            channel.try_iter().for_each(|e| {
-                self.state.events.add_with_limit(
-                    SCEvent::new(*node_id, e.into()),
-                    MAIN_CONSOLE_SCROLLBACK_LIMIT,
-                );
-            })
+            let events: Vec<SCEvent> = channel
+                .try_iter()
+                .map(|e| SCEvent::new(*node_id, e.into()))
+                .collect();
+
+            for sc_event in events {
+                self.handle_sc_shortcut(&sc_event);
+                self.state
+                    .events
+                    .add_with_limit(sc_event, MAIN_CONSOLE_SCROLLBACK_LIMIT);
+            }
         }
     }
 

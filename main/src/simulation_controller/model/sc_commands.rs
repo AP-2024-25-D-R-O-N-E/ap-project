@@ -233,6 +233,7 @@ impl SimulationController {
                     let mut new_packet = packet.clone();
                     new_packet.routing_header.hop_index = new_packet.routing_header.hops.len() - 1;
                     channel.0.send(new_packet);
+                    println!("Sending shortcut to node {}", last_hop);
                     log::info!("Sending shortcut to node {}", last_hop)
                 }
                 None => {
