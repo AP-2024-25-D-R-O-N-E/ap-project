@@ -137,7 +137,7 @@ impl Fragmenter for ClientLuca {
             }
 
             fragments.push_back(Fragment {
-                fragment_index: i as u64,
+                fragment_index: i,
                 total_n_fragments: frag_numbers,
                 length: lenght,
                 data: fragment_data,
@@ -220,7 +220,7 @@ impl ClientLuca {
                         // recalculate route if topology was modified
                         let mut topology_mod_lock = topology_modified.lock().unwrap();
 
-                        let destination = packet.routing_header.hops.last().unwrap().clone();
+                        let destination = *packet.routing_header.hops.last().unwrap();
 
                         if *topology_mod_lock {
                             Self::find_route(id, destination, &mut routing_table, topology.clone(), edge_nodes.clone());
@@ -390,15 +390,10 @@ impl ClientLuca {
 
             let total_frags = fragment.total_n_fragments;
 
-            if fragment_buffer_lock.contains_key(&(packet_source, packet_msg_id)) {
-                let mut frag_buffer = fragment_buffer_lock
-                    .get_mut(&(packet_source, packet_msg_id))
-                    .unwrap();
-
-                frag_buffer.push(fragment);
-
-                // if the buffer is full, assemble the fragments and pass the message to the manage_assemble_msg
-                if frag_buffer.len() == total_frags as usize {
+            if let std::collections::hash_map::Entry::Vacant(e) = fragment_buffer_lock.entry((packet_source, packet_msg_id)) {
+                e.insert(vec![fragment]);
+                // if the total frags is 1, assemble and pass the message to the manage_assemble_msg
+                if total_frags == 1 {
                     let message = Self::assemble(
                         fragment_buffer_lock
                             .get(&(packet_source, packet_msg_id))
@@ -408,9 +403,14 @@ impl ClientLuca {
                     self.manage_assemble_msg(message);
                 }
             } else {
-                fragment_buffer_lock.insert((packet_source, packet_msg_id), vec![fragment]);
-                // if the total frags is 1, assemble and pass the message to the manage_assemble_msg
-                if total_frags == 1 {
+                let mut frag_buffer = fragment_buffer_lock
+                    .get_mut(&(packet_source, packet_msg_id))
+                    .unwrap();
+
+                frag_buffer.push(fragment);
+
+                // if the buffer is full, assemble the fragments and pass the message to the manage_assemble_msg
+                if frag_buffer.len() == total_frags as usize {
                     let message = Self::assemble(
                         fragment_buffer_lock
                             .get(&(packet_source, packet_msg_id))

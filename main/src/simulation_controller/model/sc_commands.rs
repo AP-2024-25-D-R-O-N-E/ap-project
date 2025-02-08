@@ -196,7 +196,7 @@ impl SimulationController {
             // new drone -> neighbors
             drone_packet_senders.insert(
                 *neighbor,
-                self.packet_channels.get(&neighbor).unwrap().0.clone(),
+                self.packet_channels.get(neighbor).unwrap().0.clone(),
             );
 
             self.send_add_sender_command(*neighbor, node_id);
@@ -228,7 +228,7 @@ impl SimulationController {
         }
 
         match packet.routing_header.destination() {
-            Some(last_hop) => match self.packet_channels.get(&last_hop).clone() {
+            Some(last_hop) => match self.packet_channels.get(&last_hop) {
                 Some(channel) => {
                     let mut new_packet = packet.clone();
                     new_packet.routing_header.hop_index = new_packet.routing_header.hops.len() - 1;

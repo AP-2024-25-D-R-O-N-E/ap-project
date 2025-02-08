@@ -175,7 +175,7 @@ impl Fragmenter for ChatServer {
             }
 
             fragments.push_back(Fragment {
-                fragment_index: i as u64,
+                fragment_index: i,
                 total_n_fragments: frag_numbers,
                 length: lenght,
                 data: fragment_data,
@@ -243,7 +243,7 @@ impl ChatServer {
                         // recalculate route if topology was modified
                         let mut topology_modified_lock = topology_modified.lock().unwrap();
 
-                        let destination = packet.routing_header.hops.last().unwrap().clone();
+                        let destination = *packet.routing_header.hops.last().unwrap();
 
                         if *topology_modified_lock {
                             Self::find_route(id, destination, &mut routing_table, topology.clone(), edge_nodes.clone(), pdr_estimation.clone());
@@ -512,7 +512,13 @@ impl ChatServer {
 
             let total_frags = fragment.total_n_fragments;
 
-            if fragment_buffers_lock.contains_key(&(packet_source, packet_msg_id)) {
+            if let std::collections::hash_map::Entry::Vacant(e) = fragment_buffers_lock.entry((packet_source, packet_msg_id)) {
+                e.insert(vec![fragment]);
+                // if the total frags is 1, then we can just send the message to the message handler thread
+                if total_frags == 1 {
+                    ready_send.send((packet_source, packet_msg_id));
+                }
+            } else {
                 let mut frag_buffer = fragment_buffers_lock
                     .get_mut(&(packet_source, packet_msg_id))
                     .unwrap();
@@ -521,12 +527,6 @@ impl ChatServer {
 
                 // if the buffer is full, tell the message handler thread to start assembling the fragments
                 if frag_buffer.len() == total_frags as usize {
-                    ready_send.send((packet_source, packet_msg_id));
-                }
-            } else {
-                fragment_buffers_lock.insert((packet_source, packet_msg_id), vec![fragment]);
-                // if the total frags is 1, then we can just send the message to the message handler thread
-                if total_frags == 1 {
                     ready_send.send((packet_source, packet_msg_id));
                 }
             }
@@ -834,7 +834,7 @@ impl ChatServer {
         // add the message to the history table
         history_table
             .entry(key_tuple)
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(ChatMessage::TextMessage { from, to, text });
 
         Some(message)
@@ -868,7 +868,7 @@ impl ChatServer {
         // add the message to the history table
         history_table
             .entry(key_tuple)
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(ChatMessage::FileMessage {
                 from,
                 to,

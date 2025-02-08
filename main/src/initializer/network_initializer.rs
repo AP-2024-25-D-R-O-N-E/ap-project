@@ -87,7 +87,7 @@ impl NetworkInitializer {
         for drone in self.config.drone.iter() {
             //create unbounded channel for drones
             self.packet_channels
-                .insert(drone.id as u8, unbounded::<Packet>());
+                .insert(drone.id, unbounded::<Packet>());
         }
 
         for client in self.config.client.iter() {
@@ -122,7 +122,7 @@ impl NetworkInitializer {
             let packet_send = drone
                 .connected_node_ids
                 .iter()
-                .map(|id| (*id, self.packet_channels[&id].0.clone()))
+                .map(|id| (*id, self.packet_channels[id].0.clone()))
                 .collect();
 
             // clone the packet receiver channel
@@ -131,7 +131,7 @@ impl NetworkInitializer {
             // since the thread::spawn function will take ownership of the values, we need to copy or clone them to not have problems with the Vec
             let drone_id: NodeId = drone.id;
 
-            let pdr = drone.pdr as f32;
+            let pdr = drone.pdr;
 
             let barrier_clone: Arc<Barrier> = Arc::clone(&drone_barrier);
             self.handles.insert(
@@ -175,7 +175,7 @@ impl NetworkInitializer {
             let packet_send = client
                 .connected_drone_ids
                 .iter()
-                .map(|id| (*id, self.packet_channels[&id].0.clone()))
+                .map(|id| (*id, self.packet_channels[id].0.clone()))
                 .collect();
 
             let packet_recv = self.packet_channels[&client.id].1.clone();
@@ -226,7 +226,7 @@ impl NetworkInitializer {
             let packet_send = server
                 .connected_drone_ids
                 .iter()
-                .map(|id| (*id, self.packet_channels[&id].0.clone()))
+                .map(|id| (*id, self.packet_channels[id].0.clone()))
                 .collect();
 
             let packet_recv = self.packet_channels[&server.id].1.clone();
@@ -346,15 +346,13 @@ impl NetworkInitializer {
         packet_recv: Receiver<Packet>,
         server_id: u8,
     ) -> Box<dyn ServerTrait> {
-        match index {
-            _ => Box::new(ChatServer::new(
-                server_id,
-                command_send,
-                command_receiver,
-                packet_recv,
-                packet_send,
-            )),
-        }
+        Box::new(ChatServer::new(
+            server_id,
+            command_send,
+            command_receiver,
+            packet_recv,
+            packet_send,
+        ))
     }
 
     fn create_client(

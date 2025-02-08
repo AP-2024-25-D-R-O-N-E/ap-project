@@ -29,7 +29,7 @@ impl IntoSerializable for usize {
 impl IntoSerializable for NodeId {
     type Output = NodeId;
     fn into_serializable(&self) -> Self::Output {
-        self.clone()
+        *self
     }
 }
 

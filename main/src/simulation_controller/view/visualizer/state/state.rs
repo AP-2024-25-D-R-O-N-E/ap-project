@@ -41,7 +41,7 @@ impl Default for State {
 
         let mut modify_topology_section = ModifyTopologyState::default();
         let mut max = 0;
-        for (node_id, _) in &graph_section.node_id_map {
+        for node_id in graph_section.node_id_map.keys() {
             if *node_id > max {
                 max = *node_id;
             }

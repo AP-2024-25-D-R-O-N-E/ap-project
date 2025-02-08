@@ -43,7 +43,7 @@ fn disassemble() {
             fragment_index: i,
             total_n_fragments: frag_number,
             length: len,
-            data: data,
+            data,
         });
     }
     println!("{:?}", send_fragments);

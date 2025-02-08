@@ -5,7 +5,7 @@ where
     T: FromStr,
 {
     for c in string.chars() {
-        if !(c.is_digit(10) || c == ',' || c.is_whitespace()) {
+        if !(c.is_ascii_digit() || c == ',' || c.is_whitespace()) {
             return Err("The string contains extraneous characters".to_string());
         }
     }
@@ -14,5 +14,5 @@ where
         .filter_map(|s| s.trim().parse::<T>().ok())
         .collect();
 
-    return Ok(rv);
+    Ok(rv)
 }

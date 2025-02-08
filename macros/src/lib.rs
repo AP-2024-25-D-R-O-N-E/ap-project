@@ -35,7 +35,7 @@ pub fn into_serializable_derive(input: TokenStream) -> TokenStream {
                 };
                 // eprintln!("{}", output.to_string());
 
-                return output.into();
+                output.into()
             }
             _ => panic!("Only named fields are supported"),
         },
@@ -154,8 +154,8 @@ pub fn into_serializable_derive(input: TokenStream) -> TokenStream {
             };
 
             // eprintln!("{}", output);
-            return output.into();
+            output.into()
         }
         _ => panic!("Only structs and enums are supported"),
-    };
+    }
 }

@@ -2,6 +2,7 @@ use crate::simulation_controller::{ClientEvent, SCEvent, SCEventType, ServerEven
 use petgraph::graph::NodeIndex;
 use wg_2024::{controller::DroneEvent, packet::Packet};
 
+#[derive(Default)]
 pub struct EventsState {
     pub events: Vec<SCEvent>,
 }
@@ -36,16 +37,6 @@ impl EventsState {
     }
 }
 
-impl Default for EventsState {
-    fn default() -> Self {
-        EventsState {
-            events: vec![],
-            // drone_events: vec![],
-            // client_events: vec![],
-            // server_events: vec![],
-        }
-    }
-}
 
 #[derive(Clone, Copy)]
 pub struct DisplayOptions {

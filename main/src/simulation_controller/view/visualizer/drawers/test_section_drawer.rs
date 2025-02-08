@@ -78,27 +78,25 @@ pub fn send_msg_fragment_section(
 ) {
     // Routing Path Input
     ui.label("Routing path");
-    if ui
+    ui
         .add_sized(
             ui.available_size(),
             egui::TextEdit::singleline(&mut state.test_section.msg_fragment_routing_path_string)
                 .hint_text("Enter node IDs separated by commas"), // .tooltip_text("The list of node id separated by a comma"),
         )
-        .changed()
-    {}
+        .changed();
 
     ui.end_row();
 
     // Msg data input
     ui.label("Msg data");
-    if ui
+    ui
         .add_sized(
             ui.available_size(),
             egui::TextEdit::singleline(&mut state.test_section.msg_frag_data_string)
                 .hint_text("The msg_fragment payload. Just input a stream of max 128 characters"), // .tooltip_text(),
         )
-        .changed()
-    {}
+        .changed();
     ui.end_row();
 
     // Get from nodes button
@@ -149,22 +147,16 @@ pub fn send_msg_fragment_section(
                 } else {
                     parsed_data_vec.resize(128, 0);
                     let mut parsed_data: [u8; 128] = [0; 128];
-                    match parsed_data_vec.try_into() {
-                        Ok(v) => {
-                            parsed_data = v;
-                            let mut packet = simulation_controller.default_msg_fragment.clone();
-                            packet.routing_header.hops = parsed_path_vec;
-                            match &mut packet.pack_type {
-                                PacketType::MsgFragment(fragment) => {
-                                    fragment.data = parsed_data;
-                                }
-                                _ => (),
-                            }
-                            simulation_controller.send_msg_fragment(packet);
-                            state.test_section.packet_sender_status_flag =
-                                Some(Ok("Msg fragment sent".to_string()))
+                    if let Ok(v) = parsed_data_vec.try_into() {
+                        parsed_data = v;
+                        let mut packet = simulation_controller.default_msg_fragment.clone();
+                        packet.routing_header.hops = parsed_path_vec;
+                        if let PacketType::MsgFragment(fragment) = &mut packet.pack_type {
+                            fragment.data = parsed_data;
                         }
-                        Err(_) => (),
+                        simulation_controller.send_msg_fragment(packet);
+                        state.test_section.packet_sender_status_flag =
+                            Some(Ok("Msg fragment sent".to_string()))
                     }
                 }
             }
@@ -184,14 +176,13 @@ pub fn send_ack_nack_section(
     simulation_controller: &SimulationController,
 ) {
     ui.label("Routing path");
-    if ui
+    ui
         .add_sized(
             ui.available_size(),
             egui::TextEdit::singleline(&mut state.test_section.ack_nack_routing_path_string)
                 .hint_text("Enter node IDs separated by commas"), // .tooltip_text("The list of node id separated by a comma"),
         )
-        .changed()
-    {}
+        .changed();
 
     ui.end_row();
 
@@ -339,13 +330,13 @@ where
     T: FromStr,
 {
     for c in path.chars() {
-        if !(c.is_digit(10) || c == ',' || c.is_whitespace()) {
+        if !(c.is_ascii_digit() || c == ',' || c.is_whitespace()) {
             return Err(Some(Err("The path is malformed".to_string())));
         }
     }
 
     for c in path.chars() {
-        if !(c.is_digit(10) || c == ',' || c.is_whitespace()) {
+        if !(c.is_ascii_digit() || c == ',' || c.is_whitespace()) {
             return Err(Some(Err("The path is malformed".to_string())));
         }
     }
@@ -355,17 +346,14 @@ where
         .split(',')
         .filter_map(|s| {
             let rv = s.trim().parse::<T>().ok();
-            match rv {
-                None => ok = false,
-                _ => (),
-            }
+            if rv.is_none() { ok = false }
 
             rv
         })
         .collect();
     match ok {
         true => Ok(parsed_data_vec),
-        false => return Err(Some(Err("The path is malformed".to_string()))),
+        false => Err(Some(Err("The path is malformed".to_string()))),
     }
 }
 
@@ -374,8 +362,8 @@ fn get_path_between_selected_nodes(state: &mut State) -> Result<String, String> 
         Err("Please select exactly 2 nodes".to_string())
     } else {
         state.test_section.packet_sender_status_flag = None;
-        let start_node = state.graph_section.g.selected_nodes()[0].clone();
-        let end_node = state.graph_section.g.selected_nodes()[1].clone();
+        let start_node = state.graph_section.g.selected_nodes()[0];
+        let end_node = state.graph_section.g.selected_nodes()[1];
         let g = &*state.graph_section.g.g();
 
         let path = algo::astar(g, start_node, |n| n == end_node, |e| 1, |_| 0);
@@ -386,7 +374,7 @@ fn get_path_between_selected_nodes(state: &mut State) -> Result<String, String> 
                     let actual_node_index = state.graph_section.g.node(n).unwrap().payload().wg_id;
                     new_path.push_str(format!("{}, ", actual_node_index).as_str());
                 }
-                if new_path.len() != 0 {
+                if !new_path.is_empty() {
                     new_path.truncate(new_path.len() - 2);
                 }
                 Ok(new_path)

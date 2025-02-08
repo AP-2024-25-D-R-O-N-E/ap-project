@@ -11,6 +11,7 @@ use crate::simulation_controller::{
     util::StatusFlag,
 };
 
+#[derive(Default)]
 pub struct NodeInfoSectionState {
     pub opened_windows: HashSet<NodeIndex>,
     pub states: HashMap<NodeIndex, NodeState>,
@@ -60,6 +61,7 @@ pub struct DroneState {
 }
 
 #[derive(Debug, Clone)]
+#[derive(Default)]
 pub struct ClientState {
     pub available_peers: Vec<NodeId>,
     pub curr_msg: String,
@@ -76,15 +78,6 @@ pub enum NodeState {
     Drone(DroneState),
 }
 
-impl Default for ClientState {
-    fn default() -> Self {
-        Self {
-            available_peers: vec![],
-            curr_msg: String::new(),
-            current_peer: None,
-        }
-    }
-}
 
 impl Default for NodeState {
     fn default() -> Self {
@@ -95,14 +88,6 @@ impl Default for NodeState {
     }
 }
 
-impl Default for NodeInfoSectionState {
-    fn default() -> Self {
-        Self {
-            opened_windows: HashSet::new(),
-            states: HashMap::new(),
-        }
-    }
-}
 
 impl<'a> TryInto<&'a mut DroneState> for &'a mut NodeState {
     type Error = &'static str;

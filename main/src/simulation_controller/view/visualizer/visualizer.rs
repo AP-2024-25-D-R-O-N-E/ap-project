@@ -98,7 +98,7 @@ impl SCGui {
                             self.state.node_info_section.open_window(*node);
                         }
                         self.state.node_info_section.open_window(node_index);
-                        println!("");
+                        println!();
                     }
                     _ => {}
                 }
@@ -107,16 +107,10 @@ impl SCGui {
 
     fn handle_sc_shortcut(&self, event: &SCEvent) {
         if self.state.toolbar_section.handle_shortcuts {
-            match &event.event_type {
-                SCEventType::DroneEvent(drone_event) => match &drone_event {
-                    DroneEvent::ControllerShortcut(packet) => {
-                        self.simulation_controller
-                            .handle_sc_shortcut(packet.clone());
-                    }
-                    _ => (),
-                },
-                _ => (),
-            }
+            if let SCEventType::DroneEvent(drone_event) = &event.event_type { if let DroneEvent::ControllerShortcut(packet) = &drone_event {
+                self.simulation_controller
+                    .handle_sc_shortcut(packet.clone());
+            } }
         }
     }
 

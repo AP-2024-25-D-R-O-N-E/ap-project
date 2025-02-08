@@ -107,22 +107,14 @@ pub fn check_edge_removal(
             crate::simulation_controller::node::UiNodeType::Server(_),
         ) => {
             let neighbors: Vec<NodeIndex> = get_neigbors_with_disabled_edges(&graph.g, node2);
-            if neighbors.len() == 2 {
-                false
-            } else {
-                true
-            }
+            neighbors.len() != 2
         }
         (
             crate::simulation_controller::node::UiNodeType::Server(_),
             crate::simulation_controller::node::UiNodeType::Drone(_),
         ) => {
             let neighbors: Vec<NodeIndex> = get_neigbors_with_disabled_edges(&graph.g, node1);
-            if neighbors.len() == 2 {
-                false
-            } else {
-                true
-            }
+            neighbors.len() != 2
         }
         _ => true,
     } {
@@ -179,7 +171,7 @@ pub fn check_edge_addition(
         .edges_connecting(node1, node2)
         .map(|(edge_index, _)| edge_index)
         .collect();
-    if edges.len() > 0 {
+    if !edges.is_empty() {
         *status_flag = Some(Err(
             "Channel already exists between the two nodes".to_string()
         ));
@@ -293,9 +285,7 @@ pub fn check_drone_addition(
         match node_payload.node_type {
             UiNodeType::Server(ui_server_node) => (),
             UiNodeType::Client(ui_client_node) => {
-                if let Err(err) = check_drone_client(&mut graph_section_state.g, node) {
-                    return Err(err);
-                }
+                check_drone_client(&mut graph_section_state.g, node)?
             }
             UiNodeType::Drone(ui_drone_node) => {
                 if ui_drone_node.crashed {
@@ -464,11 +454,11 @@ where
 {
     let mut queue = VecDeque::new();
     let mut visited = HashSet::new();
-    let first_node;
-    match graph.node_indices().next() {
-        Some(first_node_unwrapped) => first_node = first_node_unwrapped,
+    
+    let first_node = match graph.node_indices().next() {
+        Some(first_node_unwrapped) => first_node_unwrapped,
         None => return true,
-    }
+    };
     queue.push_back(first_node);
 
     while (!queue.is_empty()) {
@@ -519,7 +509,7 @@ where
     let mut visited = HashSet::new();
     let mut first_node = None;
     for node in graph.node_indices() {
-        if !(is_crashed_drone(&graph, node) || excluded_nodes.contains(&node)) {
+        if !(is_crashed_drone(graph, node) || excluded_nodes.contains(&node)) {
             first_node = Some(node);
             break;
         }
@@ -539,7 +529,7 @@ where
         }
 
         for neighbor in graph.neighbors_undirected(curr_node) {
-            if !is_crashed_drone(&graph, neighbor)
+            if !is_crashed_drone(graph, neighbor)
                 && !visited.contains(&neighbor)
                 && !excluded_nodes.contains(&neighbor)
             {
@@ -552,7 +542,7 @@ where
 
     let mut crashed_drones = HashSet::new();
     for node in graph.node_indices() {
-        if is_crashed_drone(&graph, node) {
+        if is_crashed_drone(graph, node) {
             crashed_drones.insert(node);
         }
     }
@@ -600,7 +590,7 @@ pub fn is_well_formed(
     >,
 ) -> Result<String, String> {
     // Connected
-    if !is_connected_without_edge_set(&graph, HashSet::new()) {
+    if !is_connected_without_edge_set(graph, HashSet::new()) {
         return Err("Graph is not connected".to_string());
     }
 
@@ -608,7 +598,7 @@ pub fn is_well_formed(
     // Servers have [2,inf] neighbors
     for node in graph.node_indices() {
         let node_payload = graph.node_weight(node).unwrap().payload();
-        if let Err(error) = match &node_payload.node_type {
+        match &node_payload.node_type {
             UiNodeType::Server(ui_server_node) => {
                 let neighbors: Vec<NodeIndex> = get_neigbors_with_disabled_edges(graph, node);
                 if neighbors.len() < 2 {
@@ -632,9 +622,7 @@ pub fn is_well_formed(
                 }
             }
             UiNodeType::Drone(_) => Ok(()),
-        } {
-            return Err(error);
-        }
+        }?
     }
 
     Ok("Well formed".to_string())

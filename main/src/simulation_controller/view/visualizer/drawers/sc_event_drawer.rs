@@ -104,14 +104,14 @@ impl SCEvent {
                 ServerEvent::PacketSent(packet) => {
                     ui.horizontal(|ui| {
                         ui.label(egui::RichText::new("PacketSent").color(colors::MUTED_GREEN));
-                        display_packet_infos(ui, &packet);
+                        display_packet_infos(ui, packet);
                     })
                     .response
                 }
                 ServerEvent::PacketReceived(packet) => {
                     ui.horizontal(|ui| {
                         ui.label(egui::RichText::new("PacketReceived").color(colors::MUTED_GREEN));
-                        display_packet_infos(ui, &packet);
+                        display_packet_infos(ui, packet);
                     })
                     .response
                 }
@@ -135,7 +135,7 @@ impl SCEvent {
                             ),
                         ),
                     };
-                    display_packet_infos(ui, &packet)
+                    display_packet_infos(ui, packet)
                     // ui.label(egui::RichText::new(pack_type_string).color(Color32::DARK_GRAY));
                 })
                 .response

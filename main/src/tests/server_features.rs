@@ -225,7 +225,7 @@ fn disassemble(msg: Message) -> std::collections::VecDeque<Fragment> {
         }
 
         fragments.push_back(Fragment {
-            fragment_index: i as u64,
+            fragment_index: i,
             total_n_fragments: frag_numbers,
             length: lenght,
             data: fragment_data,

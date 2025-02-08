@@ -248,7 +248,7 @@ impl ClientLeonardo {
                     if let Ok(mut packet) = nack_res {
                         // recalculate route if topology was modified
 
-                        let destination = packet.routing_header.hops.last().unwrap().clone();
+                        let destination = *packet.routing_header.hops.last().unwrap();
 
                         //condv limits the size of ack_buffer by freezing the thread until condition is reached
                         let mut ack_buff = condv.wait_while(ack_packet_buffer.lock().unwrap(), |buff| {
@@ -388,7 +388,7 @@ impl ClientLeonardo {
                 }
                 let avoid_nodes_lock = avoid_nodes.read().unwrap();
                 if avoid_nodes_lock.contains(&a) || avoid_nodes_lock.contains(&b) {
-                    return topology_lock.edge_count();
+                    topology_lock.edge_count()
                 } else {
                     1
                 }
@@ -615,16 +615,16 @@ impl ClientLeonardo {
             let tot = f.total_n_fragments;
 
             //could receive multiple messages at the same time, so the map store different buffers
-            if fragment_buffer_lock.contains_key(&(p_source, id)) {
+            if let std::collections::hash_map::Entry::Vacant(e) = fragment_buffer_lock.entry((p_source, id)) {
+                e.insert(vec![f]);
+                if tot == 1 {
+                    ready.send((p_source, id));
+                }
+            } else {
                 let mut buffer = fragment_buffer_lock.get_mut(&(p_source, id)).unwrap();
                 buffer.push(f);
 
                 if buffer.len() == tot as usize {
-                    ready.send((p_source, id));
-                }
-            } else {
-                fragment_buffer_lock.insert((p_source, id), vec![f]);
-                if tot == 1 {
                     ready.send((p_source, id));
                 }
             }
@@ -826,6 +826,6 @@ impl Fragmenter for ClientLeonardo {
             });
         }
 
-        return send_fragments;
+        send_fragments
     }
 }

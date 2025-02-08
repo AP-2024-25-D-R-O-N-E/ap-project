@@ -47,7 +47,7 @@ pub fn draw_modify_topology_section(
                     ui.end_row();
 
                     ui.label("Neighbors");
-                    if ui
+                    ui
                         .add_sized(
                             ui.available_size(),
                             egui::TextEdit::singleline(
@@ -55,16 +55,12 @@ pub fn draw_modify_topology_section(
                             )
                             .hint_text("Enter node IDs separated by commas"),
                         )
-                        .changed()
-                    {}
+                        .changed();
                     ui.end_row();
 
                     ui.label("Drone vendor");
                     egui::ComboBox::from_label("")
-                        .selected_text(format!(
-                            "{}",
-                            state.modify_topology_section.drone_vendor.to_string()
-                        ))
+                        .selected_text(state.modify_topology_section.drone_vendor.to_string())
                         .show_ui(ui, |ui| {
                             ui.selectable_value(
                                 &mut state.modify_topology_section.drone_vendor,
@@ -114,25 +110,20 @@ pub fn draw_modify_topology_section(
                         });
                 });
 
-            if ui.button("Spawn").clicked() {
-                if can_insert_drone(state) {
-                    insert_drone(state, simulation_controller)
-                }
+            if ui.button("Spawn").clicked() && can_insert_drone(state) {
+                insert_drone(state, simulation_controller)
             }
 
-            match &state.modify_topology_section.status_flag {
-                Some(status) => match status {
-                    Ok(s) => {
-                        ui.label(
-                            RichText::new("Drone spawned with success").color(colors::MUTED_GREEN),
-                        );
-                    }
-                    Err(error) => {
-                        ui.label(RichText::new(error).color(colors::MUTED_RED));
-                    }
-                },
-                None => (),
-            }
+            if let Some(status) = &state.modify_topology_section.status_flag { match status {
+                Ok(s) => {
+                    ui.label(
+                        RichText::new("Drone spawned with success").color(colors::MUTED_GREEN),
+                    );
+                }
+                Err(error) => {
+                    ui.label(RichText::new(error).color(colors::MUTED_RED));
+                }
+            } }
         });
 
     CollapsingHeader::new("Add/remove sender")
@@ -155,17 +146,17 @@ fn can_insert_drone(state: &mut State) -> bool {
                 Ok(_) => {
                     state.modify_topology_section.status_flag =
                         Some(Ok("Drone inserted".to_string()));
-                    return true;
+                    true
                 }
                 Err(status) => {
                     state.modify_topology_section.status_flag = Some(Err(status));
-                    return false;
+                    false
                 }
             }
         }
         Err(error) => {
             state.modify_topology_section.status_flag = Some(Err(error));
-            return false;
+            false
         }
     }
 }
@@ -206,63 +197,56 @@ pub fn add_remove_sender_section(
         }
     };
 
-    if ui.button("Add sender").clicked() {
-        if check_parameters(state) {
-            let node1 = state.graph_section.g.selected_nodes()[0];
-            let node2 = state.graph_section.g.selected_nodes()[1];
+    if ui.button("Add sender").clicked() && check_parameters(state) {
+        let node1 = state.graph_section.g.selected_nodes()[0];
+        let node2 = state.graph_section.g.selected_nodes()[1];
 
-            if check_edge_addition(
+        if check_edge_addition(
+            &mut state.graph_section.g,
+            &mut state.test_section.channel_modifier_status_flag,
+            node1,
+            node2,
+        ) {
+            add_edge_between(
                 &mut state.graph_section.g,
                 &mut state.test_section.channel_modifier_status_flag,
                 node1,
                 node2,
-            ) {
-                add_edge_between(
-                    &mut state.graph_section.g,
-                    &mut state.test_section.channel_modifier_status_flag,
-                    node1,
-                    node2,
-                    simulation_controller,
-                );
-            }
+                simulation_controller,
+            );
         }
     }
 
-    if (ui.button("Remove sender").clicked()) {
-        if check_parameters(state) {
-            let node1 = state.graph_section.g.selected_nodes()[0];
-            let node2 = state.graph_section.g.selected_nodes()[1];
+    if (ui.button("Remove sender").clicked()) && check_parameters(state) {
+        let node1 = state.graph_section.g.selected_nodes()[0];
+        let node2 = state.graph_section.g.selected_nodes()[1];
 
-            if (check_edge_removal(
+        if (check_edge_removal(
+            &mut state.graph_section.g,
+            &mut state.test_section.channel_modifier_status_flag,
+            node1,
+            node2,
+        )) {
+            remove_edges_between(
                 &mut state.graph_section.g,
                 &mut state.test_section.channel_modifier_status_flag,
                 node1,
                 node2,
-            )) {
-                remove_edges_between(
-                    &mut state.graph_section.g,
-                    &mut state.test_section.channel_modifier_status_flag,
-                    node1,
-                    node2,
-                    simulation_controller,
-                );
-            }
+                simulation_controller,
+            );
         }
     }
 
     ui.end_row();
 
-    match &state.test_section.channel_modifier_status_flag {
-        Some(status) => match status {
-            Ok(s) => {
-                ui.label(RichText::new(s).color(colors::MUTED_GREEN));
-            }
-            Err(s) => {
-                ui.label(RichText::new(s).color(colors::MUTED_RED));
-            }
-        },
-        None => (),
-    }
+    if let Some(status) = &state.test_section.channel_modifier_status_flag { match status {
+        Ok(s) => {
+            ui.label(RichText::new(s).color(colors::MUTED_GREEN));
+        }
+        Err(s) => {
+            ui.label(RichText::new(s).color(colors::MUTED_RED));
+        }
+    } }
 }
 // fn spawn_drone(state: &mut State) {
 //

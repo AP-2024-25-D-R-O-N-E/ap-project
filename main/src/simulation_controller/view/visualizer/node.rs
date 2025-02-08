@@ -79,9 +79,9 @@ impl Default for UiDroneNode {
 impl ToString for UiNodePayload {
     fn to_string(&self) -> String {
         match &self.node_type {
-            UiNodeType::Server(_server_node) => format!("Server[]"),
-            UiNodeType::Client(_client_node) => format!("Client[]"),
-            UiNodeType::Drone(_drone_node) => format!("Drone[]"),
+            UiNodeType::Server(_server_node) => "Server[]".to_string(),
+            UiNodeType::Client(_client_node) => "Client[]".to_string(),
+            UiNodeType::Drone(_drone_node) => "Drone[]".to_string(),
         }
     }
 }
@@ -110,7 +110,7 @@ impl From<NodeProps<UiNodePayload>> for CustomNodeShape {
 
         Self {
             label: node_props.label.clone(),
-            loc: node_props.location().clone(),
+            loc: node_props.location(),
             selected: node_props.selected,
             payload: node_props.payload,
 
@@ -275,7 +275,7 @@ impl<E: Clone, Ty: EdgeType, Ix: IndexType> DisplayNode<UiNodePayload, E, Ty, Ix
 
     fn update(&mut self, state: &NodeProps<UiNodePayload>) {
         self.label = state.label.clone();
-        self.loc = state.location().clone();
+        self.loc = state.location();
         self.selected = state.selected;
         self.payload = state.payload.clone();
     }

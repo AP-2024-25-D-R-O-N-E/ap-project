@@ -139,10 +139,10 @@ impl SimulationController {
             let input = io::stdin().read_line(&mut buffer);
             match (input, buffer.trim().parse::<NodeId>()) {
                 (Ok(_), Ok(node_id)) => {
-                    println!("");
+                    println!();
                     action(node_id);
                     sleep(Duration::from_millis(100));
-                    println!("");
+                    println!();
                     break;
                 }
                 _ => println!("{}", "Insert a valid number".italic().yellow()),

@@ -232,7 +232,7 @@ fn draw_drone_specific(
                     &mut state.graph_section.g,
                     status_flag,
                     node_index,
-                    &simulation_controller,
+                    simulation_controller,
                 )
             }
             Err(err) => {
@@ -253,17 +253,14 @@ fn draw_drone_specific(
         });
     }
     ui.end_row();
-    match &get_drone_node_state(&mut state.node_info_section, node_index).crash_status_flag {
-        Some(status) => match status {
-            Ok(s) => {
-                ui.label(RichText::new(s).color(colors::MUTED_GREEN));
-            }
-            Err(s) => {
-                ui.label(RichText::new(s).color(colors::MUTED_RED));
-            }
-        },
-        None => (),
-    };
+    if let Some(status) = &get_drone_node_state(&mut state.node_info_section, node_index).crash_status_flag { match status {
+        Ok(s) => {
+            ui.label(RichText::new(s).color(colors::MUTED_GREEN));
+        }
+        Err(s) => {
+            ui.label(RichText::new(s).color(colors::MUTED_RED));
+        }
+    } };
 
     ui.end_row();
 
