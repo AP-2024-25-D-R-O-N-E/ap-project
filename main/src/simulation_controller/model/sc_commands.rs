@@ -243,4 +243,5 @@ impl SimulationController {
             None => log::error!("Cannot get shortcut destination"),
         }
     }
+
 }
