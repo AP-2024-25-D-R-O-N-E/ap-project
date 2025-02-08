@@ -215,4 +215,31 @@ impl SimulationController {
         );
         barrier.wait();
     }
+
+    pub fn handle_sc_shortcut(&self, packet: Packet) {
+        match &packet.pack_type {
+            PacketType::MsgFragment(fragment) => {
+                log::error!("Techinally, msg fragments cannot be sent throug sc shortcuts")
+            }
+            PacketType::FloodRequest(flood_request) => {
+                log::error!("Techinally, flood requests cannot be sent throug sc shortcuts")
+            }
+            _ => {}
+        }
+
+        match packet.routing_header.destination() {
+            Some(last_hop) => match self.packet_channels.get(&last_hop).clone() {
+                Some(channel) => {
+                    let mut new_packet = packet.clone();
+                    new_packet.routing_header.hop_index = new_packet.routing_header.hops.len() - 1;
+                    channel.0.send(new_packet);
+                    log::info!("Sending shortcut to node {}", last_hop)
+                }
+                None => {
+                    log::error!("Shortcut destination does not exist")
+                }
+            },
+            None => log::error!("Cannot get shortcut destination"),
+        }
+    }
 }
