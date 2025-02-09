@@ -78,25 +78,23 @@ pub fn send_msg_fragment_section(
 ) {
     // Routing Path Input
     ui.label("Routing path");
-    ui
-        .add_sized(
-            ui.available_size(),
-            egui::TextEdit::singleline(&mut state.test_section.msg_fragment_routing_path_string)
-                .hint_text("Enter node IDs separated by commas"), // .tooltip_text("The list of node id separated by a comma"),
-        )
-        .changed();
+    ui.add_sized(
+        ui.available_size(),
+        egui::TextEdit::singleline(&mut state.test_section.msg_fragment_routing_path_string)
+            .hint_text("Enter node IDs separated by commas"), // .tooltip_text("The list of node id separated by a comma"),
+    )
+    .changed();
 
     ui.end_row();
 
     // Msg data input
     ui.label("Msg data");
-    ui
-        .add_sized(
-            ui.available_size(),
-            egui::TextEdit::singleline(&mut state.test_section.msg_frag_data_string)
-                .hint_text("The msg_fragment payload. Just input a stream of max 128 characters"), // .tooltip_text(),
-        )
-        .changed();
+    ui.add_sized(
+        ui.available_size(),
+        egui::TextEdit::singleline(&mut state.test_section.msg_frag_data_string)
+            .hint_text("The msg_fragment payload. Just input a stream of max 128 characters"), // .tooltip_text(),
+    )
+    .changed();
     ui.end_row();
 
     // Get from nodes button
@@ -117,16 +115,16 @@ pub fn send_msg_fragment_section(
             .on_hover_text("Invert the current path")
             .clicked()
         {
-            let mut reversed_path = String::new();
-            for c in state
-                .test_section
-                .msg_fragment_routing_path_string
-                .chars()
-                .rev()
-            {
-                reversed_path.push(c);
+            match parse_data::<u8>(state.test_section.msg_fragment_routing_path_string.clone()) {
+                Ok(parsed_path) => {
+                    let reversed_path: Vec<u8> = parsed_path.into_iter().rev().collect();
+                    let mut rv = format!("{:?}", reversed_path);
+                    rv.truncate(rv.len() - 1);
+                    rv.remove(0);
+                    state.test_section.msg_fragment_routing_path_string = rv;
+                }
+                Err(_) => (),
             }
-            state.test_section.msg_fragment_routing_path_string = reversed_path;
         }
     });
 
@@ -176,13 +174,12 @@ pub fn send_ack_nack_section(
     simulation_controller: &SimulationController,
 ) {
     ui.label("Routing path");
-    ui
-        .add_sized(
-            ui.available_size(),
-            egui::TextEdit::singleline(&mut state.test_section.ack_nack_routing_path_string)
-                .hint_text("Enter node IDs separated by commas"), // .tooltip_text("The list of node id separated by a comma"),
-        )
-        .changed();
+    ui.add_sized(
+        ui.available_size(),
+        egui::TextEdit::singleline(&mut state.test_section.ack_nack_routing_path_string)
+            .hint_text("Enter node IDs separated by commas"), // .tooltip_text("The list of node id separated by a comma"),
+    )
+    .changed();
 
     ui.end_row();
 
@@ -203,12 +200,16 @@ pub fn send_ack_nack_section(
             .on_hover_text("Invert the current path")
             .clicked()
         {
-            state.test_section.ack_nack_routing_path_string = state
-                .test_section
-                .ack_nack_routing_path_string
-                .chars()
-                .rev()
-                .collect();
+            match parse_data::<u8>(state.test_section.ack_nack_routing_path_string.clone()) {
+                Ok(parsed_path) => {
+                    let reversed_path: Vec<u8> = parsed_path.into_iter().rev().collect();
+                    let mut rv = format!("{:?}", reversed_path);
+                    rv.truncate(rv.len() - 1);
+                    rv.remove(0);
+                    state.test_section.ack_nack_routing_path_string = rv;
+                }
+                Err(_) => (),
+            }
         }
     });
 
@@ -346,7 +347,9 @@ where
         .split(',')
         .filter_map(|s| {
             let rv = s.trim().parse::<T>().ok();
-            if rv.is_none() { ok = false }
+            if rv.is_none() {
+                ok = false
+            }
 
             rv
         })

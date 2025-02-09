@@ -463,20 +463,8 @@ fn draw_client_no_grid_specific(
                                         };
 
                                         let align = if *to == curr_peer {
-                                            // ui.with_layout(
-                                            // Layout::right_to_left(egui::Align::Min),
-                                            // |ui| {
-                                            //     ui.selectable_label(false, text);
-                                            // },
-                                            // );
                                             egui::Align::RIGHT
                                         } else {
-                                            // ui.with_layout(
-                                            //     Layout::left_to_right(egui::Align::Min),
-                                            //     |ui| {
-                                            //         ui.selectable_label(false, text);
-                                            //     },
-                                            // );
                                             egui::Align::LEFT
                                         };
 
