@@ -1,4 +1,4 @@
-use egui::{CollapsingHeader, Context, RichText, ScrollArea, Ui, Window};
+use egui::{CollapsingHeader, Context, Layout, RichText, ScrollArea, Ui, Window};
 use egui_extras::{Column, TableBuilder};
 use petgraph::graph::{EdgeIndex, NodeIndex};
 
@@ -53,12 +53,12 @@ pub fn draw_node_info(
     .default_height(100.0)
     .show(ctx, |ui| {
         ScrollArea::vertical().show(ui, |ui| {
-            ui.expand_to_include_rect(ui.available_rect_before_wrap());
-            egui::Grid::new("my_grid")
+            egui::Grid::new("common_grid")
                 .num_columns(2)
                 .spacing([40.0, 4.0])
                 .striped(true)
                 .show(ui, |ui| {
+                    ui.expand_to_include_rect(ui.available_rect_before_wrap());
                     let payload = state.graph_section.g.node(node_index).unwrap().payload();
                     ui.label("Node type".to_string());
                     ui.horizontal(|ui| {
@@ -111,6 +111,17 @@ pub fn draw_node_info(
                         }
                     }
                 });
+
+            if let Some(graph_node) = state.graph_section.g.node_mut(node_index) {
+                let ui_node = graph_node.payload_mut();
+                match &ui_node.node_type {
+                    UiNodeType::Server(ui_server_node) => (),
+                    UiNodeType::Client(ui_client_node) => {
+                        draw_client_no_grid_specific(ui, node_index, state, simulation_controller);
+                    }
+                    UiNodeType::Drone(ui_drone_node) => (),
+                }
+            }
 
             CollapsingHeader::new("Logs")
                 .default_open(true)
@@ -246,18 +257,17 @@ fn draw_drone_specific(
             }
         }
     }
+
     if get_drone_node_from_state(state, node_index).crashed {
         ui.horizontal(|ui| {
             ui.label(egui::RichText::new("Crashed".to_string()).color(util::colors::MUTED_RED));
-            ui.add_sized(ui.available_size(), egui::Label::new("".to_string()));
         });
     } else {
         ui.horizontal(|ui| {
-            ui.label(egui::RichText::new("Running".to_string()).color(util::colors::MUTED_GREEN));
-            ui.add_sized(ui.available_size(), egui::Label::new("".to_string()));
+            ui.label(egui::RichText::new("Crashed".to_string()).color(util::colors::MUTED_RED));
         });
     }
-    ui.end_row();
+
     if let Some(status) =
         &get_drone_node_state(&mut state.node_info_section, node_index).crash_status_flag
     {
@@ -416,7 +426,14 @@ fn draw_client_specific(
         }
     });
     ui.end_row();
+}
 
+fn draw_client_no_grid_specific(
+    ui: &mut Ui,
+    node_index: NodeIndex,
+    state: &mut State,
+    simulation_controller: &SimulationController,
+) {
     CollapsingHeader::new("Chat")
         .default_open(true)
         .show(ui, |ui| {
@@ -425,33 +442,60 @@ fn draw_client_specific(
                 .show(ui, |ui| {
                     let client_state =
                         get_client_node_state(&mut state.node_info_section, node_index);
-                    match client_state.current_peer {
-                        Some(curr_peer) => match client_state.chat_histories.get(&curr_peer) {
-                            Some(history) => {
-                                for message in history {
-                                    let (from, to, text) = match message {
-                                        ChatMessage::TextMessage { from, to, text } => {
-                                            (from, to, text)
-                                        }
-                                        ChatMessage::FileMessage {
-                                            from,
-                                            to,
-                                            file,
-                                            file_name,
-                                        } => (from, to, file_name),
-                                    };
 
-                                    ui.label(format!("From: {} - {} - {}", from, to, text));
+                    egui::Grid::new("common_grid")
+                        .num_columns(1)
+                        .spacing([40.0, 4.0])
+                        .show(ui, |ui| match client_state.current_peer {
+                            Some(curr_peer) => match client_state.chat_histories.get(&curr_peer) {
+                                Some(history) => {
+                                    for message in history {
+                                        let (from, to, text) = match message {
+                                            ChatMessage::TextMessage { from, to, text } => {
+                                                (from, to, text)
+                                            }
+                                            ChatMessage::FileMessage {
+                                                from,
+                                                to,
+                                                file,
+                                                file_name,
+                                            } => (from, to, file_name),
+                                        };
+
+                                        let align = if *to == curr_peer {
+                                            // ui.with_layout(
+                                            // Layout::right_to_left(egui::Align::Min),
+                                            // |ui| {
+                                            //     ui.selectable_label(false, text);
+                                            // },
+                                            // );
+                                            egui::Align::RIGHT
+                                        } else {
+                                            // ui.with_layout(
+                                            //     Layout::left_to_right(egui::Align::Min),
+                                            //     |ui| {
+                                            //         ui.selectable_label(false, text);
+                                            //     },
+                                            // );
+                                            egui::Align::LEFT
+                                        };
+
+                                        ui.with_layout(Layout::top_down_justified(align), |ui| {
+                                            ui.selectable_label(false, text);
+                                            ui.separator();
+                                        });
+
+                                        ui.end_row();
+                                    }
                                 }
-                            }
+                                None => {
+                                    ui.label("No chat history available.");
+                                }
+                            },
                             None => {
-                                ui.label("No chat history available.");
+                                ui.label("No current peer selected.");
                             }
-                        },
-                        None => {
-                            ui.label("No current peer selected.");
-                        }
-                    }
+                        });
                 });
         });
 }

@@ -98,18 +98,5 @@ pub fn draw_toolbar_section(ui: &mut Ui, state: &mut State) {
         ui.add(get_result_flag_widget(
             &state.graph_section.well_formedness_flag,
         ))
-
-        // if ui.button("Spawn").clicked() {
-        //     state.graph_section.g.add_node(UiNodePayload {
-        //         node_type: UiDroneNode::default()
-        //         vendor: todo!(),
-        //         wg_id: todo!(),
-        //     });
-        // let selected_nodes = state.graph_section.g.selected_nodes().to_owned();
-        // for node_index in selected_nodes {
-        //     state.node_info_section.opened_windows.insert(node_index, Default::default() );
-        // }
-        // }
-        //
     });
 }
