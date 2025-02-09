@@ -344,7 +344,7 @@ pub fn add_edge_between(
     graph.add_edge(node1, node2, UiEdgePayload::default());
     *status_flag = Some(Ok("Sender added with success".to_string()));
     let node1_wg_id = graph.node(node1).unwrap().payload().wg_id;
-    let node2_wg_id = graph.node(node1).unwrap().payload().wg_id;
+    let node2_wg_id = graph.node(node2).unwrap().payload().wg_id;
 
     simulation_controller.send_add_sender_command(node1_wg_id, node2_wg_id);
     simulation_controller.send_add_sender_command(node2_wg_id, node1_wg_id);
