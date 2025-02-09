@@ -1,4 +1,4 @@
-use std::fs::File;
+use std::{fs::File, path::PathBuf};
 
 use crossbeam::channel::Sender;
 use wg_2024::{
@@ -7,7 +7,7 @@ use wg_2024::{
     packet::{self, Packet},
 };
 
-use crate::fragmentation::message::ChatMessage;
+use crate::fragmentation::message::{ChatMessage, RawChatMessage};
 
 /// From client to controller
 #[derive(Debug, Clone)]
@@ -24,8 +24,7 @@ pub enum ClientEvent {
     FileMessage {
         from: NodeId,
         to: NodeId,
-        file: Vec<u8>,
-        file_name: String,
+        file_path: PathBuf,
     },
 
     ResponseClientsReceived(Vec<NodeId>),
@@ -53,7 +52,7 @@ pub enum ClientCommand {
     OpenChatWith(NodeId),
     SendTextMessageTo { receiver: NodeId, message: String },
     // the file message is only temporary and will be modified later
-    SendFileMessageTo { receiver: NodeId, file: File },
+    SendFileMessageTo { receiver: NodeId, file_path: PathBuf },
 }
 
 /// From server to controller
@@ -150,7 +149,7 @@ impl SCEventType {
         match self {
             SCEventType::Client(client_event) => match client_event {
                 ClientEvent::PacketSent(packet) => "PacketSent",
-                ClientEvent::PacketReceived(packet) => "PacketDropped",
+                ClientEvent::PacketReceived(packet) => "PacketReceived",
                 ClientEvent::TextMessage { .. } => "TextMessage",
                 ClientEvent::FileMessage { .. } => "FileMessage",
                 ClientEvent::ResponseClientsReceived(..) => "ResponseClientsReceived",

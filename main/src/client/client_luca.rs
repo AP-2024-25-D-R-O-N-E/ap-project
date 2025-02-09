@@ -6,7 +6,7 @@ use petgraph::{
     prelude::{GraphMap, StableGraph},
     Undirected,
 };
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::{collections::{HashMap, HashSet, VecDeque}, path::PathBuf};
 use std::sync::{Arc, Condvar, Mutex, RwLock};
 use std::thread::{self, JoinHandle};
 use wg_2024::{
@@ -17,7 +17,7 @@ use wg_2024::{
 };
 
 use super::ClientTrait;
-use crate::fragmentation::message::{ChatMessage, MessageData};
+use crate::fragmentation::{file_handling::{byte_vec_to_file, file_to_byte_vec, raw_vec_to_chat_vec}, message::{MessageData, RawChatMessage}};
 use crate::{
     fragmentation::{message::Message, Fragmenter},
     simulation_controller::structs::{ClientCommand, ClientEvent},
@@ -167,7 +167,7 @@ impl ClientLuca {
                             ClientCommand::UnregisterAsClient => self.unregister(),
                             ClientCommand::OpenChatWith(id) => self.open_chat_with(id),
                             ClientCommand::SendTextMessageTo {receiver, message} => self.send_text_msg(receiver, message),
-                            ClientCommand::SendFileMessageTo {receiver, file} => todo!(),
+                            ClientCommand::SendFileMessageTo {receiver, file_path } => self.send_file_msg(receiver, file_path),
                             };
                         if let Some(message) = msg{
                             let fragments = Self::disassemble(message);
@@ -438,12 +438,12 @@ impl ClientLuca {
                 to,
                 file,
                 file_name,
+                extension,
             } => {
                 let event = ClientEvent::FileMessage {
                     from,
                     to,
-                    file,
-                    file_name,
+                    file_path: byte_vec_to_file(file_name, extension, file).unwrap(), // check this for errors maybe
                 };
                 self.scs.send(event);
             }
@@ -456,7 +456,7 @@ impl ClientLuca {
                 self.scs.send(event);
             }
             MessageData::ResponseHistory { partner, history } => {
-                let event = ClientEvent::ResponseHistoryReceived { partner, history };
+                let event = ClientEvent::ResponseHistoryReceived { partner, history: raw_vec_to_chat_vec(history) };
                 self.scs.send(event);
             }
             MessageData::UnregisteredSenderError => {
@@ -585,6 +585,7 @@ impl ClientLuca {
     }
 
     fn add_sender(&mut self, id: NodeId, sender: Sender<Packet>) -> Option<Message> {
+        println!("{} {}", " -> added sender ".green(), id);
         self.packet_s.write().unwrap().insert(id, sender);
         None
     }
@@ -645,6 +646,25 @@ impl ClientLuca {
         );
         Some(msg)
     }
+
+    fn send_file_msg(&self, receiver: NodeId, file_path: PathBuf) -> Option<Message> {
+
+        let (file, file_name, extension) = file_to_byte_vec(file_path).unwrap();
+
+        let msg = Message::new(
+            self.id,
+            receiver,
+            MessageData::FileMessage {
+                from: self.id,
+                to: receiver,
+                file,
+                file_name,
+                extension,
+            },
+        );
+        Some(msg)
+    }
+
 }
 
 //Thread: Sender

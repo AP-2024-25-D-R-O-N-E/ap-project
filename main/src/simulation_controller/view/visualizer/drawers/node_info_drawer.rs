@@ -458,9 +458,8 @@ fn draw_client_no_grid_specific(
                                             ChatMessage::FileMessage {
                                                 from,
                                                 to,
-                                                file,
-                                                file_name,
-                                            } => (from, to, file_name),
+                                                file_path,
+                                            } => (from, to, &file_path.to_string_lossy().to_string()),
                                         };
 
                                         let align = if *to == curr_peer {

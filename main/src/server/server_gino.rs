@@ -1,8 +1,5 @@
 use std::{
-    cell::RefCell,
-    collections::{HashMap, HashSet, VecDeque},
-    sync::{Arc, Condvar, Mutex, RwLock},
-    thread::{self, JoinHandle},
+    cell::RefCell, collections::{HashMap, HashSet, VecDeque}, ffi::OsString, sync::{Arc, Condvar, Mutex, RwLock}, thread::{self, JoinHandle}
 };
 
 use bincode::de::read;
@@ -28,7 +25,7 @@ use crate::{
     client,
     fragmentation::{
         self,
-        message::{self, ChatMessage, Message, MessageData},
+        message::{self, RawChatMessage, Message, MessageData},
         Fragmenter,
     },
     simulation_controller::structs::{ServerCommand, ServerEvent},
@@ -312,7 +309,7 @@ impl ChatServer {
     ) {
         let mut client_table: HashSet<NodeId> = HashSet::new();
         // history has the nodes ordered in ascending order, i.e. the first NodeId is lower than the second
-        let mut history_table: HashMap<(NodeId, NodeId), Vec<ChatMessage>> = HashMap::new();
+        let mut history_table: HashMap<(NodeId, NodeId), Vec<RawChatMessage>> = HashMap::new();
         // stores the latest session id
         let mut session_id = 1;
 
@@ -359,13 +356,14 @@ impl ChatServer {
                         to,
                         file,
                         file_name,
+                        extension,
                     } => {
                         if !client_table.contains(&to) {
                             Self::error_msg(id, from, MessageData::UnregisteredRecipientError)
                         } else if !client_table.contains(&from) {
                             Self::error_msg(id, from, MessageData::UnregisteredSenderError)
                         } else {
-                            Self::file_message(from, to, file, file_name, id, &mut history_table)
+                            Self::file_message(from, to, file, file_name, extension, id, &mut history_table)
                         }
                     }
                     MessageData::ResponseClients(items) => {
@@ -791,7 +789,7 @@ impl ChatServer {
         requester: NodeId,
         partner: NodeId,
         id: NodeId,
-        history_table: &HashMap<(NodeId, NodeId), Vec<ChatMessage>>,
+        history_table: &HashMap<(NodeId, NodeId), Vec<RawChatMessage>>,
     ) -> Option<Message> {
         // order the nodes in ascending order to keep the history consistent
         let mut key_tuple: (NodeId, NodeId) = (requester, partner);
@@ -813,7 +811,7 @@ impl ChatServer {
         to: NodeId,
         text: String,
         id: NodeId,
-        history_table: &mut HashMap<(NodeId, NodeId), Vec<ChatMessage>>,
+        history_table: &mut HashMap<(NodeId, NodeId), Vec<RawChatMessage>>,
     ) -> Option<Message> {
         let message = Message::new(
             id,
@@ -835,7 +833,7 @@ impl ChatServer {
         history_table
             .entry(key_tuple)
             .or_default()
-            .push(ChatMessage::TextMessage { from, to, text });
+            .push(RawChatMessage::TextMessage { from, to, text });
 
         Some(message)
     }
@@ -844,9 +842,10 @@ impl ChatServer {
         from: NodeId,
         to: NodeId,
         file: Vec<u8>,
-        file_name: String,
+        file_name: OsString,
+        extension: OsString,
         id: NodeId,
-        history_table: &mut HashMap<(NodeId, NodeId), Vec<ChatMessage>>,
+        history_table: &mut HashMap<(NodeId, NodeId), Vec<RawChatMessage>>,
     ) -> Option<Message> {
         let message = Message::new(
             id,
@@ -856,6 +855,7 @@ impl ChatServer {
                 to,
                 file: file.clone(),
                 file_name: file_name.clone(),
+                extension: extension.clone(),
             },
         );
 
@@ -869,11 +869,12 @@ impl ChatServer {
         history_table
             .entry(key_tuple)
             .or_default()
-            .push(ChatMessage::FileMessage {
+            .push(RawChatMessage::FileMessage {
                 from,
                 to,
                 file,
                 file_name,
+                extension,
             });
 
         Some(message)

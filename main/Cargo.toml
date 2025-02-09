@@ -18,7 +18,8 @@ eframe = "0.29"
 serde_json = "1.0"
 petgraph = "0.6"
 rand = "0.8"
-syntect = "5.2"       
+syntect = "5.2"    
+tempfile = "3"   
 d-r-o-n-e_drone = { git = "https://github.com/AP-2024-25-D-R-O-N-E/drone.git"}
 lockheedrustin-drone = { git = "https://github.com/Lockheed-Rustin/drone.git" }
 ap2024_unitn_cppenjoyers_drone = { git = "https://github.com/Cpp-enjoyers/drone.git" }

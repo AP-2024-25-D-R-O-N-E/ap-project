@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use crossbeam::channel::Sender;
 use macros::IntoSerializable;
 
@@ -51,6 +53,13 @@ impl<const N: usize> IntoSerializable for [u8; N] {
     type Output = [u8; N];
     fn into_serializable(&self) -> Self::Output {
         *self
+    }
+}
+
+impl IntoSerializable for PathBuf {
+    type Output = PathBuf;
+    fn into_serializable(&self) -> Self::Output {
+        self.clone()
     }
 }
 
@@ -202,8 +211,7 @@ pub enum ClientEventRef {
     FileMessage {
         from: NodeId,
         to: NodeId,
-        file: Vec<u8>,
-        file_name: String,
+        file_path: PathBuf,
     },
 
     ResponseClientsReceived(Vec<NodeId>),
@@ -227,8 +235,7 @@ pub enum ChatMessageRef {
     FileMessage {
         from: NodeId,
         to: NodeId,
-        file: Vec<u8>,
-        file_name: String,
+        file_path: PathBuf,
     },
 }
 

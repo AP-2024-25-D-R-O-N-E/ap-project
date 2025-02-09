@@ -58,12 +58,11 @@ impl SCEvent {
                 ClientEvent::FileMessage {
                     from,
                     to,
-                    file,
-                    file_name,
+                    file_path,
                 } => ui.label(
                     egui::RichText::new(format!(
-                        "Recieved file message from {}\nFile name: {}",
-                        from, file_name
+                        "Recieved file message from {}\nFile path: {:?}",
+                        from, file_path
                     ))
                     .color(colors::METALLIC_BLUE),
                 ),

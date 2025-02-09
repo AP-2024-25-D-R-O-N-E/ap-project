@@ -1,4 +1,4 @@
-use std::mem;
+use std::{ffi::OsString, mem, path::PathBuf};
 
 use serde::{Deserialize, Serialize};
 use wg_2024::network::NodeId;
@@ -41,7 +41,8 @@ pub enum MessageData {
         from: NodeId,
         to: NodeId,
         file: Vec<u8>,
-        file_name: String,
+        file_name: OsString,
+        extension: OsString,
     }, //filename or file extension?
 
     // from server to client
@@ -49,7 +50,7 @@ pub enum MessageData {
     AcknolewdgedAsClient,
     ResponseHistory {
         partner: NodeId,
-        history: Vec<ChatMessage>,
+        history: Vec<RawChatMessage>,
     },
     UnregisteredSenderError,
     UnregisteredRecipientError,
@@ -57,6 +58,24 @@ pub enum MessageData {
     UnsupportedMessageTypeError, // for example when a client sends response clients to the server
 }
 
+// raw one is sent by the server to the client
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+pub enum RawChatMessage {
+    TextMessage {
+        from: NodeId,
+        to: NodeId,
+        text: String,
+    },
+    FileMessage {
+        from: NodeId,
+        to: NodeId,
+        file: Vec<u8>,
+        file_name: OsString,
+        extension: OsString,
+    }, //file data, file name
+}
+
+// this one is sent by the client to the simulation controller
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum ChatMessage {
     TextMessage {
@@ -67,9 +86,8 @@ pub enum ChatMessage {
     FileMessage {
         from: NodeId,
         to: NodeId,
-        file: Vec<u8>,
-        file_name: String,
-    }, //file data, file name
+        file_path: PathBuf
+    },
 }
 
 impl Message {
@@ -81,3 +99,4 @@ impl Message {
         bincode::deserialize(&v).unwrap()
     }
 }
+

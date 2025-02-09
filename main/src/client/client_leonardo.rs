@@ -1,8 +1,5 @@
 use std::{
-    cell::RefCell,
-    collections::{HashMap, HashSet, VecDeque},
-    sync::{Arc, Condvar, Mutex, RwLock},
-    thread::{self, JoinHandle},
+    cell::RefCell, collections::{HashMap, HashSet, VecDeque}, ffi::OsString, path::PathBuf, sync::{Arc, Condvar, Mutex, RwLock}, thread::{self, JoinHandle}
 };
 
 use bincode::de::read;
@@ -31,9 +28,7 @@ use wg_2024::{
 use crate::{
     client,
     fragmentation::{
-        self,
-        message::{self, ChatMessage, Message, MessageData},
-        Fragmenter,
+        self, file_handling::{byte_vec_to_file, file_to_byte_vec, raw_vec_to_chat_vec}, message::{self, Message, MessageData, RawChatMessage}, Fragmenter
     },
     simulation_controller::structs::{ClientCommand, ClientEvent},
 };
@@ -60,9 +55,6 @@ pub struct ClientLeonardo {
     ack_buffer: Arc<Mutex<HashMap<(u64, u64), Packet>>>,
     topology_modified: Arc<Mutex<bool>>,
     edge_nodes: Arc<RwLock<HashSet<NodeId>>>,
-
-    //chat history with other clients
-    history: HashMap<NodeId, Vec<ChatMessage>>,
 }
 
 impl ClientTrait for ClientLeonardo {
@@ -89,7 +81,6 @@ impl ClientTrait for ClientLeonardo {
             ack_buffer: Arc::new(Mutex::new(HashMap::new())),
             topology_modified: Arc::new(Mutex::new(false)),
             edge_nodes: Arc::new(RwLock::new(HashSet::new())),
-            history: HashMap::new(),
         }
     }
 
@@ -189,14 +180,13 @@ impl ClientLeonardo {
                                 self.unregister_as_client(thread_sender.clone());
                             },
                             ClientCommand::OpenChatWith(partner) => {
-                                let history = self.history.get(&partner).cloned().unwrap_or_default();
-                                self.get_response_history(partner, history, thread_sender.clone());
+                                self.get_response_history(partner, thread_sender.clone());
                             },
                             ClientCommand::SendTextMessageTo{receiver, message} => {
                                 self.send_text_message_to(receiver, message, thread_sender.clone());
                             },
-                            ClientCommand::SendFileMessageTo{receiver, file} => {
-                                todo!();
+                            ClientCommand::SendFileMessageTo{receiver, file_path } => {
+                                self.send_file_message_to(receiver, file_path, thread_sender.clone());
                             },
                         }
                     }
@@ -222,7 +212,6 @@ impl ClientLeonardo {
                             PacketType::MsgFragment(_) => {
                                 self.manage_msg_fragment(p, ready.clone());
                             },
-                            _ => {}
                         }
                     }
                 }
@@ -359,6 +348,9 @@ impl ClientLeonardo {
                             },
                             MessageData::TextMessage{from, to, text} => {
                                 Self::text_message_received(from, to, text, sim_send.clone());
+                            },
+                            MessageData::FileMessage { from, to, file, file_name, extension } => {
+                                Self::file_message_received(from, to, file, file_name, extension, sim_send.clone());
                             },
                             _ => {}
 
@@ -667,8 +659,8 @@ impl ClientLeonardo {
         sim_send.send(ClientEvent::AcknolewdgedAsClient);
     }
 
-    fn response_history(partner: NodeId, history: Vec<ChatMessage>, sim_send: Sender<ClientEvent>) {
-        sim_send.send(ClientEvent::ResponseHistoryReceived { partner, history });
+    fn response_history(partner: NodeId, history: Vec<RawChatMessage>, sim_send: Sender<ClientEvent>) {
+        sim_send.send(ClientEvent::ResponseHistoryReceived { partner, history: raw_vec_to_chat_vec(history) });
     }
 
     fn unregistered_sender_error(sim_send: Sender<ClientEvent>) {
@@ -691,6 +683,18 @@ impl ClientLeonardo {
     ) {
         sim_send.send(ClientEvent::TextMessage { from, to, text });
     }
+
+    fn file_message_received(
+        from: NodeId,
+        to: NodeId,
+        file: Vec<u8>,
+        file_name: OsString,
+        extension: OsString,
+        sim_send: Sender<ClientEvent>,
+    ) {
+        sim_send.send(ClientEvent::FileMessage { from, to, file_path: byte_vec_to_file(file_name, extension, file).unwrap() });
+    }
+
     //commands from simulation controller
 
     fn initiate_flood(&mut self) {
@@ -721,6 +725,7 @@ impl ClientLeonardo {
     }
 
     fn add_sender(&mut self, id: NodeId, sender: Sender<Packet>) {
+        println!("{} {}", " -> added sender ".green(), id);
         self.packet_send.write().unwrap().insert(id, sender);
     }
 
@@ -758,16 +763,12 @@ impl ClientLeonardo {
     fn get_response_history(
         &self,
         partner: NodeId,
-        history: Vec<ChatMessage>,
         sender: Sender<Message>,
     ) {
         let m = Message::new(
             self.id,
             partner,
-            MessageData::ResponseHistory {
-                partner: self.id,
-                history,
-            },
+            MessageData::RequestHistory { requester: self.id, partner: partner },
         );
         sender.send(m);
     }
@@ -784,6 +785,25 @@ impl ClientLeonardo {
         );
         sender.send(m);
     }
+
+    fn send_file_message_to(&self, receiver: NodeId, file_path: PathBuf, sender: Sender<Message>) {
+
+        let (file, file_name, extension) = file_to_byte_vec(file_path).unwrap();
+
+        let m = Message::new(
+            self.id,
+            receiver,
+            MessageData::FileMessage {
+                from: self.id,
+                to: receiver,
+                file,
+                file_name,
+                extension,
+            },
+        );
+        sender.send(m);
+    }
+
 }
 
 impl Fragmenter for ClientLeonardo {
