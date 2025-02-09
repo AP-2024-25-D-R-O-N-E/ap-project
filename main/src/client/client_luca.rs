@@ -6,9 +6,12 @@ use petgraph::{
     prelude::{GraphMap, StableGraph},
     Undirected,
 };
-use std::{collections::{HashMap, HashSet, VecDeque}, path::PathBuf};
 use std::sync::{Arc, Condvar, Mutex, RwLock};
 use std::thread::{self, JoinHandle};
+use std::{
+    collections::{HashMap, HashSet, VecDeque},
+    path::PathBuf,
+};
 use wg_2024::{
     network::{NodeId, SourceRoutingHeader},
     packet::{
@@ -17,7 +20,10 @@ use wg_2024::{
 };
 
 use super::ClientTrait;
-use crate::fragmentation::{file_handling::{byte_vec_to_file, file_to_byte_vec, raw_vec_to_chat_vec}, message::{MessageData, RawChatMessage}};
+use crate::fragmentation::{
+    file_handling::{byte_vec_to_file, file_to_byte_vec, raw_vec_to_chat_vec},
+    message::{MessageData, RawChatMessage},
+};
 use crate::{
     fragmentation::{message::Message, Fragmenter},
     simulation_controller::structs::{ClientCommand, ClientEvent},
@@ -390,7 +396,9 @@ impl ClientLuca {
 
             let total_frags = fragment.total_n_fragments;
 
-            if let std::collections::hash_map::Entry::Vacant(e) = fragment_buffer_lock.entry((packet_source, packet_msg_id)) {
+            if let std::collections::hash_map::Entry::Vacant(e) =
+                fragment_buffer_lock.entry((packet_source, packet_msg_id))
+            {
                 e.insert(vec![fragment]);
                 // if the total frags is 1, assemble and pass the message to the manage_assemble_msg
                 if total_frags == 1 {
@@ -456,7 +464,10 @@ impl ClientLuca {
                 self.scs.send(event);
             }
             MessageData::ResponseHistory { partner, history } => {
-                let event = ClientEvent::ResponseHistoryReceived { partner, history: raw_vec_to_chat_vec(history) };
+                let event = ClientEvent::ResponseHistoryReceived {
+                    partner,
+                    history: raw_vec_to_chat_vec(history),
+                };
                 self.scs.send(event);
             }
             MessageData::UnregisteredSenderError => {
@@ -648,7 +659,6 @@ impl ClientLuca {
     }
 
     fn send_file_msg(&self, receiver: NodeId, file_path: PathBuf) -> Option<Message> {
-
         let (file, file_name, extension) = file_to_byte_vec(file_path).unwrap();
 
         let msg = Message::new(
@@ -664,7 +674,6 @@ impl ClientLuca {
         );
         Some(msg)
     }
-
 }
 
 //Thread: Sender

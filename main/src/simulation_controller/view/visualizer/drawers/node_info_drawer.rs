@@ -1,4 +1,5 @@
-use egui::{CollapsingHeader, Context, Layout, RichText, ScrollArea, Ui, Window};
+use colored::Colorize;
+use egui::{CollapsingHeader, Context, Layout, RichText, ScrollArea, TextEdit, Ui, Window};
 use egui_extras::{Column, TableBuilder};
 use petgraph::graph::{EdgeIndex, NodeIndex};
 
@@ -362,12 +363,17 @@ fn draw_client_specific(
     ));
 
     ui.end_row();
-    ui.text_edit_singleline(
+
+    let mut text_box = TextEdit::singleline(
         &mut get_client_node_state(&mut state.node_info_section, node_index).curr_msg,
     );
 
+    let re = ui.add(text_box);
+
     ui.horizontal(|ui| {
-        if ui.button("Send to".to_string()).clicked() {
+        if ui.button("Send to".to_string()).clicked()
+            || (re.lost_focus() && re.ctx.input(|i| i.key_pressed(egui::Key::Enter)))
+        {
             let state = get_client_node_state(&mut state.node_info_section, node_index);
 
             if let Some(curr_peer) = state.current_peer {
@@ -376,6 +382,19 @@ fn draw_client_specific(
                     curr_peer,
                     state.curr_msg.clone(),
                 );
+                if curr_node_wg_id != curr_peer {
+                    state
+                        .chat_histories
+                        .entry(curr_peer)
+                        .or_insert(vec![])
+                        .push(ChatMessage::TextMessage {
+                            from: curr_node_wg_id,
+                            to: curr_peer,
+                            text: state.curr_msg.clone(),
+                        });
+                }
+                ui.memory_mut(|mem| mem.request_focus(re.id));
+                state.curr_msg.clear();
             } else {
                 println!("No peer selected");
             }
@@ -459,7 +478,9 @@ fn draw_client_no_grid_specific(
                                                 from,
                                                 to,
                                                 file_path,
-                                            } => (from, to, &file_path.to_string_lossy().to_string()),
+                                            } => {
+                                                (from, to, &file_path.to_string_lossy().to_string())
+                                            }
                                         };
 
                                         let align = if *to == curr_peer {

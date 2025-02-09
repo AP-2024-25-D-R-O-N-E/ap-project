@@ -1,5 +1,10 @@
 use std::{
-    cell::RefCell, collections::{HashMap, HashSet, VecDeque}, ffi::OsString, path::PathBuf, sync::{Arc, Condvar, Mutex, RwLock}, thread::{self, JoinHandle}
+    cell::RefCell,
+    collections::{HashMap, HashSet, VecDeque},
+    ffi::OsString,
+    path::PathBuf,
+    sync::{Arc, Condvar, Mutex, RwLock},
+    thread::{self, JoinHandle},
 };
 
 use bincode::de::read;
@@ -28,7 +33,10 @@ use wg_2024::{
 use crate::{
     client,
     fragmentation::{
-        self, file_handling::{byte_vec_to_file, file_to_byte_vec, raw_vec_to_chat_vec}, message::{self, Message, MessageData, RawChatMessage}, Fragmenter
+        self,
+        file_handling::{byte_vec_to_file, file_to_byte_vec, raw_vec_to_chat_vec},
+        message::{self, Message, MessageData, RawChatMessage},
+        Fragmenter,
     },
     simulation_controller::structs::{ClientCommand, ClientEvent},
 };
@@ -610,7 +618,9 @@ impl ClientLeonardo {
             let tot = f.total_n_fragments;
 
             //could receive multiple messages at the same time, so the map store different buffers
-            if let std::collections::hash_map::Entry::Vacant(e) = fragment_buffer_lock.entry((p_source, id)) {
+            if let std::collections::hash_map::Entry::Vacant(e) =
+                fragment_buffer_lock.entry((p_source, id))
+            {
                 e.insert(vec![f]);
                 if tot == 1 {
                     ready.send((p_source, id));
@@ -659,8 +669,15 @@ impl ClientLeonardo {
         sim_send.send(ClientEvent::AcknolewdgedAsClient);
     }
 
-    fn response_history(partner: NodeId, history: Vec<RawChatMessage>, sim_send: Sender<ClientEvent>) {
-        sim_send.send(ClientEvent::ResponseHistoryReceived { partner, history: raw_vec_to_chat_vec(history) });
+    fn response_history(
+        partner: NodeId,
+        history: Vec<RawChatMessage>,
+        sim_send: Sender<ClientEvent>,
+    ) {
+        sim_send.send(ClientEvent::ResponseHistoryReceived {
+            partner,
+            history: raw_vec_to_chat_vec(history),
+        });
     }
 
     fn unregistered_sender_error(sim_send: Sender<ClientEvent>) {
@@ -692,7 +709,11 @@ impl ClientLeonardo {
         extension: OsString,
         sim_send: Sender<ClientEvent>,
     ) {
-        sim_send.send(ClientEvent::FileMessage { from, to, file_path: byte_vec_to_file(file_name, extension, file).unwrap() });
+        sim_send.send(ClientEvent::FileMessage {
+            from,
+            to,
+            file_path: byte_vec_to_file(file_name, extension, file).unwrap(),
+        });
     }
 
     //commands from simulation controller
@@ -760,15 +781,14 @@ impl ClientLeonardo {
         sender.send(m);
     }
 
-    fn get_response_history(
-        &self,
-        partner: NodeId,
-        sender: Sender<Message>,
-    ) {
+    fn get_response_history(&self, partner: NodeId, sender: Sender<Message>) {
         let m = Message::new(
             self.id,
             partner,
-            MessageData::RequestHistory { requester: self.id, partner: partner },
+            MessageData::RequestHistory {
+                requester: self.id,
+                partner: partner,
+            },
         );
         sender.send(m);
     }
@@ -787,7 +807,6 @@ impl ClientLeonardo {
     }
 
     fn send_file_message_to(&self, receiver: NodeId, file_path: PathBuf, sender: Sender<Message>) {
-
         let (file, file_name, extension) = file_to_byte_vec(file_path).unwrap();
 
         let m = Message::new(
@@ -803,7 +822,6 @@ impl ClientLeonardo {
         );
         sender.send(m);
     }
-
 }
 
 impl Fragmenter for ClientLeonardo {

@@ -1,7 +1,7 @@
 pub mod console_section_drawer;
 pub mod debug_section_drawer;
-pub mod graph_section_drawer;
 pub mod events_json_section_drawer;
+pub mod graph_section_drawer;
 pub mod modify_topology_drawer;
 pub mod node_info_drawer;
 pub mod sc_event_drawer;

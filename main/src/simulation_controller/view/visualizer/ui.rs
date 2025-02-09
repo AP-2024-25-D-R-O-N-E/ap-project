@@ -1,6 +1,8 @@
 use std::time::Instant;
+use std::vec;
 
 use super::state::{events_state, NodeState};
+use crate::fragmentation::message::ChatMessage;
 use crate::simulation_controller::serialization_ref_structs::IntoSerializable;
 use crate::simulation_controller::{
     ClientEvent, SCEvent, SCEventType, ServerEvent, SimulationController,
@@ -130,6 +132,9 @@ impl SCGui {
                 .unwrap()
             {
                 client_state.available_peers = ids.to_vec();
+                for peers in &client_state.available_peers {
+                    client_state.chat_histories.insert(*peers, vec![]);
+                }
             }
         }
     }
@@ -156,6 +161,33 @@ impl SCGui {
                 client_state
                     .chat_histories
                     .insert(*partner, history.to_vec());
+            }
+        } else if let SCEventType::Client(ClientEvent::TextMessage { from, to, text }) =
+            &event.event_type
+        {
+            let sender_node_index = self
+                .state
+                .graph_section
+                .node_id_map
+                .get(&event.sender_id)
+                .unwrap();
+
+            if let NodeState::Client(client_state) = self
+                .state
+                .node_info_section
+                .states
+                .get_mut(&sender_node_index)
+                .unwrap()
+            {
+                let chat_msg = ChatMessage::TextMessage {
+                    from: *from,
+                    to: *to,
+                    text: text.to_string(),
+                };
+
+                if let Some(chat_history) = client_state.chat_histories.get_mut(from) {
+                    chat_history.push(chat_msg.clone());
+                }
             }
         }
     }

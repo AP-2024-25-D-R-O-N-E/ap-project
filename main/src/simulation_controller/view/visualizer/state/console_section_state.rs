@@ -5,4 +5,3 @@ pub struct ConsoleSectionState {
     pub hovered_row: Option<usize>,
     pub selected_rows: HashSet<usize>,
 }
-

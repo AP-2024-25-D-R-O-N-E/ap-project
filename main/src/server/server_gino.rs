@@ -1,5 +1,9 @@
 use std::{
-    cell::RefCell, collections::{HashMap, HashSet, VecDeque}, ffi::OsString, sync::{Arc, Condvar, Mutex, RwLock}, thread::{self, JoinHandle}
+    cell::RefCell,
+    collections::{HashMap, HashSet, VecDeque},
+    ffi::OsString,
+    sync::{Arc, Condvar, Mutex, RwLock},
+    thread::{self, JoinHandle},
 };
 
 use bincode::de::read;
@@ -25,7 +29,7 @@ use crate::{
     client,
     fragmentation::{
         self,
-        message::{self, RawChatMessage, Message, MessageData},
+        message::{self, Message, MessageData, RawChatMessage},
         Fragmenter,
     },
     simulation_controller::structs::{ServerCommand, ServerEvent},
@@ -363,7 +367,15 @@ impl ChatServer {
                         } else if !client_table.contains(&from) {
                             Self::error_msg(id, from, MessageData::UnregisteredSenderError)
                         } else {
-                            Self::file_message(from, to, file, file_name, extension, id, &mut history_table)
+                            Self::file_message(
+                                from,
+                                to,
+                                file,
+                                file_name,
+                                extension,
+                                id,
+                                &mut history_table,
+                            )
                         }
                     }
                     MessageData::ResponseClients(items) => {
@@ -510,7 +522,9 @@ impl ChatServer {
 
             let total_frags = fragment.total_n_fragments;
 
-            if let std::collections::hash_map::Entry::Vacant(e) = fragment_buffers_lock.entry((packet_source, packet_msg_id)) {
+            if let std::collections::hash_map::Entry::Vacant(e) =
+                fragment_buffers_lock.entry((packet_source, packet_msg_id))
+            {
                 e.insert(vec![fragment]);
                 // if the total frags is 1, then we can just send the message to the message handler thread
                 if total_frags == 1 {

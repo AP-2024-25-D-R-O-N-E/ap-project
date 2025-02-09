@@ -86,7 +86,7 @@ pub enum ChatMessage {
     FileMessage {
         from: NodeId,
         to: NodeId,
-        file_path: PathBuf
+        file_path: PathBuf,
     },
 }
 
@@ -99,4 +99,3 @@ impl Message {
         bincode::deserialize(&v).unwrap()
     }
 }
-

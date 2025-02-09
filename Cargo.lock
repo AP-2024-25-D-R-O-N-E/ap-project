@@ -864,7 +864,7 @@ dependencies = [
 [[package]]
 name = "common"
 version = "0.1.0"
-source = "git+https://github.com/Cpp-enjoyers/common.git#a1714e8e90d7520de6a7fbc22b9c4eb682dfd9fe"
+source = "git+https://github.com/Cpp-enjoyers/common.git#f91537858ed174f8b2465a441595634f1e288cf0"
 dependencies = [
  "bincode 2.0.0-rc.3",
  "crossbeam-channel",
@@ -2335,7 +2335,7 @@ dependencies = [
 [[package]]
 name = "lockheedrustin-drone"
 version = "0.1.0"
-source = "git+https://github.com/Lockheed-Rustin/drone.git#8a2916f14f9f0de4e5246fd302bc210984781ba4"
+source = "git+https://github.com/Lockheed-Rustin/drone.git#e82cf49507cf6b64d0e9cf1c90c5c3f523c321c2"
 dependencies = [
  "crossbeam-channel",
  "rand 0.8.5",

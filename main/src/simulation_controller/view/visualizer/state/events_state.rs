@@ -37,7 +37,6 @@ impl EventsState {
     }
 }
 
-
 #[derive(Clone, Copy)]
 pub struct DisplayOptions {
     pub drones: bool,

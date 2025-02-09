@@ -50,9 +50,15 @@ pub enum ClientCommand {
     RegisterAsClient,
     UnregisterAsClient,
     OpenChatWith(NodeId),
-    SendTextMessageTo { receiver: NodeId, message: String },
+    SendTextMessageTo {
+        receiver: NodeId,
+        message: String,
+    },
     // the file message is only temporary and will be modified later
-    SendFileMessageTo { receiver: NodeId, file_path: PathBuf },
+    SendFileMessageTo {
+        receiver: NodeId,
+        file_path: PathBuf,
+    },
 }
 
 /// From server to controller

@@ -5,7 +5,7 @@ pub struct ToolbarSectionState {
     pub settings_open: bool,
     pub modify_topology_open: bool,
     pub handle_shortcuts: bool,
-    pub events_json_open : bool
+    pub events_json_open: bool,
 }
 
 impl Default for ToolbarSectionState {

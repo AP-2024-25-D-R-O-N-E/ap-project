@@ -86,8 +86,7 @@ impl NetworkInitializer {
         //create 3 different version since we might want the simulation controller channels to depend on node type
         for drone in self.config.drone.iter() {
             //create unbounded channel for drones
-            self.packet_channels
-                .insert(drone.id, unbounded::<Packet>());
+            self.packet_channels.insert(drone.id, unbounded::<Packet>());
         }
 
         for client in self.config.client.iter() {
