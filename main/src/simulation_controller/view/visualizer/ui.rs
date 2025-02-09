@@ -134,6 +134,32 @@ impl SCGui {
         }
     }
 
+    fn handle_available_chat_hystory_update(&mut self, event: &SCEvent) {
+        if let SCEventType::Client(ClientEvent::ResponseHistoryReceived { partner, history }) =
+            &event.event_type
+        {
+            let sender_node_index = self
+                .state
+                .graph_section
+                .node_id_map
+                .get(&event.sender_id)
+                .unwrap();
+
+            if let NodeState::Client(client_state) = self
+                .state
+                .node_info_section
+                .states
+                .get_mut(&sender_node_index)
+                .unwrap()
+            {
+                println!("{:?}", history);
+                client_state
+                    .chat_histories
+                    .insert(*partner, history.to_vec());
+            }
+        }
+    }
+
     fn handle_sc_events(&mut self) {
         let mut events = vec![];
         for (node_id, channel) in self.simulation_controller.node_event_channels.iter() {
@@ -165,6 +191,7 @@ impl SCGui {
         for sc_event in events {
             self.handle_sc_shortcut(&sc_event);
             self.handle_available_peers_update(&sc_event);
+            self.handle_available_chat_hystory_update(&sc_event);
             self.state
                 .events
                 .add_with_limit(sc_event, MAIN_CONSOLE_SCROLLBACK_LIMIT);

@@ -2,13 +2,16 @@ use petgraph::{graph::NodeIndex, prelude::StableGraph, Undirected};
 use std::collections::{HashMap, HashSet};
 use wg_2024::network::NodeId;
 
-use crate::simulation_controller::{
-    edge::UiEdgePayload,
-    node::{
-        UiNodePayload,
-        UiNodeType::{Client, Drone, Server},
+use crate::{
+    fragmentation::message::ChatMessage,
+    simulation_controller::{
+        edge::UiEdgePayload,
+        node::{
+            UiNodePayload,
+            UiNodeType::{Client, Drone, Server},
+        },
+        util::StatusFlag,
     },
-    util::StatusFlag,
 };
 
 #[derive(Default)]
@@ -66,6 +69,7 @@ pub struct ClientState {
     pub curr_msg: String,
     pub current_peer: Option<NodeId>,
     pub last_peer: Option<NodeId>,
+    pub chat_histories: HashMap<NodeId, Vec<ChatMessage>>,
 }
 
 #[derive(Debug, Clone)]

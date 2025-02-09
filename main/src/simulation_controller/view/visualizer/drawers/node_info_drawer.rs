@@ -2,11 +2,16 @@ use egui::{CollapsingHeader, Context, RichText, ScrollArea, Ui, Window};
 use egui_extras::{Column, TableBuilder};
 use petgraph::graph::{EdgeIndex, NodeIndex};
 
-use crate::simulation_controller::{
-    node::{UiDroneNode, UiNodePayload, UiNodeType},
-    state::{ClientState, DisplayOptions, DroneState, NodeInfoSectionState, ServerState, State},
-    util::{self, check_node_removal, colors, remove_node},
-    SimulationController,
+use crate::{
+    fragmentation::message::ChatMessage,
+    simulation_controller::{
+        node::{UiDroneNode, UiNodePayload, UiNodeType},
+        state::{
+            ClientState, DisplayOptions, DroneState, NodeInfoSectionState, ServerState, State,
+        },
+        util::{self, check_node_removal, colors, remove_node},
+        SimulationController,
+    },
 };
 
 use crate::simulation_controller::util::{
@@ -354,10 +359,10 @@ fn draw_client_specific(
         if ui.button("Send to".to_string()).clicked() {
             let state = get_client_node_state(&mut state.node_info_section, node_index);
 
-            if let Some(curr_node_wg_id) = state.current_peer {
+            if let Some(curr_peer) = state.current_peer {
                 simulation_controller.send_txt_msg(
                     curr_node_wg_id,
-                    curr_node_wg_id,
+                    curr_peer,
                     state.curr_msg.clone(),
                 );
             } else {
@@ -394,8 +399,61 @@ fn draw_client_specific(
                     format!("Select client"),
                 );
             });
-        {}
+        if ui.button("🔄").clicked() {
+            if let Some(current_peer) =
+                get_client_node_state(&mut state.node_info_section, node_index).current_peer
+            {
+                simulation_controller.open_chat_with(curr_node_wg_id, current_peer);
+            }
+        }
+
+        let client_state = get_client_node_state(&mut state.node_info_section, node_index);
+        if (client_state.last_peer != client_state.current_peer) {
+            client_state.last_peer = client_state.current_peer;
+            if let Some(current_peer) = client_state.current_peer {
+                simulation_controller.open_chat_with(curr_node_wg_id, current_peer);
+            }
+        }
     });
+    ui.end_row();
+
+    CollapsingHeader::new("Chat")
+        .default_open(true)
+        .show(ui, |ui| {
+            ScrollArea::both()
+                .auto_shrink([false, false])
+                .show(ui, |ui| {
+                    let client_state =
+                        get_client_node_state(&mut state.node_info_section, node_index);
+                    match client_state.current_peer {
+                        Some(curr_peer) => match client_state.chat_histories.get(&curr_peer) {
+                            Some(history) => {
+                                for message in history {
+                                    let (from, to, text) = match message {
+                                        ChatMessage::TextMessage { from, to, text } => {
+                                            (from, to, text)
+                                        }
+                                        ChatMessage::FileMessage {
+                                            from,
+                                            to,
+                                            file,
+                                            file_name,
+                                        } => (from, to, file_name),
+                                    };
+
+                                    ui.label(format!("From: {} - {} - {}", from, to, text));
+                                }
+                            }
+                            None => {
+                                ui.label("No chat history available.");
+                            }
+                        },
+                        None => {
+                            ui.label("No current peer selected.");
+                        }
+                    }
+                });
+        });
 }
 
 fn get_drone_node_state(
