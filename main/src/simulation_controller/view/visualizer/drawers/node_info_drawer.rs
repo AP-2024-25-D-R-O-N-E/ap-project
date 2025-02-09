@@ -364,11 +364,9 @@ fn draw_client_specific(
 
     ui.end_row();
 
-    let mut text_box = TextEdit::singleline(
+    let re = ui.add(TextEdit::singleline(
         &mut get_client_node_state(&mut state.node_info_section, node_index).curr_msg,
-    );
-
-    let re = ui.add(text_box);
+    ));
 
     ui.horizontal(|ui| {
         if ui.button("Send to".to_string()).clicked()
@@ -459,6 +457,7 @@ fn draw_client_no_grid_specific(
         .show(ui, |ui| {
             ScrollArea::both()
                 .auto_shrink([false, false])
+                .stick_to_bottom(true)
                 .show(ui, |ui| {
                     let client_state =
                         get_client_node_state(&mut state.node_info_section, node_index);
