@@ -264,7 +264,7 @@ fn draw_drone_specific(
         });
     } else {
         ui.horizontal(|ui| {
-            ui.label(egui::RichText::new("Crashed".to_string()).color(util::colors::MUTED_RED));
+            ui.label(egui::RichText::new("Running".to_string()).color(util::colors::MUTED_GREEN));
         });
     }
 
