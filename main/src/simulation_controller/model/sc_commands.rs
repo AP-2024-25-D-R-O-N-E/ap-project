@@ -15,7 +15,7 @@ use crate::initializer::{
     network_initializer::{spawn_drone_thread, spawn_drone_thread_by_vendor},
 };
 
-use super::{simulation_controller::SimulationController, ServerCommand};
+use super::{simulation_controller::SimulationController, ClientCommand, ServerCommand};
 
 impl SimulationController {
     pub fn send_default_msg_fragment(&self, node_id: NodeId) {
@@ -139,37 +139,110 @@ impl SimulationController {
         }
     }
 
-    pub fn send_remove_sender_command(&self, node_id: NodeId, node_to_id: NodeId) {
-        match &self.drone_command_channels.get(&node_id) {
-            Some(command_channel) => {
-                if !self.packet_channels.contains_key(&node_to_id) {
-                    log::warn!("Removing a channel to unexisting node");
-                } else {
-                    command_channel.send(DroneCommand::RemoveSender(node_to_id));
+    pub fn send_add_sender_command(&self, node_id: NodeId, node_to_id: NodeId) {
+        // drone -> any
+        let mut matched = match (
+            &self.drone_command_channels.get(&node_id),
+            &self.packet_channels.get(&node_to_id),
+        ) {
+            (Some(c1), Some(c2)) => {
+                c1.send(DroneCommand::AddSender(node_to_id, c2.0.clone()));
+                true
+            }
+            _ => false,
+        };
+
+        // client -> any
+        if !matched {
+            matched = match (
+                &self.client_command_channels.get(&node_id),
+                &self.packet_channels.get(&node_to_id),
+            ) {
+                (Some(c1), Some(c2)) => {
+                    c1.send(ClientCommand::AddSender(node_to_id, c2.0.clone()));
+                    true
                 }
-            }
-            None => {
-                log::error!("Specified node does not exist");
-            }
+                _ => false,
+            };
+        }
+
+        // server -> any
+        if !matched {
+            matched = match (
+                &self.server_command_channels.get(&node_id),
+                &self.packet_channels.get(&node_to_id),
+            ) {
+                (Some(c1), Some(c2)) => {
+                    c1.send(ServerCommand::AddSender(node_to_id, c2.0.clone()));
+                    true
+                }
+                _ => false,
+            };
+        }
+
+        if !matched {
+            log::error!("Tryind to add link to unexisting node");
+        }
+        {
+            log::info!("Link added");
         }
     }
 
-    pub fn send_add_sender_command(&self, node_id: NodeId, node_to_id: NodeId) {
-        match &self.drone_command_channels.get(&node_id) {
-            Some(command_channel) => match self.packet_channels.get(&node_to_id) {
-                Some(packet_channel) => {
-                    command_channel.send(DroneCommand::AddSender(
-                        node_to_id,
-                        packet_channel.0.clone(),
-                    ));
+    pub fn send_remove_sender_command(&self, node_id: NodeId, node_to_id: NodeId) {
+        // drone -> any
+        let mut matched = match (
+            &self.drone_command_channels.get(&node_id),
+            &self.packet_channels.get(&node_to_id),
+        ) {
+            (Some(c1), c2) => {
+                if let None = c2 {
+                    log::warn!("Trying to remove a channel from unexisting node");
                 }
-                None => {
-                    log::warn!("Trying to add a channel to unexisting node");
-                }
-            },
-            None => {
-                log::error!("Specified node does not exist");
+                c1.send(DroneCommand::RemoveSender(node_to_id));
+                true
             }
+            _ => false,
+        };
+
+        // client -> any
+        if !matched {
+            matched = match (
+                &self.client_command_channels.get(&node_id),
+                &self.packet_channels.get(&node_to_id),
+            ) {
+                (Some(c1), c2) => {
+                    if let None = c2 {
+                        log::warn!("Trying to remove a channel from unexisting node");
+                    }
+                    c1.send(ClientCommand::RemoveSender(node_to_id));
+                    true
+                }
+                _ => false,
+            };
+        }
+
+        // server -> any
+        if !matched {
+            matched = match (
+                &self.server_command_channels.get(&node_id),
+                &self.packet_channels.get(&node_to_id),
+            ) {
+                (Some(c1), c2) => {
+                    if let None = c2 {
+                        log::warn!("Trying to remove a channel from unexisting node");
+                    }
+                    c1.send(ServerCommand::RemoveSender(node_to_id));
+                    true
+                }
+                _ => false,
+            };
+        }
+
+        if !matched {
+            log::error!("Tryind to remove link from unexisting node");
+        }
+        {
+            log::info!("Link added");
         }
     }
 

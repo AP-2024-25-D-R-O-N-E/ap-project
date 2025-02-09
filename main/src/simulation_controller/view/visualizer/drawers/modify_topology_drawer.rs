@@ -47,15 +47,12 @@ pub fn draw_modify_topology_section(
                     ui.end_row();
 
                     ui.label("Neighbors");
-                    ui
-                        .add_sized(
-                            ui.available_size(),
-                            egui::TextEdit::singleline(
-                                &mut state.modify_topology_section.neighbors,
-                            )
+                    ui.add_sized(
+                        ui.available_size(),
+                        egui::TextEdit::singleline(&mut state.modify_topology_section.neighbors)
                             .hint_text("Enter node IDs separated by commas"),
-                        )
-                        .changed();
+                    )
+                    .changed();
                     ui.end_row();
 
                     ui.label("Drone vendor");
@@ -111,19 +108,33 @@ pub fn draw_modify_topology_section(
                 });
 
             if ui.button("Spawn").clicked() && can_insert_drone(state) {
+                for (index, node_content) in state.graph_section.g.nodes_iter() {
+                    let payload = node_content.payload();
+                    match &payload.node_type {
+                        UiNodeType::Server(ui_server_node) => {
+                            simulation_controller.send_server_start_flood(payload.wg_id)
+                        }
+                        UiNodeType::Client(ui_client_node) => {
+                            simulation_controller.send_client_start_flood(payload.wg_id)
+                        }
+                        UiNodeType::Drone(ui_drone_node) => (),
+                    }
+                }
                 insert_drone(state, simulation_controller)
             }
 
-            if let Some(status) = &state.modify_topology_section.status_flag { match status {
-                Ok(s) => {
-                    ui.label(
-                        RichText::new("Drone spawned with success").color(colors::MUTED_GREEN),
-                    );
+            if let Some(status) = &state.modify_topology_section.status_flag {
+                match status {
+                    Ok(s) => {
+                        ui.label(
+                            RichText::new("Drone spawned with success").color(colors::MUTED_GREEN),
+                        );
+                    }
+                    Err(error) => {
+                        ui.label(RichText::new(error).color(colors::MUTED_RED));
+                    }
                 }
-                Err(error) => {
-                    ui.label(RichText::new(error).color(colors::MUTED_RED));
-                }
-            } }
+            }
         });
 
     CollapsingHeader::new("Add/remove sender")
@@ -239,14 +250,16 @@ pub fn add_remove_sender_section(
 
     ui.end_row();
 
-    if let Some(status) = &state.test_section.channel_modifier_status_flag { match status {
-        Ok(s) => {
-            ui.label(RichText::new(s).color(colors::MUTED_GREEN));
+    if let Some(status) = &state.test_section.channel_modifier_status_flag {
+        match status {
+            Ok(s) => {
+                ui.label(RichText::new(s).color(colors::MUTED_GREEN));
+            }
+            Err(s) => {
+                ui.label(RichText::new(s).color(colors::MUTED_RED));
+            }
         }
-        Err(s) => {
-            ui.label(RichText::new(s).color(colors::MUTED_RED));
-        }
-    } }
+    }
 }
 // fn spawn_drone(state: &mut State) {
 //

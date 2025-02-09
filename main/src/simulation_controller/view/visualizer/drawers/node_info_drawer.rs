@@ -267,6 +267,7 @@ fn draw_drone_specific(
             ui.label(egui::RichText::new("Running".to_string()).color(util::colors::MUTED_GREEN));
         });
     }
+    ui.end_row();
 
     if let Some(status) =
         &get_drone_node_state(&mut state.node_info_section, node_index).crash_status_flag

@@ -39,7 +39,7 @@ impl State {
             toolbar_section: Default::default(),
             node_info_section: NodeInfoSectionState::from(&sc.topology),
             console_section: Default::default(),
-            modify_topology_section: Default::default(),
+            modify_topology_section: ModifyTopologyState::from(&sc.topology),
         }
     }
 }

@@ -317,7 +317,7 @@ pub fn send_flood_req_section(
             }
             None => {
                 state.test_section.flood_req_sender_status_flag =
-                    Some(Err("Inalid node id".to_string()))
+                    Some(Err("Invalid node id".to_string()))
             }
         }
     }
