@@ -390,6 +390,7 @@ pub fn remove_node(
     simulation_controller.send_crash_command(curr_node_wg_id);
 }
 
+
 pub fn bfs_with_disabled_edges<N>(
     graph: ModelGraph<N, ModelEdgePayload>,
     start: NodeIndex,

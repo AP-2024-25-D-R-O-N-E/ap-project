@@ -10,7 +10,7 @@ use wg_2024::controller::*;
 use wg_2024::network::*;
 use wg_2024::packet::*;
 
-use serde::ser::{SerializeStruct, Serializer};
+use serde::ser::SerializeStruct;
 use serde::Serialize;
 
 pub type NodeId = u8;
@@ -212,7 +212,7 @@ pub enum ClientEventRef {
         file_path: PathBuf,
     },
 
-    CreatedFileLocal{
+    CreatedFileLocal {
         from: NodeId,
         to: NodeId,
         file_path: PathBuf,

@@ -129,6 +129,7 @@ impl SimulationController {
         }
     }
 
+    #[allow(dead_code)]
     fn prompt_id_and_execute(prompt: String, action: impl Fn(NodeId)) {
         println!("{}", prompt.italic());
         loop {
@@ -148,6 +149,7 @@ impl SimulationController {
     }
 
     // launches a text user interface to launch functions in real time
+    #[allow(dead_code)]
     pub fn run_tui(&self) {
         loop {
             println!(" {}) {}", "1".italic(), "Send fragment".blue());
@@ -161,20 +163,20 @@ impl SimulationController {
             let mut buffer = String::new();
             let input = io::stdin().read_line(&mut buffer);
             match &input {
-                Ok(input) => {
+                Ok(_) => {
                     match buffer.trim().parse::<i32>() {
                         Ok(action_number) => match action_number {
                             1 => SimulationController::prompt_id_and_execute(
                                 "Insert a node id".to_string(),
-                                |id| self.send_default_msg_fragment(),
+                                |_| self.send_default_msg_fragment(),
                             ),
                             2 => SimulationController::prompt_id_and_execute(
                                 "Insert a node id".to_string(),
-                                |id| self.send_default_ack(),
+                                |_| self.send_default_ack(),
                             ),
                             3 => SimulationController::prompt_id_and_execute(
                                 "Insert a node id".to_string(),
-                                |id| self.send_default_nack(),
+                                |_| self.send_default_nack(),
                             ),
                             4 => SimulationController::prompt_id_and_execute(
                                 "Insert a node id".to_string(),
@@ -183,7 +185,7 @@ impl SimulationController {
                             -1 => break,
                             _ => println!("{}", "Insert a valid number".italic().yellow()),
                         },
-                        Err(err) => log::error!("Please insert a valid number"),
+                        Err(_) => log::error!("Please insert a valid number"),
                     };
                 }
                 Err(err) => log::error!("Cannot read from stdin: {}", err),
