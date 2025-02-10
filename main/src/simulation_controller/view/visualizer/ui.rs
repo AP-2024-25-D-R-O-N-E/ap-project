@@ -3,9 +3,7 @@ use std::vec;
 
 use super::state::NodeState;
 use crate::fragmentation::message::ChatMessage;
-use crate::simulation_controller::{
-    ClientEvent, SCEvent, SCEventType, SimulationController,
-};
+use crate::simulation_controller::{ClientEvent, SCEvent, SCEventType, SimulationController};
 
 use eframe::{run_native, App, CreationContext, NativeOptions};
 use egui::{Context, ScrollArea, Window};

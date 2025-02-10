@@ -1,7 +1,4 @@
-use egui::{
-    Color32, FontId, Pos2, Rect, Rounding, Shadow,
-    Shape, Stroke, Vec2,
-};
+use egui::{Color32, FontId, Pos2, Rect, Rounding, Shadow, Shape, Stroke, Vec2};
 use egui_graphs::{DisplayNode, NodeProps};
 use petgraph::{stable_graph::IndexType, EdgeType};
 
@@ -29,9 +26,9 @@ pub struct UiNodePayload {
 impl UiNodePayload {
     pub fn get_type(&self) -> String {
         match &self.node_type {
-            UiNodeType::Server(ui_server_node) => "Server",
-            UiNodeType::Client(ui_client_node) => "Client",
-            UiNodeType::Drone(ui_drone_node) => "Drone",
+            UiNodeType::Server(_) => "Server",
+            UiNodeType::Client(_) => "Client",
+            UiNodeType::Drone(_) => "Drone",
         }
         .to_string()
     }
@@ -232,8 +229,6 @@ impl DrawShape for CustomNodeShape {
                 ]
             }
         }
-
-        // we need to offset label by half its size to place it in the center of the rect
     }
 }
 
@@ -270,34 +265,3 @@ impl<E: Clone, Ty: EdgeType, Ix: IndexType> DisplayNode<UiNodePayload, E, Ty, Ix
         self.payload = state.payload.clone();
     }
 }
-
-// fn find_intersection(center: Pos2, size_x: f32, size_y: f32, direction: Vec2) -> Pos2 {
-//     if (direction.x.abs() * size_y) > (direction.y.abs() * size_x) {
-//         // intersects left or right side
-//         let x = if direction.x > 0.0 {
-//             center.x + size_x / 2.0
-//         } else {
-//             center.x - size_x / 2.0
-//         };
-//         let y = center.y + direction.y / direction.x * (x - center.x);
-//         Pos2::new(x, y)
-//     } else {
-//         // intersects top or bottom side
-//         let y = if direction.y > 0.0 {
-//             center.y + size_y / 2.0
-//         } else {
-//             center.y - size_y / 2.0
-//         };
-//         let x = center.x + direction.x / direction.y * (y - center.y);
-//         Pos2::new(x, y)
-//     }
-// }
-//
-// fn rect_to_points(rect: Rect) -> Vec<Pos2> {
-//     let top_left = rect.min;
-//     let bottom_right = rect.max;
-//     let top_right = Pos2::new(bottom_right.x, top_left.y);
-//     let bottom_left = Pos2::new(top_left.x, bottom_right.y);
-//
-//     vec![top_left, top_right, bottom_right, bottom_left]
-// }

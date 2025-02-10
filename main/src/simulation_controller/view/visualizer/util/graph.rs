@@ -38,6 +38,7 @@ pub fn get_drone_node(graph: &mut UiGraph, node_index: NodeIndex) -> &mut UiDron
     drone_node
 }
 
+#[allow(dead_code)]
 pub fn get_drone_node_opt(graph: &mut UiGraph, node_index: NodeIndex) -> Option<&mut UiDroneNode> {
     if let UiNodeType::Drone(drone_node) =
         &mut get_payload_mut(graph, node_index).unwrap().node_type
@@ -241,7 +242,7 @@ pub fn check_drone_addition(
 
     for node in neighbors_wg_ids {
         match graph_section_state.node_id_map.get(node) {
-            Some(index) => (),
+            Some(_) => (),
             None => {
                 return Err("One or more node ids are not valid".to_string());
             }
@@ -277,10 +278,8 @@ pub fn check_drone_addition(
         };
 
         match node_payload.node_type {
-            UiNodeType::Server(ui_server_node) => (),
-            UiNodeType::Client(ui_client_node) => {
-                check_drone_client(&mut graph_section_state.g, node)?
-            }
+            UiNodeType::Server(_) => (),
+            UiNodeType::Client(_) => check_drone_client(&mut graph_section_state.g, node)?,
             UiNodeType::Drone(ui_drone_node) => {
                 if ui_drone_node.crashed {
                     return Err(format!(
@@ -364,7 +363,6 @@ pub fn check_node_removal(graph: &mut UiGraph, node: NodeIndex) -> Result<(), St
 
 pub fn remove_node(
     graph: &mut UiGraph,
-    status_flag: &mut StatusFlag,
     node: NodeIndex,
     simulation_controller: &SimulationController,
 ) {
@@ -496,7 +494,7 @@ where
     }
 
     match first_node {
-        Some(first_node_unwrapped) => (),
+        Some(_) => (),
         None => return true,
     }
     queue.push_back(first_node.unwrap());
@@ -569,7 +567,7 @@ pub fn is_well_formed(graph: &DefaultModelGraph) -> Result<String, String> {
     for node in graph.node_indices() {
         let node_payload = graph.node_weight(node).unwrap().payload();
         match &node_payload.node_type {
-            UiNodeType::Server(ui_server_node) => {
+            UiNodeType::Server(_) => {
                 let neighbors: Vec<NodeIndex> = get_neigbors_with_disabled_edges(graph, node);
                 if neighbors.len() < 2 {
                     Err(format!(
@@ -580,7 +578,7 @@ pub fn is_well_formed(graph: &DefaultModelGraph) -> Result<String, String> {
                     Ok(())
                 }
             }
-            UiNodeType::Client(ui_client_node) => {
+            UiNodeType::Client(_) => {
                 let neighbors: Vec<NodeIndex> = get_neigbors_with_disabled_edges(graph, node);
                 if neighbors.len() > 2 {
                     Err(format!(

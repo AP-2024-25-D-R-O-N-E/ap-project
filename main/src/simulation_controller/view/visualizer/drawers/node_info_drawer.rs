@@ -192,12 +192,8 @@ fn draw_drone_specific(
     if ui.button("Crash").clicked() {
         match check_node_removal(&mut state.graph_section.g, node_index) {
             Ok(_) => {
-                let status_flag =
-                    &mut get_drone_node_state(&mut state.node_info_section, node_index)
-                        .crash_status_flag;
                 remove_node(
                     &mut state.graph_section.g,
-                    status_flag,
                     node_index,
                     simulation_controller,
                 )
