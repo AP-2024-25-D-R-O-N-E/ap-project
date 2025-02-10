@@ -8,7 +8,7 @@ use crate::{
     initializer::node_vendor::DroneVendor,
     simulation_controller::{
         node::UiNodeType,
-        state::State,
+        state::{DroneState, NodeState, State},
         util::{add_drone, check_drone_addition, colors, parse_string},
         SimulationController,
     },
@@ -169,11 +169,14 @@ fn can_insert_drone(state: &mut State) -> bool {
 
 fn insert_drone(state: &mut State, simulation_controller: &mut SimulationController) {
     let neighbors = parse_string::<NodeId>(&state.modify_topology_section.neighbors).unwrap();
+
+    let wg_id = state.modify_topology_section.id;
+    let pdr = state.modify_topology_section.pdr;
     add_drone(
         &mut state.graph_section,
         &neighbors,
-        state.modify_topology_section.id,
-        state.modify_topology_section.pdr,
+        wg_id,
+        pdr,
         state.modify_topology_section.drone_vendor,
         simulation_controller,
     );
@@ -182,6 +185,15 @@ fn insert_drone(state: &mut State, simulation_controller: &mut SimulationControl
     while state.graph_section.node_id_map.contains_key(&first_free_id) {
         first_free_id += 1;
     }
+
+    let node_index = *state.graph_section.node_id_map.get(&wg_id).unwrap();
+    state.node_info_section.states.insert(
+        node_index,
+        NodeState::Drone(DroneState {
+            last_committed_pdr: pdr,
+            crash_status_flag: Some(Ok("Running".to_string())),
+        }),
+    );
 
     state.modify_topology_section.id = first_free_id;
 }

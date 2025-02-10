@@ -88,7 +88,7 @@ impl NetworkInitializer {
         }
 
         NetworkInitializer {
-            packet_channels: HashMap::new(), // packets
+            packet_channels: HashMap::new(),
             node_event_channels: HashMap::new(),
             drone_command_channels: HashMap::new(),
             client_event_channels: HashMap::new(),
