@@ -207,8 +207,13 @@ pub enum ClientEventRef {
         text: String,
     },
 
-    // the file message is only temporary and will be modified later
     FileMessage {
+        from: NodeId,
+        to: NodeId,
+        file_path: PathBuf,
+    },
+
+    CreatedFileLocal{
         from: NodeId,
         to: NodeId,
         file_path: PathBuf,
