@@ -55,7 +55,7 @@ impl SimulationController {
                 }
             }
         } else {
-            log::error!("Cannot get current hop")
+            log::error!("Cannot get current hop");
         }
     }
 
@@ -97,7 +97,7 @@ impl SimulationController {
                 }
             }
         } else {
-            log::error!("Cannot get current hop")
+            log::error!("Cannot get current hop");
         }
     }
 
@@ -118,7 +118,7 @@ impl SimulationController {
                 }
             }
         } else {
-            log::error!("Cannot get current hop")
+            log::error!("Cannot get current hop");
         }
     }
 
@@ -347,7 +347,7 @@ impl SimulationController {
                 }
             }
         } else {
-            log::error!("Cannot get shortcut destination")
+            log::error!("Cannot get shortcut destination");
         }
     }
 

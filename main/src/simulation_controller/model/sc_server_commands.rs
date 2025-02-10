@@ -10,7 +10,7 @@ impl SimulationController {
                 Err(err) => log::error!("Channel error {}", err),
             }
         } else {
-            log::error!("Specified client does not exist")
+            log::error!("Specified client does not exist");
         }
     }
 }
