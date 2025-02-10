@@ -39,7 +39,6 @@ pub struct GraphSectionState {
 
 impl GraphSectionState {
     pub fn new(graph: StableGraph<UiNodePayload, UiEdgePayload, Undirected>) -> GraphSectionState {
-        let graph_section = GraphSectionState::default();
         let (event_publisher, event_consumer) = unbounded();
         let ui_graph = Graph::from(&graph);
         let well_formedness_flag = is_well_formed(&ui_graph.g);
@@ -53,10 +52,12 @@ impl GraphSectionState {
         }
     }
 
+    #[allow(unused)]
     pub fn wg_id(&self, index: NodeIndex) -> Option<NodeId> {
         self.g.node(index).map(|node| node.payload().wg_id)
     }
 
+    #[allow(unused)]
     pub fn graph_id(&self, index: NodeId) -> Option<NodeIndex> {
         self.node_id_map.get(&index).copied()
     }

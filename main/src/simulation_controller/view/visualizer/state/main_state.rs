@@ -25,9 +25,9 @@ impl State {
     pub fn from(sc: &SimulationController) -> State {
         for node in sc.topology.node_weights() {
             match &node.node_type {
-                UiNodeType::Server(ui_server_node) => sc.send_server_start_flood(node.wg_id),
-                UiNodeType::Client(ui_client_node) => sc.send_client_start_flood(node.wg_id),
-                UiNodeType::Drone(ui_drone_node) => (),
+                UiNodeType::Server(_) => sc.send_server_start_flood(node.wg_id),
+                UiNodeType::Client(_) => sc.send_client_start_flood(node.wg_id),
+                UiNodeType::Drone(_) => (),
             }
         }
 
