@@ -15,7 +15,7 @@ fn disassemble() {
         },
     );
 
-    let mut fragments_u8 = msg.into_u8();
+    let mut fragments_u8 = msg.as_u8();
 
     //reversing so popping gets the first element
     fragments_u8.reverse();

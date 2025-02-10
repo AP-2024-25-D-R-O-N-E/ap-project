@@ -157,7 +157,7 @@ impl Fragmenter for ChatServer {
     }
 
     fn disassemble(msg: Message) -> std::collections::VecDeque<Fragment> {
-        let mut message_data = msg.into_u8();
+        let mut message_data = msg.as_u8();
 
         message_data.reverse();
 

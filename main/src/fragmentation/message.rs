@@ -91,7 +91,7 @@ pub enum ChatMessage {
 }
 
 impl Message {
-    pub fn into_u8(&self) -> Vec<u8> {
+    pub fn as_u8(&self) -> Vec<u8> {
         bincode::serialize(&self).unwrap()
     }
 

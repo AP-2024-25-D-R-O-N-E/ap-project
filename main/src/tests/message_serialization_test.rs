@@ -15,7 +15,7 @@ fn test() {
 
     println!("original {:?}", message);
 
-    let a = message.into_u8();
+    let a = message.as_u8();
 
     println!("{:?}", a);
 
