@@ -335,7 +335,7 @@ pub fn add_edge_between(
 }
 
 pub fn check_node_removal(graph: &mut UiGraph, node: NodeIndex) -> Result<(), String> {
-    if is_connected_without_node_set(&graph.g, HashSet::from([node])) {
+    if is_connected_without_node_set(&graph.g, &HashSet::from([node])) {
         for neighbor in get_neigbors_with_disabled_edges(&graph.g, node) {
             if let UiNodeType::Server(_) = graph.node(neighbor).unwrap().payload().node_type {
                 if get_neigbors_with_disabled_edges(&graph.g, neighbor).len() < 3 {
@@ -384,7 +384,7 @@ pub fn remove_node(
 
 #[allow(dead_code)]
 pub fn bfs_with_disabled_edges<N>(
-    graph: ModelGraph<N, ModelEdgePayload>,
+    graph: &ModelGraph<N, ModelEdgePayload>,
     start: NodeIndex,
 ) -> usize
 where
@@ -472,7 +472,7 @@ where
 
 pub fn is_connected_without_node_set<E>(
     graph: &ModelGraph<ModelNodePayload, E>,
-    excluded_nodes: HashSet<NodeIndex>,
+    excluded_nodes: &HashSet<NodeIndex>,
 ) -> bool
 where
 {
@@ -613,11 +613,7 @@ pub fn is_client<E>(graph: &ModelGraph<ModelNodePayload, E>, node: NodeIndex) ->
 
 pub fn is_server<E>(graph: &ModelGraph<ModelNodePayload, E>, node: NodeIndex) -> bool {
     match &graph.node_weight(node) {
-        Some(node) => match &node.payload().node_type {
-            UiNodeType::Server(_) => true,
-            UiNodeType::Client(_) => false,
-            UiNodeType::Drone(_) => false,
-        },
+        Some(node) => matches!(&node.payload().node_type, UiNodeType::Server(_)),
         None => false,
     }
 }

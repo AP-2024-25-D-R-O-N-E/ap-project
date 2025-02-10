@@ -36,12 +36,12 @@ impl State {
             debug_section: DebugSectionState::default(),
             settings_section: SettingsSectionState::default(),
             graph_section: GraphSectionState::new(sc.topology.clone()),
-            events: Default::default(),
-            toolbar_section: Default::default(),
+            events: EventsState::default(),
+            toolbar_section: ToolbarSectionState::default(),
             node_info_section: NodeInfoSectionState::from(&sc.topology),
-            console_section: Default::default(),
+            console_section: ConsoleSectionState::default(),
             modify_topology_section: ModifyTopologyState::from(&sc.topology),
-            file_dialog: Default::default(),
+            file_dialog: FileDialog::default(),
         }
     }
 }
@@ -65,16 +65,16 @@ impl Default for State {
         modify_topology_section.id = max + 1;
 
         Self {
-            test_section: Default::default(),
-            debug_section: Default::default(),
-            settings_section: Default::default(),
+            test_section: TestSectionState::default(),
+            debug_section: DebugSectionState::default(),
+            settings_section: SettingsSectionState::default(),
             graph_section,
-            events: Default::default(),
-            toolbar_section: Default::default(),
-            node_info_section: Default::default(),
-            console_section: Default::default(),
+            events: EventsState::default(),
+            toolbar_section: ToolbarSectionState::default(),
+            node_info_section: NodeInfoSectionState::default(),
+            console_section: ConsoleSectionState::default(),
             modify_topology_section,
-            file_dialog: Default::default(),
+            file_dialog: FileDialog::default(),
         }
     }
 }

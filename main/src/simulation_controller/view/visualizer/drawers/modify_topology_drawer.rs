@@ -144,7 +144,7 @@ pub fn draw_modify_topology_section(
 }
 
 fn can_insert_drone(state: &mut State) -> bool {
-    match parse_string::<NodeId>(state.modify_topology_section.neighbors.clone()) {
+    match parse_string::<NodeId>(&state.modify_topology_section.neighbors) {
         Ok(wg_neighbor_ids) => {
             match check_drone_addition(&mut state.graph_section, &wg_neighbor_ids) {
                 Ok(()) => {
@@ -166,8 +166,7 @@ fn can_insert_drone(state: &mut State) -> bool {
 }
 
 fn insert_drone(state: &mut State, simulation_controller: &mut SimulationController) {
-    let neighbors =
-        parse_string::<NodeId>(state.modify_topology_section.neighbors.clone()).unwrap();
+    let neighbors = parse_string::<NodeId>(&state.modify_topology_section.neighbors).unwrap();
     add_drone(
         &mut state.graph_section,
         &neighbors,

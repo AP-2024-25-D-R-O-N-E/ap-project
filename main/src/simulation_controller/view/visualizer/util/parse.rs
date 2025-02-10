@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-pub fn parse_string<T>(string: String) -> Result<Vec<T>, String>
+pub fn parse_string<T>(string: &str) -> Result<Vec<T>, String>
 where
     T: FromStr,
 {
