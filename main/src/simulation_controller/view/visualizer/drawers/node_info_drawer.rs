@@ -381,12 +381,17 @@ fn draw_client_specific(
             );
         }
 
-        if let Some(path) = state.file_dialog.take_selected() {
+        if let DialogState::Selected(_) = state.file_dialog.state() {
             if state.file_dialog.operation_id() == Some(&format!("Client {}", curr_node_wg_id)) {
-                get_client_node_state(&mut state.node_info_section, node_index)
-                    .selected_file_path = Some(path.clone());
+                if let Some(path) = state.file_dialog.take_selected() {
+                    get_client_node_state(&mut state.node_info_section, node_index)
+                        .selected_file_path = Some(path.clone());
+                }
             }
         }
+
+        
+        
 
         if ui.button("Send to".to_string()).clicked()
             || (re.lost_focus() && re.ctx.input(|i| i.key_pressed(egui::Key::Enter)))
