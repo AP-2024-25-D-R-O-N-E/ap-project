@@ -5,7 +5,7 @@ use std::{
 
 use crossbeam::channel::unbounded;
 use wg_2024::{
-    controller::*,
+    controller::{DroneCommand, DroneEvent},
     network::NodeId,
     packet::{Packet, PacketType},
 };
@@ -39,22 +39,23 @@ impl SimulationController {
     }
 
     pub fn send_msg_fragment(&self, packet: Packet) {
-        match packet.routing_header.current_hop() {
-            Some(current_hop) => match &self.packet_channels.get(&current_hop) {
+        if let Some(current_hop) = packet.routing_header.current_hop() {
+            match &self.packet_channels.get(&current_hop) {
                 Some(channel) => match &packet.pack_type {
                     PacketType::MsgFragment(_) => match channel.0.send(packet) {
-                        Ok(_) => log::info!("Sending msg_fragment to node {}", current_hop),
+                        Ok(()) => log::info!("Sending msg_fragment to node {}", current_hop),
                         Err(err) => log::error!("Channel error {}", err),
                     },
                     _ => {
-                        log::error!("Provided package is not a msg fragment")
+                        log::error!("Provided package is not a msg fragment");
                     }
                 },
                 None => {
-                    log::error!("Specified node does not exist")
+                    log::error!("Specified node does not exist");
                 }
-            },
-            None => log::error!("Cannot get current hop"),
+            }
+        } else {
+            log::error!("Cannot get current hop")
         }
     }
 
@@ -62,7 +63,7 @@ impl SimulationController {
         match packet.pack_type.clone() {
             PacketType::FloodRequest(flood_req) => match &self.packet_channels.get(&node) {
                 Some(channel) => match channel.0.send(packet) {
-                    Ok(_) => log::info!(
+                    Ok(()) => log::info!(
                         "Sending to node {}, initiated by {}",
                         node,
                         flood_req.initiator_id
@@ -70,61 +71,61 @@ impl SimulationController {
                     Err(err) => log::error!("Channel error {}", err),
                 },
                 None => {
-                    log::error!("Specified node does not exist")
+                    log::error!("Specified node does not exist");
                 }
             },
             _ => {
-                log::error!("Provided package is not a flood request")
+                log::error!("Provided package is not a flood request");
             }
         }
     }
 
     pub fn send_ack(&self, packet: Packet) {
-        match packet.routing_header.current_hop() {
-            Some(current_hop) => match &self.packet_channels.get(&current_hop) {
+        if let Some(current_hop) = packet.routing_header.current_hop() {
+            match &self.packet_channels.get(&current_hop) {
                 Some(channel) => match &packet.pack_type {
                     PacketType::Ack(_) => match channel.0.send(packet) {
-                        Ok(_) => log::info!("Sending ack to node {}", current_hop),
+                        Ok(()) => log::info!("Sending ack to node {}", current_hop),
                         Err(err) => log::error!("Channel error {}", err),
                     },
                     _ => {
-                        log::error!("Provided package is not an ack")
+                        log::error!("Provided package is not an ack");
                     }
                 },
                 None => {
-                    log::error!("Specified node does not exist")
+                    log::error!("Specified node does not exist");
                 }
-            },
-
-            None => log::error!("Cannot get current hop"),
+            }
+        } else {
+            log::error!("Cannot get current hop")
         }
     }
 
     pub fn send_nack(&self, packet: Packet) {
-        match packet.routing_header.current_hop() {
-            Some(current_hop) => match &self.packet_channels.get(&current_hop) {
+        if let Some(current_hop) = packet.routing_header.current_hop() {
+            match &self.packet_channels.get(&current_hop) {
                 Some(channel) => match &packet.pack_type {
                     PacketType::Nack(_) => match channel.0.send(packet) {
-                        Ok(_) => log::info!("Sending to node {}", current_hop),
+                        Ok(()) => log::info!("Sending to node {}", current_hop),
                         Err(err) => log::error!("Channel error {}", err),
                     },
                     _ => {
-                        log::error!("Provided package is not an nack")
+                        log::error!("Provided package is not an nack");
                     }
                 },
                 None => {
-                    log::error!("Specified node does not exist")
+                    log::error!("Specified node does not exist");
                 }
-            },
-
-            None => log::error!("Cannot get current hop"),
+            }
+        } else {
+            log::error!("Cannot get current hop")
         }
     }
 
     pub fn send_crash_command(&self, node_id: NodeId) {
         match &self.drone_command_channels.get(&node_id) {
             Some(channel) => match channel.send(DroneCommand::Crash) {
-                Ok(_) => log::info!("Crash command sent to node {}", node_id),
+                Ok(()) => log::info!("Crash command sent to node {}", node_id),
                 Err(err) => log::error!("Channel error {}", err),
             },
             None => {
@@ -136,7 +137,7 @@ impl SimulationController {
     pub fn send_set_pdr_command(&self, node_id: NodeId, new_pdr: f32) {
         match &self.drone_command_channels.get(&node_id) {
             Some(channel) => match channel.send(DroneCommand::SetPacketDropRate(new_pdr)) {
-                Ok(_) => log::info!("PDR set to {} for node {}", new_pdr, node_id),
+                Ok(()) => log::info!("PDR set to {} for node {}", new_pdr, node_id),
                 Err(err) => log::error!("Channel error {}", err),
             },
             None => {
@@ -153,7 +154,7 @@ impl SimulationController {
         ) {
             (Some(c1), Some(c2)) => {
                 match c1.send(DroneCommand::AddSender(node_to_id, c2.0.clone())) {
-                    Ok(_) => log::info!("Sender {} added to  {}", node_to_id, node_id),
+                    Ok(()) => log::info!("Sender {} added to  {}", node_to_id, node_id),
                     Err(err) => log::error!("Channel error {}", err),
                 }
 
@@ -170,7 +171,7 @@ impl SimulationController {
             ) {
                 (Some(c1), Some(c2)) => {
                     match c1.send(ClientCommand::AddSender(node_to_id, c2.0.clone())) {
-                        Ok(_) => log::info!("Sender {} added to  {}", node_to_id, node_id),
+                        Ok(()) => log::info!("Sender {} added to  {}", node_to_id, node_id),
                         Err(err) => log::error!("Channel error {}", err),
                     }
                     true
@@ -187,7 +188,7 @@ impl SimulationController {
             ) {
                 (Some(c1), Some(c2)) => {
                     match c1.send(ServerCommand::AddSender(node_to_id, c2.0.clone())) {
-                        Ok(_) => log::info!("Sender {} added to  {}", node_to_id, node_id),
+                        Ok(()) => log::info!("Sender {} added to  {}", node_to_id, node_id),
                         Err(err) => log::error!("Channel error {}", err),
                     }
                     true
@@ -215,7 +216,7 @@ impl SimulationController {
                     log::warn!("Trying to remove a channel from unexisting node");
                 }
                 match c1.send(DroneCommand::RemoveSender(node_to_id)) {
-                    Ok(_) => log::info!("Sender {} removed from  {}", node_to_id, node_id),
+                    Ok(()) => log::info!("Sender {} removed from  {}", node_to_id, node_id),
                     Err(err) => log::error!("Channel error {}", err),
                 }
                 true
@@ -234,7 +235,7 @@ impl SimulationController {
                         log::warn!("Trying to remove a channel from unexisting node");
                     }
                     match c1.send(ClientCommand::RemoveSender(node_to_id)) {
-                        Ok(_) => log::info!("Sender {} removed from  {}", node_to_id, node_id),
+                        Ok(()) => log::info!("Sender {} removed from  {}", node_to_id, node_id),
                         Err(err) => log::error!("Channel error {}", err),
                     }
                     true
@@ -254,7 +255,7 @@ impl SimulationController {
                         log::warn!("Trying to remove a channel from unexisting node");
                     }
                     match c1.send(ServerCommand::RemoveSender(node_to_id)) {
-                        Ok(_) => log::info!("Sender {} removed from  {}", node_to_id, node_id),
+                        Ok(()) => log::info!("Sender {} removed from  {}", node_to_id, node_id),
                         Err(err) => log::error!("Channel error {}", err),
                     }
                     true
@@ -290,7 +291,7 @@ impl SimulationController {
             .insert(node_id, drone_command_channel.0);
 
         let mut drone_packet_senders = HashMap::new();
-        for neighbor in neighbors.iter() {
+        for neighbor in neighbors {
             // new drone -> neighbors
             drone_packet_senders.insert(
                 *neighbor,
@@ -319,33 +320,34 @@ impl SimulationController {
     pub fn handle_sc_shortcut(&self, packet: Packet) {
         match &packet.pack_type {
             PacketType::MsgFragment(_) => {
-                log::error!("Techinally, msg fragments cannot be sent throug sc shortcuts")
+                log::error!("Techinally, msg fragments cannot be sent throug sc shortcuts");
             }
             PacketType::FloodRequest(_) => {
-                log::error!("Techinally, flood requests cannot be sent throug sc shortcuts")
+                log::error!("Techinally, flood requests cannot be sent throug sc shortcuts");
             }
             _ => {}
         }
 
-        match packet.routing_header.destination() {
-            Some(last_hop) => match self.packet_channels.get(&last_hop) {
+        if let Some(last_hop) = packet.routing_header.destination() {
+            match self.packet_channels.get(&last_hop) {
                 Some(channel) => {
                     let mut new_packet = packet.clone();
                     new_packet.routing_header.hop_index = new_packet.routing_header.hops.len() - 1;
                     match channel.0.send(new_packet) {
-                        Ok(_) => {
-                            log::info!("Sending shortcut to node {}", last_hop)
+                        Ok(()) => {
+                            log::info!("Sending shortcut to node {}", last_hop);
                         }
                         Err(err) => {
-                            log::error!("Channel error {}", err)
+                            log::error!("Channel error {}", err);
                         }
                     }
                 }
                 None => {
-                    log::error!("Shortcut destination does not exist")
+                    log::error!("Shortcut destination does not exist");
                 }
-            },
-            None => log::error!("Cannot get shortcut destination"),
+            }
+        } else {
+            log::error!("Cannot get shortcut destination")
         }
     }
 
@@ -353,15 +355,15 @@ impl SimulationController {
     pub fn send_control_packet(&self, server_command: ServerCommand, node_id: NodeId) {
         match &self.server_command_channels.get(&node_id) {
             Some(channel) => match channel.send(server_command) {
-                Ok(_) => {
-                    log::info!("Control packet sent to node {}", node_id)
+                Ok(()) => {
+                    log::info!("Control packet sent to node {}", node_id);
                 }
                 Err(err) => {
-                    log::error!("Channel error {}", err)
+                    log::error!("Channel error {}", err);
                 }
             },
             None => {
-                log::error!("Specified node does not exist")
+                log::error!("Specified node does not exist");
             }
         }
     }

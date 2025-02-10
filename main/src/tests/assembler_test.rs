@@ -45,9 +45,9 @@ fn disassemble() {
             data,
         });
     }
-    println!("{:?}", send_fragments);
+    println!("{send_fragments:?}");
     let message = assemble(send_fragments.into());
-    println!("{:?}", message);
+    println!("{message:?}");
 }
 
 fn assemble(mut fragments: Vec<Fragment>) -> Message {

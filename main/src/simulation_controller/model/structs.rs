@@ -20,7 +20,7 @@ pub enum ClientEvent {
         text: String,
     },
 
-    CreatedFileLocal{
+    CreatedFileLocal {
         from: NodeId,
         to: NodeId,
         file_path: PathBuf,
@@ -134,7 +134,11 @@ impl SCEventType {
                 ClientEvent::UnregisteredSenderError => None,
                 ClientEvent::UnregisteredRecipientError => None,
                 ClientEvent::UnsupportedMessageTypeError => None,
-                ClientEvent::CreatedFileLocal { from: _, to: _, file_path: _ } => None,
+                ClientEvent::CreatedFileLocal {
+                    from: _,
+                    to: _,
+                    file_path: _,
+                } => None,
             },
             SCEventType::Server(server_event) => match server_event {
                 ServerEvent::PacketSent(packet) => Some(packet.clone()),
@@ -170,7 +174,11 @@ impl SCEventType {
                 ClientEvent::UnregisteredSenderError => "UnregisteredSenderError",
                 ClientEvent::UnregisteredRecipientError => "UnregisteredRecipientError",
                 ClientEvent::UnsupportedMessageTypeError => "UnsupportedMessageTypeError",
-                ClientEvent::CreatedFileLocal { from: _, to: _, file_path: _ } => "Local File Created on Client",
+                ClientEvent::CreatedFileLocal {
+                    from: _,
+                    to: _,
+                    file_path: _,
+                } => "Local File Created on Client",
             },
             SCEventType::Server(server_event) => match server_event {
                 ServerEvent::PacketSent(_packet) => "PacketSent",
@@ -226,7 +234,7 @@ impl SCEvent {
 }
 
 impl SCEvent {
-    /// Create a new SCEvent
+    /// Create a new `SCEvent`
     pub fn new(sender_id: NodeId, event_type: SCEventType) -> SCEvent {
         SCEvent {
             event_type,

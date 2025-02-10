@@ -24,21 +24,21 @@ fn client_test() {
     sc.send_control_packet(ServerCommand::NetworkInitialized, 3);
 
     match sc.client_command_channels[&0].send(ClientCommand::StartFlooding) {
-        Ok(_) => log::trace!("-> send_client_start_flood to client 0"),
+        Ok(()) => log::trace!("-> send_client_start_flood to client 0"),
         Err(err) => log::error!("Channel error {}", err),
     }
 
     sleep(Duration::from_millis(500));
 
     match sc.client_command_channels[&0].send(ClientCommand::RegisterAsClient) {
-        Ok(_) => log::trace!("-> register client 0"),
+        Ok(()) => log::trace!("-> register client 0"),
         Err(err) => log::error!("Channel error {}", err),
     }
 
     sleep(Duration::from_secs(4));
 
     match sc.client_command_channels[&0].send(ClientCommand::OpenChatWith(7)) {
-        Ok(_) => log::trace!("-> open client 0 chat with client 7"),
+        Ok(()) => log::trace!("-> open client 0 chat with client 7"),
         Err(err) => log::error!("Channel error {}", err),
     }
 
@@ -48,7 +48,7 @@ fn client_test() {
         receiver: 7,
         message: "hello".to_string(),
     }) {
-        Ok(_) => log::trace!("-> send message from client 0 to client 7"),
+        Ok(()) => log::trace!("-> send message from client 0 to client 7"),
         Err(err) => log::error!("Channel error {}", err),
     }
 

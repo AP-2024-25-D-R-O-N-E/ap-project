@@ -205,7 +205,7 @@ impl ChatServer {
                     if let Ok(packet) = res {
                         // send packet to the simulation controller
                         match self.sim_contr_send.send(ServerEvent::PacketReceived(packet.clone())) {
-                            Ok(_) => log::debug!(
+                            Ok(()) => log::debug!(
                                 "{} {} sent event to simulation controller: {:?}",
                                 "↳ server".green(),
                                 self.id,
@@ -224,7 +224,7 @@ impl ChatServer {
                         }
                     }
                 }
-            )
+            );
         }
     }
 
@@ -418,14 +418,14 @@ impl ChatServer {
                     for fragment in fragments {
                         // send the fragments to the sender thread
                         match fragment_send.send((destination_id, session_id, fragment.clone())) {
-                            Ok(_) => log::debug!(
+                            Ok(()) => log::debug!(
                                 "{} {} sent fragment to sender thread: {:?}",
                                 "↳ server".green(),
                                 id,
                                 fragment
                             ),
                             Err(err) => {
-                                log::error!("Error sending fragment to sender thread: {}", err)
+                                log::error!("Error sending fragment to sender thread: {}", err);
                             }
                         }
                     }
@@ -558,7 +558,7 @@ impl ChatServer {
                 // if the total frags is 1, then we can just send the message to the message handler thread
                 if total_frags == 1 {
                     match ready_send.send((packet_source, packet_msg_id)) {
-                        Ok(_) => log::debug!(
+                        Ok(()) => log::debug!(
                             "{} {} sent ready signal to message handler thread",
                             "↳ server".green(),
                             self.id
@@ -579,7 +579,7 @@ impl ChatServer {
                 // if the buffer is full, tell the message handler thread to start assembling the fragments
                 if frag_buffer.len() == total_frags as usize {
                     match ready_send.send((packet_source, packet_msg_id)) {
-                        Ok(_) => log::debug!(
+                        Ok(()) => log::debug!(
                             "{} {} sent ready signal to message handler thread",
                             "↳ server".green(),
                             self.id
@@ -689,7 +689,7 @@ impl ChatServer {
             *topology_modified_lock = true;
 
             match nack_send.send(packet.clone()) {
-                Ok(_) => log::debug!(
+                Ok(()) => log::debug!(
                     "{} {} sent packet to sender thread: {:?}",
                     "↳ server".green(),
                     self.id,
@@ -719,7 +719,7 @@ impl ChatServer {
             log::error!("The send inside channel gave an error, this shouldn't be happening");
         } else {
             match self.sim_contr_send.send(ServerEvent::PacketSent(packet)) {
-                Ok(_) => log::debug!("{} packet_sent event to sc", "↳ server".green()),
+                Ok(()) => log::debug!("{} packet_sent event to sc", "↳ server".green()),
                 Err(err) => log::error!("Error sending packet to simulation controller: {}", err),
             }
         }
@@ -747,9 +747,9 @@ impl ChatServer {
                 log::error!("The send inside channel gave an error, this shouldn't be happening");
             } else {
                 match self.sim_contr_send.send(ServerEvent::PacketSent(packet)) {
-                    Ok(_) => log::debug!("{} packet_sent event to sc", "↳ server".green()),
+                    Ok(()) => log::debug!("{} packet_sent event to sc", "↳ server".green()),
                     Err(err) => {
-                        log::error!("Error sending packet to simulation controller: {}", err)
+                        log::error!("Error sending packet to simulation controller: {}", err);
                     }
                 }
             }
@@ -782,7 +782,7 @@ impl ChatServer {
             &*topology_lock,
             id,
             |finish| finish == destination,
-            |(a, b, _)| {
+            |(a, b, ())| {
                 if destination == a || destination == b {
                     return 1.0;
                 }
@@ -856,7 +856,7 @@ impl ChatServer {
         id: NodeId,
         destination: NodeId,
     ) -> Option<Message> {
-        let clients: Vec<NodeId> = client_table.iter().cloned().collect();
+        let clients: Vec<NodeId> = client_table.iter().copied().collect();
 
         Some(Message::new(
             id,

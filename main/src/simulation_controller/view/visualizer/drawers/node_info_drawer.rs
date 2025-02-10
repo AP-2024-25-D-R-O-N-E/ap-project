@@ -26,7 +26,7 @@ pub fn draw_infos_for_selected_nodes(
     state: &mut State,
     simulation_controller: &SimulationController,
 ) {
-    for node_index in state.node_info_section.opened_windows.clone().iter() {
+    for node_index in &state.node_info_section.opened_windows.clone() {
         draw_node_info(ctx, *node_index, state, simulation_controller);
     }
 }
@@ -64,7 +64,7 @@ pub fn draw_node_info(
                     ui.label("Node type".to_string());
                     ui.horizontal(|ui| {
                         ui.label(payload.get_type().to_string());
-                        ui.add_sized(ui.available_size(), egui::Label::new("".to_string()));
+                        ui.add_sized(ui.available_size(), egui::Label::new(String::new()));
                     });
                     ui.end_row();
 
@@ -84,7 +84,7 @@ pub fn draw_node_info(
                         state
                             .node_info_section
                             .opened_windows
-                            .retain(|opened_index| *opened_index == node_index)
+                            .retain(|opened_index| *opened_index == node_index);
                     }
                     ui.end_row();
                     ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
@@ -166,10 +166,9 @@ pub fn draw_node_info(
                                     if !state.toolbar_section.loggin_enabled {
                                         return;
                                     }
-                                    for event in state
+                                    for event in &state
                                         .events
                                         .get_events_list(DisplayOptions::from_index(payload.wg_id))
-                                        .iter()
                                     {
                                         body.row(30.0, |mut row| {
                                             event.draw(&mut row);
@@ -190,16 +189,16 @@ fn draw_drone_specific(
 ) {
     if ui.button("Crash").clicked() {
         match check_node_removal(&mut state.graph_section.g, node_index) {
-            Ok(_) => {
+            Ok(()) => {
                 remove_node(
                     &mut state.graph_section.g,
                     node_index,
                     simulation_controller,
-                )
+                );
             }
             Err(err) => {
                 get_drone_node_state(&mut state.node_info_section, node_index).crash_status_flag =
-                    Some(Err(err))
+                    Some(Err(err));
             }
         }
     }
@@ -271,7 +270,7 @@ fn draw_server_specific(
 ) {
     let curr_node_wg_id = get_payload_from_state(state, node_index).unwrap().wg_id;
     if ui.button("Start flood".to_string()).clicked() {
-        simulation_controller.send_server_start_flood(curr_node_wg_id)
+        simulation_controller.send_server_start_flood(curr_node_wg_id);
     }
 }
 
@@ -284,10 +283,10 @@ fn draw_client_specific(
     let curr_node_wg_id = get_payload_from_state(state, node_index).unwrap().wg_id;
     ui.horizontal(|ui| {
         if ui.button("Register".to_string()).clicked() {
-            simulation_controller.register(curr_node_wg_id)
+            simulation_controller.register(curr_node_wg_id);
         }
         if ui.button("Unregister".to_string()).clicked() {
-            simulation_controller.unregister(curr_node_wg_id)
+            simulation_controller.unregister(curr_node_wg_id);
         }
     });
     ui.horizontal(|ui| {
@@ -318,16 +317,15 @@ fn draw_client_specific(
             match state.file_dialog.open(
                 DialogMode::SelectFile,
                 true,
-                Some(&format!("Client {} open", curr_node_wg_id)),
+                Some(&format!("Client {curr_node_wg_id} open")),
             ) {
-                Ok(_) => log::info!("-> Opened file dialog"),
+                Ok(()) => log::info!("-> Opened file dialog"),
                 Err(err) => log::error!("Error opening file dialog: {}", err),
             }
         }
 
         if let DialogState::Selected(_) = state.file_dialog.state() {
-            if state.file_dialog.operation_id() == Some(&format!("Client {} open", curr_node_wg_id))
-            {
+            if state.file_dialog.operation_id() == Some(&format!("Client {curr_node_wg_id} open")) {
                 if let Some(path) = state.file_dialog.take_selected() {
                     get_client_node_state(&mut state.node_info_section, node_index)
                         .selected_file_path = Some(path.clone());
@@ -376,7 +374,7 @@ fn draw_client_specific(
         // make a combo box with the values from state.
         let selected_text =
             match get_client_node_state(&mut state.node_info_section, node_index).current_peer {
-                Some(id) => format!("Client {}", id),
+                Some(id) => format!("Client {id}"),
                 None => "Select client".to_string(),
             };
 
@@ -391,7 +389,7 @@ fn draw_client_specific(
                         &mut get_client_node_state(&mut state.node_info_section, node_index)
                             .current_peer,
                         Some(node_id),
-                        format!("Client {}", node_id),
+                        format!("Client {node_id}"),
                     );
                 }
 
@@ -462,8 +460,8 @@ fn draw_client_no_grid_specific(ui: &mut Ui, node_index: NodeIndex, state: &mut 
                                             }
                                             ChatMessage::FileMessage {
                                                 to,
-                                                file_path, 
-                                            ..
+                                                file_path,
+                                                ..
                                             } => {
                                                 let align = if *to == curr_peer {
                                                     egui::Align::RIGHT
@@ -510,26 +508,22 @@ fn draw_client_no_grid_specific(ui: &mut Ui, node_index: NodeIndex, state: &mut 
                                                                     DialogMode::SaveFile,
                                                                     true,
                                                                     Some(&format!(
-                                                                        "Client {} save {:?}",
-                                                                        curr_node_wg_id,
-                                                                        file_path
+                                                                        "Client {curr_node_wg_id} save {file_path:?}"
                                                                     )),
                                                                 ){
-                                                                    Ok(_) => log::info!("-> Opened file dialog"),
+                                                                    Ok(()) => log::info!("-> Opened file dialog"),
                                                                     Err(err) => log::error!("Error opening file dialog: {}", err),
                                                             }
                                                             }
                                                         });
                                                         if let DialogState::Selected(_) = state.file_dialog.state() {
                                                             if state.file_dialog.operation_id() == Some(&format!(
-                                                                "Client {} save {:?}",
-                                                                curr_node_wg_id,
-                                                                file_path
+                                                                "Client {curr_node_wg_id} save {file_path:?}"
                                                             ))
                                                             {
                                                                 if let Some(path) = state.file_dialog.take_selected() {
                                                                     let res = fs::copy(file_path, &path);
-                                                                    println!("saved image from {:?} to {:?} with res {:?}", file_path, path, res);
+                                                                    println!("saved image from {file_path:?} to {path:?} with res {res:?}");
                                                                     log::debug!("saved image from {:?} to {:?} with res {:?}", file_path, path, res);
                                                                 }
                                                             }

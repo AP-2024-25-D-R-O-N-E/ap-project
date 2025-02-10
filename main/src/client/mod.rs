@@ -2,18 +2,11 @@ pub mod client_leonardo;
 pub mod client_luca;
 pub mod utils;
 
-use std::{
-    collections::HashMap,
-    fmt::Debug,
-    sync::Arc,
-};
+use std::{collections::HashMap, fmt::Debug, sync::Arc};
 
 use crossbeam::channel::{Receiver, Sender};
 use tempfile::TempDir;
-use wg_2024::{
-    network::NodeId,
-    packet::Packet,
-};
+use wg_2024::{network::NodeId, packet::Packet};
 
 use crate::simulation_controller::structs::{ClientCommand, ClientEvent};
 

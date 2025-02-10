@@ -86,7 +86,7 @@ impl SCGui {
                             .set_selected(true);
 
                         for node in self.state.graph_section.g.selected_nodes() {
-                            print!("{:?} ", node);
+                            print!("{node:?} ");
                             self.state.node_info_section.open_window(*node);
                         }
                         self.state.node_info_section.open_window(node_index);
@@ -121,7 +121,7 @@ impl SCGui {
                 .get_mut(sender_node_index)
                 .unwrap()
             {
-                client_state.available_peers = ids.to_vec();
+                client_state.available_peers = ids.clone();
                 for peers in &client_state.available_peers {
                     client_state.chat_histories.insert(*peers, vec![]);
                 }
@@ -147,10 +147,10 @@ impl SCGui {
                 .get_mut(sender_node_index)
                 .unwrap()
             {
-                println!("{:?}", history);
+                println!("{history:?}");
                 client_state
                     .chat_histories
-                    .insert(*partner, history.to_vec());
+                    .insert(*partner, history.clone());
             }
         } else if let SCEventType::Client(ClientEvent::TextMessage { from, to, text }) =
             &event.event_type
@@ -244,7 +244,7 @@ impl SCGui {
 
     fn handle_sc_events(&mut self) {
         let mut events = vec![];
-        for (node_id, channel) in self.simulation_controller.node_event_channels.iter() {
+        for (node_id, channel) in &self.simulation_controller.node_event_channels {
             let curr_events: Vec<SCEvent> = channel
                 .try_iter()
                 .map(|e| SCEvent::new(*node_id, e.into()))
@@ -253,7 +253,7 @@ impl SCGui {
             events.extend_from_slice(&curr_events);
         }
 
-        for (node_id, channel) in self.simulation_controller.client_event_channels.iter() {
+        for (node_id, channel) in &self.simulation_controller.client_event_channels {
             let curr_events: Vec<SCEvent> = channel
                 .try_iter()
                 .map(|e| SCEvent::new(*node_id, e.into()))
@@ -262,7 +262,7 @@ impl SCGui {
             events.extend_from_slice(&curr_events);
         }
 
-        for (node_id, channel) in self.simulation_controller.server_event_channels.iter() {
+        for (node_id, channel) in &self.simulation_controller.server_event_channels {
             let curr_events: Vec<SCEvent> = channel
                 .try_iter()
                 .map(|e| SCEvent::new(*node_id, e.into()))

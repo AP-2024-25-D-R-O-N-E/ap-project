@@ -180,7 +180,7 @@ impl ClientLuca {
                             let fragments = Self::disassemble(message);
                             for frag in fragments{
                                 match fragment_s.send((self.server_id, session_id, frag.clone())) {
-                                    Ok(_) => log::debug!("{} {} fragment sent: {:?}", "↳ client".green(), self.id, frag),
+                                    Ok(()) => log::debug!("{} {} fragment sent: {:?}", "↳ client".green(), self.id, frag),
                                     Err(err) => log::error!("{} {} error. Couldn't send fragment. {}", "↳ client".green(), self.id, err),
                                 }
                             }
@@ -192,7 +192,7 @@ impl ClientLuca {
                     if let Ok(packet) = res {
 
                         match self.scs.send(ClientEvent::PacketReceived(packet.clone())){ //sends the packet to the simulation controller
-                            Ok(_) => log::debug!("{} {} packet sent: {:?}", "↳ client".green(), self.id, packet),
+                            Ok(()) => log::debug!("{} {} packet sent: {:?}", "↳ client".green(), self.id, packet),
                             Err(err) => log::error!("{} {} error. Couldn't send event. {}", "↳ client".green(), self.id, err),
                         }
 
@@ -205,7 +205,7 @@ impl ClientLuca {
                         }
                     }
                 }
-            )
+            );
         }
     }
 
@@ -452,13 +452,13 @@ impl ClientLuca {
             MessageData::TextMessage { from, to, text } => {
                 let event = ClientEvent::TextMessage { from, to, text };
                 match self.scs.send(event.clone()) {
-                    Ok(_) => {
+                    Ok(()) => {
                         log::debug!(
                             "{} {} text message received: {:?}",
                             "↳ client".green(),
                             self.id,
                             event
-                        )
+                        );
                     }
                     Err(err) => log::error!(
                         "{} {} sc channel error. This shouldn't be happening {}",
@@ -482,13 +482,13 @@ impl ClientLuca {
                         .unwrap(), // check this for errors maybe
                 };
                 match self.scs.send(event.clone()) {
-                    Ok(_) => {
+                    Ok(()) => {
                         log::debug!(
                             "{} {} file message received: {:?}",
                             "↳ client".green(),
                             self.id,
                             event
-                        )
+                        );
                     }
                     Err(err) => log::error!(
                         "{} {} sc channel error. This shouldn't be happening {}",
@@ -501,13 +501,13 @@ impl ClientLuca {
             MessageData::ResponseClients(clients) => {
                 let event = ClientEvent::ResponseClientsReceived(clients);
                 match self.scs.send(event.clone()) {
-                    Ok(_) => {
+                    Ok(()) => {
                         log::debug!(
                             "{} {} peers fetched: {:?}",
                             "↳ client".green(),
                             self.id,
                             event
-                        )
+                        );
                     }
                     Err(err) => log::error!(
                         "{} {} sc channel error. This shouldn't be happening {}",
@@ -520,8 +520,8 @@ impl ClientLuca {
             MessageData::AcknolewdgedAsClient => {
                 let event = ClientEvent::AcknolewdgedAsClient;
                 match self.scs.send(event) {
-                    Ok(_) => {
-                        log::debug!("{} {} acknolewdged as client", "↳ client".green(), self.id)
+                    Ok(()) => {
+                        log::debug!("{} {} acknolewdged as client", "↳ client".green(), self.id);
                     }
                     Err(err) => log::error!(
                         "{} {} sc channel error. This shouldn't be happening {}",
@@ -537,13 +537,13 @@ impl ClientLuca {
                     history: raw_vec_to_chat_vec(history, self.temp_dir.clone()),
                 };
                 match self.scs.send(event.clone()) {
-                    Ok(_) => {
+                    Ok(()) => {
                         log::debug!(
                             "{} {} history fetched: {:?}",
                             "↳ client".green(),
                             self.id,
                             event
-                        )
+                        );
                     }
                     Err(err) => log::error!(
                         "{} {} sc channel error. This shouldn't be happening {}",
@@ -556,12 +556,12 @@ impl ClientLuca {
             MessageData::UnregisteredSenderError => {
                 let event = ClientEvent::UnregisteredSenderError;
                 match self.scs.send(event) {
-                    Ok(_) => {
+                    Ok(()) => {
                         log::debug!(
                             "{} {} unregistered sender error",
                             "↳ client".green(),
                             self.id
-                        )
+                        );
                     }
                     Err(err) => log::error!(
                         "{} {} sc channel error. This shouldn't be happening {}",
@@ -574,12 +574,12 @@ impl ClientLuca {
             MessageData::UnregisteredRecipientError => {
                 let event = ClientEvent::UnregisteredRecipientError;
                 match self.scs.send(event) {
-                    Ok(_) => {
+                    Ok(()) => {
                         log::debug!(
                             "{} {} unregistered recipient error",
                             "↳ client".green(),
                             self.id
-                        )
+                        );
                     }
                     Err(err) => log::error!(
                         "{} {} sc channel error. This shouldn't be happening {}",
@@ -592,12 +592,12 @@ impl ClientLuca {
             MessageData::UnsupportedMessageTypeError => {
                 let event = ClientEvent::UnsupportedMessageTypeError;
                 match self.scs.send(event) {
-                    Ok(_) => {
+                    Ok(()) => {
                         log::debug!(
                             "{} {} unsupported message type error",
                             "↳ client".green(),
                             self.id
-                        )
+                        );
                     }
                     Err(err) => log::error!(
                         "{} {} sc channel error. This shouldn't be happening {}",
@@ -669,7 +669,7 @@ impl ClientLuca {
                 return;
             }
             match nack_s.send(packet.clone()) {
-                Ok(_) => log::debug!(
+                Ok(()) => log::debug!(
                     "{} {} packet sent to the nack channel: {:?}",
                     "↳ client".green(),
                     self.id,
@@ -704,7 +704,7 @@ impl ClientLuca {
             log::error!("Error in the send inside channel");
         } else {
             match self.scs.send(ClientEvent::PacketSent(packet.clone())) {
-                Ok(_) => log::debug!(
+                Ok(()) => log::debug!(
                     "{} {} packet sent: {:?}",
                     "↳ client".green(),
                     self.id,
@@ -742,7 +742,7 @@ impl ClientLuca {
                 log::error!("Error in the send inside channel");
             } else {
                 match self.scs.send(ClientEvent::PacketSent(packet.clone())) {
-                    Ok(_) => log::debug!(
+                    Ok(()) => log::debug!(
                         "{} {} packet sent: {:?}",
                         "↳ client".green(),
                         self.id,
@@ -843,7 +843,7 @@ impl ClientLuca {
             };
 
             match self.scs.send(local_file) {
-                Ok(_) => log::debug!(
+                Ok(()) => log::debug!(
                     "{} {} created local file: {:?}",
                     "↳ client".green(),
                     self.id,
@@ -888,7 +888,7 @@ impl ClientLuca {
             &*topology_lock,
             id,
             |finish| finish == destination,
-            |(a, b, _)| {
+            |(a, b, ())| {
                 if destination == a || destination == b {
                     return 1;
                 }
@@ -928,10 +928,10 @@ impl ClientLuca {
         let r = send_channel.send(packet.clone());
 
         if r.is_err() {
-            log::error!("The send inside channel gave an error")
+            log::error!("The send inside channel gave an error");
         } else {
             match scs.send(ClientEvent::PacketSent(packet.clone())) {
-                Ok(_) => log::debug!("{} {} packet sent: {:?}", "↳ client".green(), id, packet),
+                Ok(()) => log::debug!("{} {} packet sent: {:?}", "↳ client".green(), id, packet),
                 Err(err) => log::error!(
                     "{} {} sc channel error. This shouldn't be happening. {}",
                     "↳ client".green(),

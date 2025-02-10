@@ -85,17 +85,17 @@ impl NetworkInitializer {
 
     pub fn init_network(mut self) -> Result<SimulationController, String> {
         //create 3 different version since we might want the simulation controller channels to depend on node type
-        for drone in self.config.drone.iter() {
+        for drone in &self.config.drone {
             //create unbounded channel for drones
             self.packet_channels.insert(drone.id, unbounded::<Packet>());
         }
 
-        for client in self.config.client.iter() {
+        for client in &self.config.client {
             self.packet_channels
                 .insert(client.id, unbounded::<Packet>());
         }
 
-        for server in self.config.server.iter() {
+        for server in &self.config.server {
             self.packet_channels
                 .insert(server.id, unbounded::<Packet>());
         }
@@ -147,7 +147,7 @@ impl NetworkInitializer {
                         pdr,
                     );
 
-                    log::info!("{}", format!("Initialized drone {}", index).purple());
+                    log::info!("{}", format!("Initialized drone {index}").purple());
                     barrier_clone.wait();
                     // run function is where the logic of the drone runs.
                     drone.run();
@@ -200,7 +200,7 @@ impl NetworkInitializer {
                     );
                     log::info!(
                         "{}, {:?}",
-                        format!("Initialized client {}", client_id).bold().purple(),
+                        format!("Initialized client {client_id}").bold().purple(),
                         client,
                     );
 
@@ -214,7 +214,7 @@ impl NetworkInitializer {
         log::info!("{}", "Clients initialized successfully!".bold().green());
 
         let server_barrier = Arc::new(Barrier::new(self.config.server.len() + 1));
-        for server in self.config.server.iter() {
+        for server in &self.config.server {
             let server_event_send = unbounded::<ServerEvent>();
             let server_command_rec = unbounded::<ServerCommand>();
 
@@ -252,7 +252,7 @@ impl NetworkInitializer {
                     );
                     log::info!(
                         "{}, {:?}",
-                        format!("Initialized server {}", server_id).bold().purple(),
+                        format!("Initialized server {server_id}").bold().purple(),
                         server,
                     );
 
@@ -589,10 +589,7 @@ pub fn spawn_drone_thread<T: Drone>(
             pdr,
         );
 
-        log::info!(
-            "{}",
-            format!("Initialized drone Rustafarian {}", id).purple()
-        );
+        log::info!("{}", format!("Initialized drone Rustafarian {id}").purple());
         barrier_clone.wait();
         // run function is where the logic of the drone runs.
         drone.run();

@@ -5,10 +5,13 @@ use macros::AsSerializable;
 
 use crate::fragmentation::message::ChatMessage;
 
-use super::structs::*;
-use wg_2024::controller::*;
-use wg_2024::network::*;
-use wg_2024::packet::*;
+use super::structs::{ClientEvent, SCEvent, SCEventType, ServerEvent};
+use wg_2024::controller::DroneEvent;
+use wg_2024::network::SourceRoutingHeader;
+use wg_2024::packet::{
+    Ack, FloodRequest, FloodResponse, Fragment, Nack, NackType, NodeType, Packet, PacketType,
+    FRAGMENT_DSIZE,
+};
 
 use serde::ser::SerializeStruct;
 use serde::Serialize;
@@ -79,7 +82,7 @@ where
 {
     type Output = Vec<<T as AsSerializable>::Output>;
     fn as_serializable(&self) -> Self::Output {
-        self.iter().map(|item| item.as_serializable()).collect()
+        self.iter().map(AsSerializable::as_serializable).collect()
     }
 }
 
@@ -173,16 +176,16 @@ impl Serialize for FragmentRef {
         let mut last_5 = String::new();
         let v = &self.data;
         for item in v.iter().take(4) {
-            first_5.push_str(format!("{},", item).as_str());
+            first_5.push_str(format!("{item},").as_str());
         }
         first_5.push_str(format!("{}", v[5]).as_str());
 
         for item in v.iter().take(v.len() - 1).skip(v.len() - 5) {
-            last_5.push_str(format!("{},", item).as_str());
+            last_5.push_str(format!("{item},").as_str());
         }
         last_5.push_str(format!("{}", v[v.len() - 1]).as_str());
 
-        let compact_data_rep = format!("[{}, . . , {}]", first_5, last_5);
+        let compact_data_rep = format!("[{first_5}, . . , {last_5}]");
 
         let mut state = serializer.serialize_struct("FragmentRef", 4)?;
         state.serialize_field("fragment_index", &self.fragment_index)?;

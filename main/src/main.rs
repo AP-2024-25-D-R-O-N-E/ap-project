@@ -4,10 +4,7 @@
 use initializer::network_initializer::NetworkInitializer;
 use simple_logger::SimpleLogger;
 use simulation_controller::visualizer::ui::run_gui;
-use std::{
-    fs,
-    sync::Arc,
-};
+use std::{fs, sync::Arc};
 use tempfile::{tempdir, TempDir};
 
 mod client;

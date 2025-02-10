@@ -13,13 +13,13 @@ fn test() {
         },
     );
 
-    println!("original {:?}", message);
+    println!("original {message:?}");
 
     let a = message.as_u8();
 
-    println!("{:?}", a);
+    println!("{a:?}");
 
     let reconstructed: Message = Message::from_u8(a);
 
-    println!("{:?}", reconstructed);
+    println!("{reconstructed:?}");
 }

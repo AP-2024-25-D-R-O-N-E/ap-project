@@ -28,6 +28,6 @@ impl Display for DroneVendor {
             DroneVendor::MyDrone => "MyDrone".to_string(),
             DroneVendor::Unknown => "Unknown".to_string(),
         };
-        write!(f, "{}", s)
+        write!(f, "{s}")
     }
 }

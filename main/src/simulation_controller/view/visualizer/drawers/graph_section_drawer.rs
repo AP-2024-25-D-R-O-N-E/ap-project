@@ -1,7 +1,5 @@
 use egui::Ui;
-use egui_graphs::{
-    GraphView, LayoutRandom, LayoutStateRandom,
-};
+use egui_graphs::{GraphView, LayoutRandom, LayoutStateRandom};
 
 use crate::simulation_controller::{edge::UiEdgePayload, node::UiNodePayload, state::State};
 

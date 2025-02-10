@@ -236,17 +236,14 @@ impl<E: Clone, Ty: EdgeType, Ix: IndexType> DisplayNode<UiNodePayload, E, Ty, Ix
     for CustomNodeShape
 {
     fn is_inside(&self, pos: Pos2) -> bool {
-        match &self.payload.node_type {
-            UiNodeType::Drone(drone_node) => {
-                self.loc.distance(pos) <= drone_node.radius / self.zoom
-            }
-            _ => {
-                let rect = Rect::from_center_size(
-                    self.loc,
-                    Vec2::new(self.size_x / self.zoom, self.size_y / self.zoom),
-                );
-                rect.contains(pos)
-            }
+        if let UiNodeType::Drone(drone_node) = &self.payload.node_type {
+            self.loc.distance(pos) <= drone_node.radius / self.zoom
+        } else {
+            let rect = Rect::from_center_size(
+                self.loc,
+                Vec2::new(self.size_x / self.zoom, self.size_y / self.zoom),
+            );
+            rect.contains(pos)
         }
     }
 

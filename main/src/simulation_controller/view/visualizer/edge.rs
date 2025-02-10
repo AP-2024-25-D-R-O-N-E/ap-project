@@ -59,7 +59,7 @@ impl<N: Clone, Ty: EdgeType, Ix: IndexType, D: DisplayNode<N, UiEdgePayload, Ty,
     }
 
     fn update(&mut self, props: &egui_graphs::EdgeProps<UiEdgePayload>) {
-        self.payload = props.payload.clone()
+        self.payload = props.payload.clone();
     }
 
     fn is_inside(

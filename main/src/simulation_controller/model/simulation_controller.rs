@@ -164,8 +164,8 @@ impl SimulationController {
             let input = io::stdin().read_line(&mut buffer);
             match &input {
                 Ok(_) => {
-                    match buffer.trim().parse::<i32>() {
-                        Ok(action_number) => match action_number {
+                    if let Ok(action_number) = buffer.trim().parse::<i32>() {
+                        match action_number {
                             1 => SimulationController::prompt_id_and_execute(
                                 "Insert a node id".to_string(),
                                 |_| self.send_default_msg_fragment(),
@@ -184,8 +184,9 @@ impl SimulationController {
                             ),
                             -1 => break,
                             _ => println!("{}", "Insert a valid number".italic().yellow()),
-                        },
-                        Err(_) => log::error!("Please insert a valid number"),
+                        }
+                    } else {
+                        log::error!("Please insert a valid number")
                     };
                 }
                 Err(err) => log::error!("Cannot read from stdin: {}", err),

@@ -7,12 +7,12 @@ use wg_2024::{
     packet::{FloodRequest, NodeType, Packet, PacketType},
 };
 
-use super::super::util::graph::*;
+use super::super::util::graph::{is_client, is_server};
 
 use crate::simulation_controller::{
     node::UiNodeType,
     state::{AckType, State},
-    util::*,
+    util::StatusFlag,
     SimulationController,
 };
 
@@ -29,7 +29,7 @@ pub fn draw_section_testing(
                 .spacing([40.0, 4.0])
                 .striped(true)
                 .show(ui, |ui| {
-                    send_msg_fragment_section(ui, state, simulation_controller)
+                    send_msg_fragment_section(ui, state, simulation_controller);
                 });
         });
 
@@ -41,7 +41,7 @@ pub fn draw_section_testing(
                 .spacing([40.0, 4.0])
                 .striped(true)
                 .show(ui, |ui| {
-                    send_ack_nack_section(ui, state, simulation_controller)
+                    send_ack_nack_section(ui, state, simulation_controller);
                 });
         });
 
@@ -53,7 +53,7 @@ pub fn draw_section_testing(
                 .spacing([40.0, 4.0])
                 .striped(true)
                 .show(ui, |ui| {
-                    send_flood_req_section(ui, state, simulation_controller)
+                    send_flood_req_section(ui, state, simulation_controller);
                 });
         });
 }
@@ -106,7 +106,7 @@ pub fn send_msg_fragment_section(
                 parse_data::<u8>(state.test_section.msg_fragment_routing_path_string.clone())
             {
                 let reversed_path: Vec<u8> = parsed_path.into_iter().rev().collect();
-                let mut rv = format!("{:?}", reversed_path);
+                let mut rv = format!("{reversed_path:?}");
                 rv.truncate(rv.len() - 1);
                 rv.remove(0);
                 state.test_section.msg_fragment_routing_path_string = rv;
@@ -139,7 +139,7 @@ pub fn send_msg_fragment_section(
                         }
                         simulation_controller.send_msg_fragment(packet);
                         state.test_section.packet_sender_status_flag =
-                            Some(Ok("Msg fragment sent".to_string()))
+                            Some(Ok("Msg fragment sent".to_string()));
                     }
                 }
             }
@@ -189,7 +189,7 @@ pub fn send_ack_nack_section(
                 parse_data::<u8>(state.test_section.ack_nack_routing_path_string.clone())
             {
                 let reversed_path: Vec<u8> = parsed_path.into_iter().rev().collect();
-                let mut rv = format!("{:?}", reversed_path);
+                let mut rv = format!("{reversed_path:?}");
                 rv.truncate(rv.len() - 1);
                 rv.remove(0);
                 state.test_section.ack_nack_routing_path_string = rv;
@@ -274,13 +274,13 @@ pub fn send_flood_req_section(
                             .node_type
                         {
                             UiNodeType::Server(_) => {
-                                flood_req.path_trace = vec![(curr_node_wg_id, NodeType::Server)]
+                                flood_req.path_trace = vec![(curr_node_wg_id, NodeType::Server)];
                             }
                             UiNodeType::Client(_) => {
-                                flood_req.path_trace = vec![(curr_node_wg_id, NodeType::Client)]
+                                flood_req.path_trace = vec![(curr_node_wg_id, NodeType::Client)];
                             }
                             UiNodeType::Drone(_) => {
-                                flood_req.path_trace = vec![(curr_node_wg_id, NodeType::Drone)]
+                                flood_req.path_trace = vec![(curr_node_wg_id, NodeType::Drone)];
                             }
                         }
 
@@ -296,12 +296,12 @@ pub fn send_flood_req_section(
                 } else {
                     state.test_section.flood_req_sender_status_flag = Some(Err(
                         "The initiator id should be a client or a server".to_string(),
-                    ))
+                    ));
                 }
             }
             None => {
                 state.test_section.flood_req_sender_status_flag =
-                    Some(Err("Invalid node id".to_string()))
+                    Some(Err("Invalid node id".to_string()));
             }
         }
     }
@@ -332,7 +332,7 @@ where
         .filter_map(|s| {
             let rv = s.trim().parse::<T>().ok();
             if rv.is_none() {
-                ok = false
+                ok = false;
             }
 
             rv
@@ -359,7 +359,7 @@ fn get_path_between_selected_nodes(state: &mut State) -> Result<String, String> 
                 let mut new_path = String::new();
                 for n in path {
                     let actual_node_index = state.graph_section.g.node(n).unwrap().payload().wg_id;
-                    new_path.push_str(format!("{}, ", actual_node_index).as_str());
+                    new_path.push_str(format!("{actual_node_index}, ").as_str());
                 }
                 if !new_path.is_empty() {
                     new_path.truncate(new_path.len() - 2);

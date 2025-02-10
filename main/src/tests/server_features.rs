@@ -67,7 +67,7 @@ fn register_client1(sc: &SimulationController) {
 
     let fragments = disassemble(message);
 
-    for fragment in fragments.iter() {
+    for fragment in &fragments {
         let packet = Packet {
             pack_type: PacketType::MsgFragment(fragment.clone()),
             routing_header: SourceRoutingHeader {
@@ -86,7 +86,7 @@ fn register_client2(sc: &SimulationController) {
 
     let fragments = disassemble(message);
 
-    for fragment in fragments.iter() {
+    for fragment in &fragments {
         let packet = Packet {
             pack_type: PacketType::MsgFragment(fragment.clone()),
             routing_header: SourceRoutingHeader {
@@ -105,7 +105,7 @@ fn unregister_client1(sc: &SimulationController) {
 
     let fragments = disassemble(message);
 
-    for fragment in fragments.iter() {
+    for fragment in &fragments {
         let packet = Packet {
             pack_type: PacketType::MsgFragment(fragment.clone()),
             routing_header: SourceRoutingHeader {
@@ -124,7 +124,7 @@ fn request_clients(sc: &SimulationController) {
 
     let fragments = disassemble(message);
 
-    for fragment in fragments.iter() {
+    for fragment in &fragments {
         let packet = Packet {
             pack_type: PacketType::MsgFragment(fragment.clone()),
             routing_header: SourceRoutingHeader {
@@ -151,7 +151,7 @@ fn text_message(sc: &SimulationController, text: String) {
 
     let fragments = disassemble(message);
 
-    for fragment in fragments.iter() {
+    for fragment in &fragments {
         let packet = Packet {
             pack_type: PacketType::MsgFragment(fragment.clone()),
             routing_header: SourceRoutingHeader {
@@ -177,7 +177,7 @@ fn chat_history(sc: &SimulationController) {
 
     let fragments = disassemble(message);
 
-    for fragment in fragments.iter() {
+    for fragment in &fragments {
         let packet = Packet {
             pack_type: PacketType::MsgFragment(fragment.clone()),
             routing_header: SourceRoutingHeader {

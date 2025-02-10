@@ -195,10 +195,7 @@ impl ClientLeonardo {
                 recv(self.packet_recv) -> packet => {
 
                     if let Ok(p) = packet {
-                        match self.sim_contr_send.send(ClientEvent::PacketReceived(p.clone())){
-                            Ok(_) => log::debug!("{} Packet received: {}", "↳ client".purple(), p),
-                            Err(_) => log::error!("{} Packet received but couldn't be sent to the simulation controller", "↳ client".purple())
-                        }
+                        if let Ok(()) = self.sim_contr_send.send(ClientEvent::PacketReceived(p.clone())) { log::debug!("{} Packet received: {}", "↳ client".purple(), p) } else { log::error!("{} Packet received but couldn't be sent to the simulation controller", "↳ client".purple()) }
 
                         let header_vec = p.routing_header.hops.clone();
                         match p.pack_type {
@@ -220,7 +217,7 @@ impl ClientLeonardo {
                         }
                     }
                 }
-            )
+            );
         }
     }
 
@@ -327,10 +324,7 @@ impl ClientLeonardo {
                     let chat_server_id = *server_id.lock().unwrap();
 
                     for fragment in fragments {
-                        match fragment_sender.send((chat_server_id, session_id, fragment)){
-                            Ok(_) => log::debug!("{} Message sent: {}", "↳ client".purple(), session_id),
-                            Err(_) => log::error!("{} Message sent but couldn't be sent to the sender thread", "↳ client".purple())
-                        }
+                        if let Ok(()) = fragment_sender.send((chat_server_id, session_id, fragment)) { log::debug!("{} Message sent: {}", "↳ client".purple(), session_id) } else { log::error!("{} Message sent but couldn't be sent to the sender thread", "↳ client".purple()) }
                     }
 
                     //increment session_id
@@ -433,14 +427,13 @@ impl ClientLeonardo {
 
         if res.is_err() {
             log::error!("The send inside channel gave an error, this shouldn't be happening");
+        } else if let Ok(()) = sim_contr_send.send(ClientEvent::PacketSent(packet.clone())) {
+            log::debug!("{} Packet sent: {}", "↳ client".purple(), packet)
         } else {
-            match sim_contr_send.send(ClientEvent::PacketSent(packet.clone())) {
-                Ok(_) => log::debug!("{} Packet sent: {}", "↳ client".purple(), packet),
-                Err(_) => log::error!(
-                    "{} Packet sent but couldn't be sent to the simulation controller",
-                    "↳ client".purple()
-                ),
-            }
+            log::error!(
+                "{} Packet sent but couldn't be sent to the simulation controller",
+                "↳ client".purple()
+            );
         }
     }
 
@@ -517,9 +510,10 @@ impl ClientLeonardo {
                 nack.fragment_index,
                 s_id
             );
-            match resend.send(p.clone()) {
-                Ok(_) => log::debug!("{} Packet resent: {}", "↳ client".purple(), p),
-                Err(_) => log::error!("{} Packet resent but couldn't be sent", "↳ client".purple()),
+            if let Ok(()) = resend.send(p.clone()) {
+                log::debug!("{} Packet resent: {}", "↳ client".purple(), p)
+            } else {
+                log::error!("{} Packet resent but couldn't be sent", "↳ client".purple())
             }
             self.condv.notify_all();
         } else {
@@ -643,16 +637,17 @@ impl ClientLeonardo {
             {
                 e.insert(vec![f]);
                 if tot == 1 {
-                    match ready.send((p_source, id)) {
-                        Ok(_) => log::debug!(
+                    if let Ok(()) = ready.send((p_source, id)) {
+                        log::debug!(
                             "{} Message ready to be assembled ready {}",
                             "↳ client".purple(),
                             id
-                        ),
-                        Err(_) => log::error!(
+                        );
+                    } else {
+                        log::error!(
                             "{} Ready message sent but couldn't be sent",
                             "↳ client".purple()
-                        ),
+                        );
                     }
                 }
             } else {
@@ -660,16 +655,17 @@ impl ClientLeonardo {
                 buffer.push(f);
 
                 if buffer.len() == tot as usize {
-                    match ready.send((p_source, id)) {
-                        Ok(_) => log::debug!(
+                    if let Ok(()) = ready.send((p_source, id)) {
+                        log::debug!(
                             "{} Message ready to be assembled ready {}",
                             "↳ client".purple(),
                             id
-                        ),
-                        Err(_) => log::error!(
+                        );
+                    } else {
+                        log::error!(
                             "{} Ready message sent but couldn't be sent",
                             "↳ client".purple()
-                        ),
+                        );
                     }
                 }
             }
@@ -692,17 +688,16 @@ impl ClientLeonardo {
 
         if let Err(_packet) = res {
             log::error!("The send inside channel gave an error, this shouldn't be happening");
+        } else if let Ok(()) = self
+            .sim_contr_send
+            .send(ClientEvent::PacketSent(packet.clone()))
+        {
+            log::debug!("{} Packet sent: {}", "↳ client".purple(), packet)
         } else {
-            match self
-                .sim_contr_send
-                .send(ClientEvent::PacketSent(packet.clone()))
-            {
-                Ok(_) => log::debug!("{} Packet sent: {}", "↳ client".purple(), packet),
-                Err(_) => log::error!(
-                    "{} Packet sent but couldn't be sent to the simulation controller",
-                    "↳ client".purple()
-                ),
-            }
+            log::error!(
+                "{} Packet sent but couldn't be sent to the simulation controller",
+                "↳ client".purple()
+            );
         }
     }
 
@@ -711,19 +706,21 @@ impl ClientLeonardo {
     //events to simulation controller
 
     fn send_response(res: Vec<u8>, sim_send: Sender<ClientEvent>) {
-        match sim_send.send(ClientEvent::ResponseClientsReceived(res)) {
-            Ok(_) => log::debug!("{} Peers fetched", "↳ client".purple()),
-            Err(_) => log::error!(
+        if let Ok(()) = sim_send.send(ClientEvent::ResponseClientsReceived(res)) {
+            log::debug!("{} Peers fetched", "↳ client".purple())
+        } else {
+            log::error!(
                 "{} Couldn't send ResponseClientsReceived",
                 "↳ client".purple()
-            ),
+            );
         }
     }
 
     fn client_ack(sim_send: Sender<ClientEvent>) {
-        match sim_send.send(ClientEvent::AcknolewdgedAsClient) {
-            Ok(_) => log::debug!("{} Acknowledged as client", "↳ client".purple()),
-            Err(_) => log::error!("{} Couldn't send AcknolewdgedAsClient", "↳ client".purple()),
+        if let Ok(()) = sim_send.send(ClientEvent::AcknolewdgedAsClient) {
+            log::debug!("{} Acknowledged as client", "↳ client".purple())
+        } else {
+            log::error!("{} Couldn't send AcknolewdgedAsClient", "↳ client".purple())
         }
     }
 
@@ -733,45 +730,49 @@ impl ClientLeonardo {
         sim_send: Sender<ClientEvent>,
         temp_dir: Arc<TempDir>,
     ) {
-        match sim_send.send(ClientEvent::ResponseHistoryReceived {
+        if let Ok(()) = sim_send.send(ClientEvent::ResponseHistoryReceived {
             partner,
             history: raw_vec_to_chat_vec(history, temp_dir.clone()),
         }) {
-            Ok(_) => log::debug!("{} History fetched", "↳ client".purple()),
-            Err(_) => log::error!(
+            log::debug!("{} History fetched", "↳ client".purple())
+        } else {
+            log::error!(
                 "{} Couldn't send ResponseHistoryReceived",
                 "↳ client".purple()
-            ),
+            );
         }
     }
 
     fn unregistered_sender_error(sim_send: Sender<ClientEvent>) {
-        match sim_send.send(ClientEvent::UnregisteredSenderError) {
-            Ok(_) => log::debug!("{} Unregistered sender error", "↳ client".purple()),
-            Err(_) => log::error!(
+        if let Ok(()) = sim_send.send(ClientEvent::UnregisteredSenderError) {
+            log::debug!("{} Unregistered sender error", "↳ client".purple())
+        } else {
+            log::error!(
                 "{} Couldn't send UnregisteredSenderError",
                 "↳ client".purple()
-            ),
+            );
         }
     }
 
     fn unregistered_recipient_error(sim_send: Sender<ClientEvent>) {
-        match sim_send.send(ClientEvent::UnregisteredRecipientError) {
-            Ok(_) => log::debug!("{} Unregistered recipient error", "↳ client".purple()),
-            Err(_) => log::error!(
+        if let Ok(()) = sim_send.send(ClientEvent::UnregisteredRecipientError) {
+            log::debug!("{} Unregistered recipient error", "↳ client".purple())
+        } else {
+            log::error!(
                 "{} Couldn't send UnregisteredRecipientError",
                 "↳ client".purple()
-            ),
+            );
         }
     }
 
     fn unsupported_message_type_error(sim_send: Sender<ClientEvent>) {
-        match sim_send.send(ClientEvent::UnsupportedMessageTypeError) {
-            Ok(_) => log::debug!("{} Unsupported message type error", "↳ client".purple()),
-            Err(_) => log::error!(
+        if let Ok(()) = sim_send.send(ClientEvent::UnsupportedMessageTypeError) {
+            log::debug!("{} Unsupported message type error", "↳ client".purple())
+        } else {
+            log::error!(
                 "{} Couldn't send UnsupportedMessageTypeError",
                 "↳ client".purple()
-            ),
+            );
         }
     }
 
@@ -781,9 +782,10 @@ impl ClientLeonardo {
         text: String,
         sim_send: Sender<ClientEvent>,
     ) {
-        match sim_send.send(ClientEvent::TextMessage { from, to, text }) {
-            Ok(_) => log::debug!("{} Text message received", "↳ client".purple()),
-            Err(_) => log::error!("{} Couldn't send TextMessage", "↳ client".purple()),
+        if let Ok(()) = sim_send.send(ClientEvent::TextMessage { from, to, text }) {
+            log::debug!("{} Text message received", "↳ client".purple())
+        } else {
+            log::error!("{} Couldn't send TextMessage", "↳ client".purple())
         }
     }
 
@@ -796,13 +798,14 @@ impl ClientLeonardo {
         sim_send: Sender<ClientEvent>,
         temp_dir: Arc<TempDir>,
     ) {
-        match sim_send.send(ClientEvent::FileMessage {
+        if let Ok(()) = sim_send.send(ClientEvent::FileMessage {
             from,
             to,
             file_path: byte_vec_to_file(file_name, extension, file, temp_dir.clone()).unwrap(),
         }) {
-            Ok(_) => log::debug!("{} File message received", "↳ client".purple()),
-            Err(_) => log::error!("{} Couldn't send FileMessage", "↳ client".purple()),
+            log::debug!("{} File message received", "↳ client".purple())
+        } else {
+            log::error!("{} Couldn't send FileMessage", "↳ client".purple())
         }
     }
 
@@ -829,17 +832,16 @@ impl ClientLeonardo {
 
             if res.is_err() {
                 log::error!("The send inside channel gave an error, this shouldn't be happening");
+            } else if let Ok(()) = self
+                .sim_contr_send
+                .send(ClientEvent::PacketSent(packet.clone()))
+            {
+                log::debug!("{} Packet sent: {}", "↳ client".purple(), packet)
             } else {
-                match self
-                    .sim_contr_send
-                    .send(ClientEvent::PacketSent(packet.clone()))
-                {
-                    Ok(_) => log::debug!("{} Packet sent: {}", "↳ client".purple(), packet),
-                    Err(_) => log::error!(
-                        "{} Packet sent but couldn't be sent to the simulation controller",
-                        "↳ client".purple()
-                    ),
-                }
+                log::error!(
+                    "{} Packet sent but couldn't be sent to the simulation controller",
+                    "↳ client".purple()
+                );
             }
         }
     }
@@ -859,9 +861,10 @@ impl ClientLeonardo {
             *self.chat_server_id.lock().unwrap(),
             MessageData::RequestClients(self.id),
         );
-        match sender.send(m) {
-            Ok(_) => log::debug!("{} Requesting clients", "↳ client".purple()),
-            Err(_) => log::error!("{} Couldn't send RequestClients", "↳ client".purple()),
+        if let Ok(()) = sender.send(m) {
+            log::debug!("{} Requesting clients", "↳ client".purple())
+        } else {
+            log::error!("{} Couldn't send RequestClients", "↳ client".purple())
         }
     }
 
@@ -871,9 +874,10 @@ impl ClientLeonardo {
             *self.chat_server_id.lock().unwrap(),
             MessageData::RegisterAsClient(self.id),
         );
-        match sender.send(m) {
-            Ok(_) => log::debug!("{} Registering as client", "↳ client".purple()),
-            Err(_) => log::error!("{} Couldn't send RegisterAsClient", "↳ client".purple()),
+        if let Ok(()) = sender.send(m) {
+            log::debug!("{} Registering as client", "↳ client".purple())
+        } else {
+            log::error!("{} Couldn't send RegisterAsClient", "↳ client".purple())
         }
     }
 
@@ -883,9 +887,10 @@ impl ClientLeonardo {
             *self.chat_server_id.lock().unwrap(),
             MessageData::UnregisterAsClient(self.id),
         );
-        match sender.send(m) {
-            Ok(_) => log::debug!("{} Unregistering as client", "↳ client".purple()),
-            Err(_) => log::error!("{} Couldn't send UnregisterAsClient", "↳ client".purple()),
+        if let Ok(()) = sender.send(m) {
+            log::debug!("{} Unregistering as client", "↳ client".purple())
+        } else {
+            log::error!("{} Couldn't send UnregisterAsClient", "↳ client".purple())
         }
     }
 
@@ -899,7 +904,7 @@ impl ClientLeonardo {
             },
         );
         match sender.send(m) {
-            Ok(_) => log::debug!("{} Requesting history", "↳ client".purple()),
+            Ok(()) => log::debug!("{} Requesting history", "↳ client".purple()),
             Err(err) => log::error!(
                 "{} Couldn't send RequestHistory {}",
                 "↳ client".purple(),
@@ -919,7 +924,7 @@ impl ClientLeonardo {
             },
         );
         match sender.send(m) {
-            Ok(_) => log::debug!("{} Sending text message", "↳ client".purple()),
+            Ok(()) => log::debug!("{} Sending text message", "↳ client".purple()),
             Err(err) => log::error!("{} Couldn't send TextMessage {}", "↳ client".purple(), err),
         }
     }
@@ -944,7 +949,7 @@ impl ClientLeonardo {
             };
 
             match self.sim_contr_send.send(local_file) {
-                Ok(_) => log::debug!("{} File created locally", "↳ client".purple()),
+                Ok(()) => log::debug!("{} File created locally", "↳ client".purple()),
                 Err(err) => log::error!(
                     "{} Couldn't send CreatedFileLocal {}",
                     "↳ client".purple(),
@@ -965,7 +970,7 @@ impl ClientLeonardo {
             },
         );
         match sender.send(m) {
-            Ok(_) => log::debug!("{} Sending file message", "↳ client".purple()),
+            Ok(()) => log::debug!("{} Sending file message", "↳ client".purple()),
             Err(err) => log::error!("{} Couldn't send FileMessage {}", "↳ client".purple(), err),
         }
     }

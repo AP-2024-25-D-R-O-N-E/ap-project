@@ -1,4 +1,6 @@
-use super::super::util::graph::*;
+use super::super::util::graph::{
+    add_edge_between, check_edge_addition, check_edge_removal, remove_edges_between,
+};
 use egui::{CollapsingHeader, RichText, Ui};
 use wg_2024::network::NodeId;
 
@@ -103,15 +105,15 @@ pub fn draw_modify_topology_section(
                     let payload = node_content.payload();
                     match &payload.node_type {
                         UiNodeType::Server(_) => {
-                            simulation_controller.send_server_start_flood(payload.wg_id)
+                            simulation_controller.send_server_start_flood(payload.wg_id);
                         }
                         UiNodeType::Client(_) => {
-                            simulation_controller.send_client_start_flood(payload.wg_id)
+                            simulation_controller.send_client_start_flood(payload.wg_id);
                         }
                         UiNodeType::Drone(_) => (),
                     }
                 }
-                insert_drone(state, simulation_controller)
+                insert_drone(state, simulation_controller);
             }
 
             if let Some(status) = &state.modify_topology_section.status_flag {
@@ -136,7 +138,7 @@ pub fn draw_modify_topology_section(
                 .spacing([40.0, 4.0])
                 .striped(true)
                 .show(ui, |ui| {
-                    add_remove_sender_section(ui, state, simulation_controller)
+                    add_remove_sender_section(ui, state, simulation_controller);
                 });
         });
 }
@@ -145,7 +147,7 @@ fn can_insert_drone(state: &mut State) -> bool {
     match parse_string::<NodeId>(state.modify_topology_section.neighbors.clone()) {
         Ok(wg_neighbor_ids) => {
             match check_drone_addition(&mut state.graph_section, &wg_neighbor_ids) {
-                Ok(_) => {
+                Ok(()) => {
                     state.modify_topology_section.status_flag =
                         Some(Ok("Drone inserted".to_string()));
                     true

@@ -8,7 +8,9 @@ use crate::{
         edge::UiEdgePayload,
         node::{UiDroneNode, UiNodePayload, UiNodeType},
         state::{GraphSectionState, State},
-        util::*,
+        util::{
+            DefaultModelGraph, ModelEdgePayload, ModelGraph, ModelNodePayload, StatusFlag, UiGraph,
+        },
         SimulationController,
     },
 };
@@ -213,20 +215,10 @@ pub fn check_edge_addition(
             crate::simulation_controller::node::UiNodeType::Drone(_),
         ) => check_drone_client(graph, status_flag, node1),
         (
-            crate::simulation_controller::node::UiNodeType::Server(_),
-            crate::simulation_controller::node::UiNodeType::Client(_),
-        )
-        | (
-            crate::simulation_controller::node::UiNodeType::Client(_),
-            crate::simulation_controller::node::UiNodeType::Server(_),
-        )
-        | (
-            crate::simulation_controller::node::UiNodeType::Client(_),
-            crate::simulation_controller::node::UiNodeType::Client(_),
-        )
-        | (
-            crate::simulation_controller::node::UiNodeType::Server(_),
-            crate::simulation_controller::node::UiNodeType::Server(_),
+            crate::simulation_controller::node::UiNodeType::Server(_)
+            | crate::simulation_controller::node::UiNodeType::Client(_),
+            crate::simulation_controller::node::UiNodeType::Client(_)
+            | crate::simulation_controller::node::UiNodeType::Server(_),
         ) => check_non_drone(status_flag),
         _ => true,
     }
@@ -258,7 +250,7 @@ pub fn check_drone_addition(
     // Helper function to validate client connection
     fn check_drone_client(graph: &mut UiGraph, client: NodeIndex) -> Result<(), String> {
         let neighbors: Vec<NodeIndex> = get_neigbors_with_disabled_edges(&graph.g, client);
-        println!("Neighbors: {:?}", neighbors);
+        println!("Neighbors: {neighbors:?}");
         if neighbors.len() >= 2 {
             Err("Client nodes can have at most 2 neighbors".to_string())
         } else {
@@ -529,10 +521,10 @@ where
     let total_excluded_count = crashed_drones.union(&excluded_nodes).count();
     println!("Visited count: {}", visited.len());
     println!("Graph node count: {}", graph.node_count());
-    println!("Total crashed drones: {:?}", crashed_drones);
-    println!("Total excluded count: {:?}", total_excluded_count);
+    println!("Total crashed drones: {crashed_drones:?}");
+    println!("Total excluded count: {total_excluded_count:?}");
 
-    println!("{:?}", visited);
+    println!("{visited:?}");
 
     visited.len() == graph.node_count() - total_excluded_count
 }
@@ -591,7 +583,7 @@ pub fn is_well_formed(graph: &DefaultModelGraph) -> Result<String, String> {
                 }
             }
             UiNodeType::Drone(_) => Ok(()),
-        }?
+        }?;
     }
 
     Ok("Well formed".to_string())
