@@ -41,10 +41,10 @@ impl SimulationController {
         match packet.routing_header.current_hop() {
             Some(current_hop) => match &self.packet_channels.get(&current_hop) {
                 Some(channel) => match &packet.pack_type {
-                    PacketType::MsgFragment(_) => {
-                        channel.0.send(packet);
-                        log::info!("Sending to node {}", current_hop)
-                    }
+                    PacketType::MsgFragment(_) => match channel.0.send(packet) {
+                        Ok(_) => log::info!("Sending msg_fragment to node {}", current_hop),
+                        Err(err) => log::error!("Channel error {}", err),
+                    },
                     _ => {
                         log::error!("Provided package is not a msg fragment")
                     }
@@ -82,10 +82,10 @@ impl SimulationController {
         match packet.routing_header.current_hop() {
             Some(current_hop) => match &self.packet_channels.get(&current_hop) {
                 Some(channel) => match &packet.pack_type {
-                    PacketType::Ack(_) => {
-                        channel.0.send(packet);
-                        log::info!("Sending to node {}", current_hop)
-                    }
+                    PacketType::Ack(_) => match channel.0.send(packet) {
+                        Ok(_) => log::info!("Sending ack to node {}", current_hop),
+                        Err(err) => log::error!("Channel error {}", err),
+                    },
                     _ => {
                         log::error!("Provided package is not an ack")
                     }
@@ -346,6 +346,7 @@ impl SimulationController {
         }
     }
 
+    #[allow(dead_code)]
     pub fn send_control_packet(&self, server_command: ServerCommand, node_id: NodeId) {
         match &self.server_command_channels.get(&node_id) {
             Some(channel) => match channel.send(server_command) {
