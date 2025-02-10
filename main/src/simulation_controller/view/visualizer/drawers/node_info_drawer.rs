@@ -1,13 +1,6 @@
-use std::{
-    ffi::OsStr,
-    fs,
-};
+use std::{ffi::OsStr, fs};
 
-use colored::Colorize;
-use egui::{
-    CollapsingHeader, Context, Label, Layout, RichText, ScrollArea,
-    TextEdit, Ui, Window,
-};
+use egui::{CollapsingHeader, Context, Label, Layout, RichText, ScrollArea, TextEdit, Ui, Window};
 use egui_extras::{install_image_loaders, Column, TableBuilder};
 use egui_file_dialog::{DialogMode, DialogState};
 use petgraph::graph::NodeIndex;
@@ -44,8 +37,6 @@ pub fn draw_node_info(
     state: &mut State,
     simulation_controller: &SimulationController,
 ) {
-    // let node_payload = state.graph_section.g.node(node_index).unwrap().payload();
-
     Window::new(format!(
         "Node {}",
         state
@@ -109,13 +100,13 @@ pub fn draw_node_info(
                     if let Some(graph_node) = state.graph_section.g.node_mut(node_index) {
                         let ui_node = graph_node.payload_mut();
                         match &ui_node.node_type {
-                            UiNodeType::Server(ui_server_node) => {
+                            UiNodeType::Server(_) => {
                                 draw_server_specific(ui, node_index, state, simulation_controller);
                             }
-                            UiNodeType::Client(ui_client_node) => {
+                            UiNodeType::Client(_) => {
                                 draw_client_specific(ui, node_index, state, simulation_controller);
                             }
-                            UiNodeType::Drone(ui_drone_node) => {
+                            UiNodeType::Drone(_) => {
                                 draw_drone_specific(ui, node_index, state, simulation_controller);
                             }
                         }
@@ -125,11 +116,11 @@ pub fn draw_node_info(
             if let Some(graph_node) = state.graph_section.g.node_mut(node_index) {
                 let ui_node = graph_node.payload_mut();
                 match &ui_node.node_type {
-                    UiNodeType::Server(ui_server_node) => (),
-                    UiNodeType::Client(ui_client_node) => {
-                        draw_client_no_grid_specific(ui, node_index, state, simulation_controller);
+                    UiNodeType::Server(_) => (),
+                    UiNodeType::Client(_) => {
+                        draw_client_no_grid_specific(ui, node_index, state);
                     }
-                    UiNodeType::Drone(ui_drone_node) => (),
+                    UiNodeType::Drone(_) => (),
                 }
             }
 
@@ -142,7 +133,6 @@ pub fn draw_node_info(
                             //TODO draw node events
                             // ui.label(egui::RichText::new("This is red text!").color(egui::Color32::LIGHT_GRAY));
 
-                            let events = state.events.get_events_list(DisplayOptions::ALL);
                             let text_height = ui.text_style_height(&egui::TextStyle::Body);
                             let payload = state
                                 .graph_section
@@ -176,69 +166,18 @@ pub fn draw_node_info(
                                     if !state.toolbar_section.loggin_enabled {
                                         return;
                                     }
-                                    for (index, event) in state
+                                    for (_, event) in state
                                         .events
                                         .get_events_list(DisplayOptions::from_index(payload.wg_id))
                                         .iter()
                                         .enumerate()
                                     {
                                         body.row(30.0, |mut row| {
-                                            event.draw(&mut row, state);
+                                            event.draw(&mut row);
                                         });
                                     }
                                 });
-
-                            // let mut table = TableBuilder::new(ui)
-                            //     .striped(self.striped)
-                            //     .resizable(self.resizable)
-                            //     .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
-                            //     .column(Column::auto())
-                            //     .column(
-                            //         Column::remainder()
-                            //             .at_least(40.0)
-                            //             .clip(true)
-                            //             .resizable(true),
-                            //     )
-                            //     .column(Column::auto())
-                            //     .column(Column::remainder())
-                            //     .column(Column::remainder())
-                            //     .min_scrolled_height(0.0)
-                            //     .max_scroll_height(available_height);
-                            //
-                            // egui::Grid::new("my_grid")
-                            //     .num_columns(2)
-                            //     .spacing([40.0, 4.0])
-                            //     .striped(true)
-                            //     .show(ui, |ui| {
-                            //         for event in state.events.get_events_list(DisplayOptions::ALL) {
-                            //             // ui.label(egui::RichText::new(format!("{:?}", event)).color(egui::Color32::LIGHT_GRAY));
-                            //             event.draw(ui, state)
-                            //         }
-                            //     });
-
-                            // ui.label(
-                            //     egui::RichText::new("This is green bold text!")
-                            //         .color(egui::Color32::LIGHT_GRAY)
-                            //         .strong(),
-                            // );
-                            //
-                            // ui.label(
-                            //     egui::RichText::new("This is blue italic text!")
-                            //         .color(egui::Color32::LIGHT_GRAY)
-                            //         .italics(),
-                            // );
                         });
-
-                    // ScrollArea::vertical().show(ui, |ui| {
-                    //     for x in state.events.get_events_list(DisplayOptions::from_index(
-                    //         state.graph_section.wg_id(node_index).unwrap(),
-                    //     )) {
-                    //         ui.label(
-                    //             egui::RichText::new(format!("{:?}", x))
-                    //                 .color(egui::Color32::LIGHT_GRAY),
-                    //         );
-                    //     }
-                    // })
                 });
         });
     });
@@ -250,8 +189,6 @@ fn draw_drone_specific(
     state: &mut State,
     simulation_controller: &SimulationController,
 ) {
-    let curr_node_wg_id = get_payload_from_state(state, node_index).unwrap().wg_id;
-
     if ui.button("Crash").clicked() {
         match check_node_removal(&mut state.graph_section.g, node_index) {
             Ok(_) => {
@@ -383,11 +320,14 @@ fn draw_client_specific(
 
     ui.horizontal(|ui| {
         if ui.button("📎").clicked() {
-            state.file_dialog.open(
+            match state.file_dialog.open(
                 DialogMode::SelectFile,
                 true,
                 Some(&format!("Client {} open", curr_node_wg_id)),
-            );
+            ) {
+                Ok(_) => log::info!("-> Opened file dialog"),
+                Err(err) => log::error!("Error opening file dialog: {}", err),
+            }
         }
 
         if let DialogState::Selected(_) = state.file_dialog.state() {
@@ -413,15 +353,13 @@ fn draw_client_specific(
                         state.curr_msg.clone(),
                     );
                     if curr_node_wg_id != curr_peer {
-                        state
-                            .chat_histories
-                            .entry(curr_peer)
-                            .or_default()
-                            .push(ChatMessage::TextMessage {
+                        state.chat_histories.entry(curr_peer).or_default().push(
+                            ChatMessage::TextMessage {
                                 from: curr_node_wg_id,
                                 to: curr_peer,
                                 text: state.curr_msg.clone(),
-                            });
+                            },
+                        );
                     }
                     ui.memory_mut(|mem| mem.request_focus(re.id));
                     state.curr_msg.clear();
@@ -494,12 +432,7 @@ fn draw_client_specific(
     ui.end_row();
 }
 
-fn draw_client_no_grid_specific(
-    ui: &mut Ui,
-    node_index: NodeIndex,
-    state: &mut State,
-    simulation_controller: &SimulationController,
-) {
+fn draw_client_no_grid_specific(ui: &mut Ui, node_index: NodeIndex, state: &mut State) {
     CollapsingHeader::new("Chat")
         .default_open(true)
         .show(ui, |ui| {
@@ -517,7 +450,7 @@ fn draw_client_no_grid_specific(
                                 Some(history) => {
                                     for message in history {
                                         match message {
-                                            ChatMessage::TextMessage { from, to, text } => {
+                                            ChatMessage::TextMessage {  to, text, .. } => {
 
                                                 let align = if *to == curr_peer {
                                                     egui::Align::RIGHT
@@ -528,14 +461,14 @@ fn draw_client_no_grid_specific(
                                                 ui.with_layout(
                                                     Layout::top_down_justified(align),
                                                     |ui: &mut Ui| {
-                                                        ui.selectable_label(false, text);
+                                                        let _ = ui.selectable_label(false, text);
                                                     },
                                                 );
                                             }
                                             ChatMessage::FileMessage {
-                                                from,
                                                 to,
-                                                file_path,
+                                                file_path, 
+                                            ..
                                             } => {
                                                 let align = if *to == curr_peer {
                                                     egui::Align::RIGHT
@@ -578,7 +511,7 @@ fn draw_client_no_grid_specific(
                                                         }
                                                         .context_menu(|ui| {
                                                             if ui.button("Save File As").clicked() {
-                                                                state.file_dialog.open(
+                                                                match state.file_dialog.open(
                                                                     DialogMode::SaveFile,
                                                                     true,
                                                                     Some(&format!(
@@ -586,7 +519,10 @@ fn draw_client_no_grid_specific(
                                                                         curr_node_wg_id,
                                                                         file_path
                                                                     )),
-                                                                );
+                                                                ){
+                                                                    Ok(_) => log::info!("-> Opened file dialog"),
+                                                                    Err(err) => log::error!("Error opening file dialog: {}", err),
+                                                            }
                                                             }
                                                         });
                                                         if let DialogState::Selected(_) = state.file_dialog.state() {
@@ -621,110 +557,6 @@ fn draw_client_no_grid_specific(
                                 ui.label("No current peer selected.");
                             }
                         }
-
-                    /* 
-                    egui::Grid::new("common_grid")
-                        .num_columns(1)
-                        .spacing([40.0, 4.0])
-                        .show(ui, |ui| match client_state.current_peer {
-                            Some(curr_peer) => match client_state.chat_histories.get(&curr_peer) {
-                                Some(history) => {
-                                    for message in history {
-                                        let (from, to, text, uri) = match message {
-                                            ChatMessage::TextMessage { from, to, text } => {
-                                                (from, to, text, None)
-                                            }
-                                            ChatMessage::FileMessage {
-                                                from,
-                                                to,
-                                                file_path,
-                                            } => {
-                                                let mut is_image = false;
-
-                                                let mut fp = String::new();
-
-                                                if let Some(extension) = file_path.extension() {
-                                                    install_image_loaders(ui.ctx());
-
-                                                    match extension {
-                                                        ext if ext == OsStr::new("png")
-                                                            || ext == OsStr::new("jpg")
-                                                            || ext == OsStr::new("jpeg") =>
-                                                        {
-                                                            is_image = true;
-                                                            fp.push_str("file:///");
-                                                        }
-                                                        _ => {}
-                                                    }
-                                                }
-
-                                                fp.push_str(file_path.to_str().unwrap());
-
-                                                (from, to, &file_path.to_string_lossy().to_string(), Some(fp))
-                                            }
-                                        };
-
-                                        let align = if *to == curr_peer {
-                                            egui::Align::RIGHT
-                                        } else {
-                                            egui::Align::LEFT
-                                        };
-
-                                        if let Some(uri) = uri {
-                                            ui.with_layout(
-                                                Layout::top_down_justified(align),
-                                                |ui| {
-                                                    ui.add(
-                                                        egui::Image::from_uri(uri)
-                                                            .maintain_aspect_ratio(true)
-                                                            .shrink_to_fit(),
-                                                    )
-                                                    .context_menu(|ui| {
-                                                        if ui.button("save image").clicked() {
-                                                            state.file_dialog.open(
-                                                                DialogMode::SaveFile,
-                                                                true,
-                                                                Some(&format!(
-                                                                    "Client {} save",
-                                                                    curr_node_wg_id
-                                                                )),
-                                                            );
-                                                        }
-                                                        if let DialogState::Selected(_) = state.file_dialog.state() {
-                                                            if state.file_dialog.operation_id() == Some(&format!("Client {} save", curr_node_wg_id))
-                                                            {
-                                                                if let Some(path) = state.file_dialog.take_selected() {
-                                                                    let res = fs::copy(&*text, &path);
-                                                                    println!("saved image from to {:?} with res {:?}", path, res);
-                                                                }
-                                                            }
-                                                        }
-                                                    });
-                                                    ui.separator();
-                                                },
-                                            );
-                                        } else {
-                                            ui.with_layout(
-                                                Layout::top_down_justified(align),
-                                                |ui: &mut Ui| {
-                                                    ui.selectable_label(false, text);
-                                                    ui.separator();
-                                                },
-                                            );
-                                        }
-
-                                        ui.end_row();
-                                    }
-                                }
-                                None => {
-                                    ui.label("No chat history available.");
-                                }
-                            },
-                            None => {
-                                ui.label("No current peer selected.");
-                            }
-                        }); 
-                    */
                 });
         });
 }
@@ -745,6 +577,7 @@ fn get_client_node_state(
     x.try_into().expect("Expected client")
 }
 
+#[allow(unused)]
 fn get_server_node_state(
     state: &mut NodeInfoSectionState,
     node_index: NodeIndex,

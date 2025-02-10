@@ -37,17 +37,7 @@ pub fn draw_section_debug(ui: &mut Ui, state: &mut State) {
 
         CollapsingHeader::new("Selected nodes").show(ui, |ui| {
             for x in state.graph_section.g.selected_nodes() {
-                // let x = x.index
-                let payload = state.graph_section.g.node(*x).unwrap().payload();
-
                 ui.label(format!("{}", x.index()));
-                // match &payload.node_type {
-                //     _ => format!("{}"),
-                //     // Client(client_node) => todo!(),
-                //     // Drone(drone_node) => todo!(),
-                // }
-
-                // ui.label(String::from(x.index))
             }
         });
     });

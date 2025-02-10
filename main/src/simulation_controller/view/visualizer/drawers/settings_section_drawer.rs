@@ -117,30 +117,4 @@ pub fn draw_section_settings(ui: &mut Ui, state: &mut State) {
                 }
                 ui.label("Enable multiselect to select multiple edges.")
             });
-
-    // CollapsingHeader::new("Selected")
-    //     .default_open(true)
-    //     .show(ui, |ui| {
-    //         ScrollArea::vertical()
-    //             .auto_shrink([false, true])
-    //             .max_height(200.)
-    //             .show(ui, |ui| {
-    //                 state
-    //                     .settings_section
-    //                     .g
-    //                     .selected_nodes()
-    //                     .iter()
-    //                     .for_each(|node| {
-    //                         ui.label(format!("{node:?}"));
-    //                     });
-    //                 state
-    //                     .settings_section
-    //                     .g
-    //                     .selected_edges()
-    //                     .iter()
-    //                     .for_each(|edge| {
-    //                         ui.label(format!("{edge:?}"));
-    //                     });
-    //             });
-    //     });
 }

@@ -102,7 +102,9 @@ pub fn send_msg_fragment_section(
             .on_hover_text("Invert the current path")
             .clicked()
         {
-            if let Ok(parsed_path) = parse_data::<u8>(state.test_section.msg_fragment_routing_path_string.clone()) {
+            if let Ok(parsed_path) =
+                parse_data::<u8>(state.test_section.msg_fragment_routing_path_string.clone())
+            {
                 let reversed_path: Vec<u8> = parsed_path.into_iter().rev().collect();
                 let mut rv = format!("{:?}", reversed_path);
                 rv.truncate(rv.len() - 1);
@@ -128,9 +130,8 @@ pub fn send_msg_fragment_section(
                     return;
                 } else {
                     parsed_data_vec.resize(128, 0);
-                    let mut parsed_data: [u8; 128] = [0; 128];
                     if let Ok(v) = parsed_data_vec.try_into() {
-                        parsed_data = v;
+                        let parsed_data: [u8; 128] = v;
                         let mut packet = simulation_controller.default_msg_fragment.clone();
                         packet.routing_header.hops = parsed_path_vec;
                         if let PacketType::MsgFragment(fragment) = &mut packet.pack_type {
@@ -184,7 +185,9 @@ pub fn send_ack_nack_section(
             .on_hover_text("Invert the current path")
             .clicked()
         {
-            if let Ok(parsed_path) = parse_data::<u8>(state.test_section.ack_nack_routing_path_string.clone()) {
+            if let Ok(parsed_path) =
+                parse_data::<u8>(state.test_section.ack_nack_routing_path_string.clone())
+            {
                 let reversed_path: Vec<u8> = parsed_path.into_iter().rev().collect();
                 let mut rv = format!("{:?}", reversed_path);
                 rv.truncate(rv.len() - 1);
@@ -270,13 +273,13 @@ pub fn send_flood_req_section(
                             .payload()
                             .node_type
                         {
-                            UiNodeType::Server(ui_server_node) => {
+                            UiNodeType::Server(_) => {
                                 flood_req.path_trace = vec![(curr_node_wg_id, NodeType::Server)]
                             }
-                            UiNodeType::Client(ui_client_node) => {
+                            UiNodeType::Client(_) => {
                                 flood_req.path_trace = vec![(curr_node_wg_id, NodeType::Client)]
                             }
-                            UiNodeType::Drone(ui_drone_node) => {
+                            UiNodeType::Drone(_) => {
                                 flood_req.path_trace = vec![(curr_node_wg_id, NodeType::Drone)]
                             }
                         }
@@ -350,7 +353,7 @@ fn get_path_between_selected_nodes(state: &mut State) -> Result<String, String> 
         let end_node = state.graph_section.g.selected_nodes()[1];
         let g = &*state.graph_section.g.g();
 
-        let path = algo::astar(g, start_node, |n| n == end_node, |e| 1, |_| 0);
+        let path = algo::astar(g, start_node, |n| n == end_node, |_| 1, |_| 0);
         match path {
             Some((_, path)) => {
                 let mut new_path = String::new();

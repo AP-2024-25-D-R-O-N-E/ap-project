@@ -7,8 +7,6 @@ pub fn draw_section_console(ui: &mut Ui, state: &mut State) {
     ScrollArea::vertical()
         .auto_shrink([false, false])
         .show(ui, |ui| {
-            // ui.label(egui::RichText::new("This is red text!").color(egui::Color32::LIGHT_GRAY));
-            let events = state.events.get_events_list(DisplayOptions::ALL);
             let text_height = ui.text_style_height(&egui::TextStyle::Body);
             TableBuilder::new(ui)
                 .column(Column::initial(80.).resizable(true))
@@ -51,7 +49,7 @@ pub fn draw_section_console(ui: &mut Ui, state: &mut State) {
                                 None => row.set_selected(false),
                             }
 
-                            event.draw(&mut row, state);
+                            event.draw(&mut row);
                             if row.response().contains_pointer() {
                                 hover_index = Some(index);
                             }
@@ -59,45 +57,5 @@ pub fn draw_section_console(ui: &mut Ui, state: &mut State) {
                     }
                     state.console_section.hovered_row = hover_index;
                 });
-
-            // let mut table = TableBuilder::new(ui)
-            //     .striped(self.striped)
-            //     .resizable(self.resizable)
-            //     .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
-            //     .column(Column::auto())
-            //     .column(
-            //         Column::remainder()
-            //             .at_least(40.0)
-            //             .clip(true)
-            //             .resizable(true),
-            //     )
-            //     .column(Column::auto())
-            //     .column(Column::remainder())
-            //     .column(Column::remainder())
-            //     .min_scrolled_height(0.0)
-            //     .max_scroll_height(available_height);
-            //
-            // egui::Grid::new("my_grid")
-            //     .num_columns(2)
-            //     .spacing([40.0, 4.0])
-            //     .striped(true)
-            //     .show(ui, |ui| {
-            //         for event in state.events.get_events_list(DisplayOptions::ALL) {
-            //             // ui.label(egui::RichText::new(format!("{:?}", event)).color(egui::Color32::LIGHT_GRAY));
-            //             event.draw(ui, state)
-            //         }
-            //     });
-
-            // ui.label(
-            //     egui::RichText::new("This is green bold text!")
-            //         .color(egui::Color32::LIGHT_GRAY)
-            //         .strong(),
-            // );
-            //
-            // ui.label(
-            //     egui::RichText::new("This is blue italic text!")
-            //         .color(egui::Color32::LIGHT_GRAY)
-            //         .italics(),
-            // );
         });
 }

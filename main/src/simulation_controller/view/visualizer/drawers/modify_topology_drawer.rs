@@ -7,13 +7,10 @@ use crate::{
     simulation_controller::{
         node::UiNodeType,
         state::State,
-        util::{
-            add_drone, check_drone_addition, colors, parse_string,
-        },
+        util::{add_drone, check_drone_addition, colors, parse_string},
         SimulationController,
     },
 };
-
 
 pub fn draw_modify_topology_section(
     ui: &mut Ui,
@@ -102,16 +99,16 @@ pub fn draw_modify_topology_section(
                 });
 
             if ui.button("Spawn").clicked() && can_insert_drone(state) {
-                for (index, node_content) in state.graph_section.g.nodes_iter() {
+                for (_, node_content) in state.graph_section.g.nodes_iter() {
                     let payload = node_content.payload();
                     match &payload.node_type {
-                        UiNodeType::Server(ui_server_node) => {
+                        UiNodeType::Server(_) => {
                             simulation_controller.send_server_start_flood(payload.wg_id)
                         }
-                        UiNodeType::Client(ui_client_node) => {
+                        UiNodeType::Client(_) => {
                             simulation_controller.send_client_start_flood(payload.wg_id)
                         }
-                        UiNodeType::Drone(ui_drone_node) => (),
+                        UiNodeType::Drone(_) => (),
                     }
                 }
                 insert_drone(state, simulation_controller)
@@ -119,7 +116,7 @@ pub fn draw_modify_topology_section(
 
             if let Some(status) = &state.modify_topology_section.status_flag {
                 match status {
-                    Ok(s) => {
+                    Ok(_) => {
                         ui.label(
                             RichText::new("Drone spawned with success").color(colors::MUTED_GREEN),
                         );

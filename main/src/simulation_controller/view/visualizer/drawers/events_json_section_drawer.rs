@@ -4,7 +4,6 @@ use egui::Ui;
 use crate::simulation_controller::state::{events_state, State};
 
 pub fn draw_all_events_as_json(ui: &mut Ui, state: &State) {
-    let json = String::new();
     for event in state
         .events
         .get_events_list(events_state::DisplayOptions::ALL)

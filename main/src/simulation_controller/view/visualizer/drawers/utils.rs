@@ -15,6 +15,7 @@ pub fn display_status_flag(status_flag: &StatusFlag, ui: &mut Ui) {
     }
 }
 
+#[allow(unused)]
 pub fn get_status_flag_widget(status_flag: &StatusFlag) -> Label {
     match status_flag {
         Some(Ok(s)) => Label::new(RichText::new(s).color(colors::MUTED_GREEN)),
