@@ -8,11 +8,7 @@ use std::{
 
 use colored::Colorize;
 use crossbeam::channel::{select_biased, unbounded, Receiver, Sender};
-use petgraph::{
-    algo,
-    prelude::GraphMap,
-    Directed,
-};
+use petgraph::{algo, prelude::GraphMap, Directed};
 use tempfile::TempDir;
 use wg_2024::{
     network::{NodeId, SourceRoutingHeader},
@@ -208,7 +204,15 @@ impl ChatServer {
                 recv(self.packet_recv) -> res => {
                     if let Ok(packet) = res {
                         // send packet to the simulation controller
-                        self.sim_contr_send.send(ServerEvent::PacketReceived(packet.clone()));
+                        match self.sim_contr_send.send(ServerEvent::PacketReceived(packet.clone())) {
+                            Ok(_) => log::debug!(
+                                "{} {} sent event to simulation controller: {:?}",
+                                "↳ server".green(),
+                                self.id,
+                                packet
+                            ),
+                            Err(err) => log::error!("Error sending packet to simulation controller: {}", err),
+                        }
 
                         // match the packet type and act accordingly
                         match packet.pack_type {
@@ -393,13 +397,13 @@ impl ChatServer {
                             )
                         }
                     }
-                    MessageData::ResponseClients(items) => {
+                    MessageData::ResponseClients(_) => {
                         Self::error_msg(id, source, MessageData::UnsupportedMessageTypeError)
                     }
                     MessageData::AcknolewdgedAsClient => {
                         Self::error_msg(id, source, MessageData::UnsupportedMessageTypeError)
                     }
-                    MessageData::ResponseHistory { partner, history } => {
+                    MessageData::ResponseHistory { .. } => {
                         Self::error_msg(id, source, MessageData::UnsupportedMessageTypeError)
                     }
                     MessageData::UnregisteredSenderError => None,
@@ -413,7 +417,17 @@ impl ChatServer {
 
                     for fragment in fragments {
                         // send the fragments to the sender thread
-                        fragment_send.send((destination_id, session_id, fragment));
+                        match fragment_send.send((destination_id, session_id, fragment.clone())) {
+                            Ok(_) => log::debug!(
+                                "{} {} sent fragment to sender thread: {:?}",
+                                "↳ server".green(),
+                                id,
+                                fragment
+                            ),
+                            Err(err) => {
+                                log::error!("Error sending fragment to sender thread: {}", err)
+                            }
+                        }
                     }
                     session_id += 1;
                 }
@@ -543,7 +557,17 @@ impl ChatServer {
                 e.insert(vec![fragment]);
                 // if the total frags is 1, then we can just send the message to the message handler thread
                 if total_frags == 1 {
-                    ready_send.send((packet_source, packet_msg_id));
+                    match ready_send.send((packet_source, packet_msg_id)) {
+                        Ok(_) => log::debug!(
+                            "{} {} sent ready signal to message handler thread",
+                            "↳ server".green(),
+                            self.id
+                        ),
+                        Err(err) => log::error!(
+                            "Error sending ready signal to message handler thread: {}",
+                            err
+                        ),
+                    }
                 }
             } else {
                 let frag_buffer = fragment_buffers_lock
@@ -554,7 +578,17 @@ impl ChatServer {
 
                 // if the buffer is full, tell the message handler thread to start assembling the fragments
                 if frag_buffer.len() == total_frags as usize {
-                    ready_send.send((packet_source, packet_msg_id));
+                    match ready_send.send((packet_source, packet_msg_id)) {
+                        Ok(_) => log::debug!(
+                            "{} {} sent ready signal to message handler thread",
+                            "↳ server".green(),
+                            self.id
+                        ),
+                        Err(err) => log::error!(
+                            "Error sending ready signal to message handler thread: {}",
+                            err
+                        ),
+                    }
                 }
             }
         }
@@ -609,7 +643,6 @@ impl ChatServer {
 
         // fast return flag to throw the packet away if a weird error happens
         let mut fast_return = false;
-        let mut dropped = false;
 
         match &nack.nack_type {
             packet::NackType::ErrorInRouting(node) => {
@@ -622,7 +655,6 @@ impl ChatServer {
             }
             packet::NackType::Dropped => {
                 // do nothing for now, maybe in the future update the edge weights
-                dropped = true;
             }
             packet::NackType::UnexpectedRecipient(_) => {
                 log::error!("The recipient is not the expected one, this shouldn't be happening");
@@ -652,12 +684,18 @@ impl ChatServer {
             let updated_ratio = 0.2 * new_ratio + 0.8 * ratio;
             pdr_estimation_lock.insert(dropped_node, (updated_ratio, success, failure));
 
-            // log::debug!("{:?}", *pdr_estimation_lock);
-
             // we only tell the sender to recalc routes if a nack has been received, why change routes if we're more certain that they work?
             *topology_modified_lock = true;
 
-            nack_send.send(packet);
+            match nack_send.send(packet.clone()) {
+                Ok(_) => log::debug!(
+                    "{} {} sent packet to sender thread: {:?}",
+                    "↳ server".green(),
+                    self.id,
+                    packet
+                ),
+                Err(err) => log::error!("Error sending packet to sender thread: {}", err),
+            }
         } else {
             log::error!("The packet was not found in the ack buffer, this shouldn't be happening");
         }
@@ -676,15 +714,18 @@ impl ChatServer {
 
         let res = send_channel.send(packet.clone());
 
-        if let Err(packet) = res {
+        if let Err(_) = res {
             log::error!("The send inside channel gave an error, this shouldn't be happening");
         } else {
-            self.sim_contr_send.send(ServerEvent::PacketSent(packet));
+            match self.sim_contr_send.send(ServerEvent::PacketSent(packet)) {
+                Ok(_) => log::debug!("{} packet_sent event to sc", "↳ server".green()),
+                Err(err) => log::error!("Error sending packet to simulation controller: {}", err),
+            }
         }
     }
 
     fn initiate_flood(&mut self) {
-        for (id, sender) in self.packet_send.read().unwrap().iter() {
+        for (_, sender) in self.packet_send.read().unwrap().iter() {
             let packet = Packet {
                 pack_type: PacketType::FloodRequest(FloodRequest {
                     path_trace: vec![(self.id, NodeType::Server)],
@@ -701,10 +742,15 @@ impl ChatServer {
 
             let res = sender.send(packet.clone());
 
-            if let Err(packet) = res {
+            if let Err(_) = res {
                 log::error!("The send inside channel gave an error, this shouldn't be happening");
             } else {
-                self.sim_contr_send.send(ServerEvent::PacketSent(packet));
+                match self.sim_contr_send.send(ServerEvent::PacketSent(packet)) {
+                    Ok(_) => log::debug!("{} packet_sent event to sc", "↳ server".green()),
+                    Err(err) => {
+                        log::error!("Error sending packet to simulation controller: {}", err)
+                    }
+                }
             }
         }
     }
