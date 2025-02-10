@@ -435,10 +435,6 @@ fn draw_client_specific(
                 if let Some(curr_peer) = state.current_peer {
                     simulation_controller.send_file_msg(curr_node_wg_id, curr_peer, path.clone());
                     state.selected_file_path = None;
-                    // update history on file send since the destination file is reconstructed, but only if we're not the receiver
-                    if curr_node_wg_id != curr_peer {
-                        simulation_controller.open_chat_with(curr_node_wg_id, curr_peer);
-                    }
                 } else {
                     println!("No peer selected");
                 }
