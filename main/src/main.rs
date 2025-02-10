@@ -6,7 +6,7 @@ use simple_logger::SimpleLogger;
 use simulation_controller::visualizer::ui::run_gui;
 use std::{
     fs,
-    sync::Arc,
+    sync::{Arc, Mutex, RwLock},
 };
 use tempfile::{tempdir, TempDir};
 
