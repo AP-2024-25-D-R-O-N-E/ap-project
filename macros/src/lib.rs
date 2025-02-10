@@ -96,50 +96,7 @@ pub fn into_serializable_derive(input: TokenStream) -> TokenStream {
                         enum_fields.push(rv);
                     }
                 };
-
-                // let ref_fields_into_serializable = match &variant.fields {
-                //     Fields::Named(fields) => {
-                //         let named_fields = fields.named.iter().map(|field| {
-                //             let field_name = field.ident.clone().unwrap();
-                //             let field_type = field.ty.clone();
-                //
-                //             let mut field_name_string = field_name.to_string();
-                //             let mut field_type_string = quote!(#field_type).to_string();
-                //             field_name_string.truncate(field_name_string.len() - 3);
-                //             field_type_string.truncate(field_type_string.len() - 3);
-                //
-                //             let field_name_ref =
-                //                 Ident::new(field_name_string.as_str(), Span::call_site());
-                //             let field_type_ref =
-                //                 Ident::new(field_type_string.as_str(), Span::call_site());
-                //
-                //             quote! { #field_name_ref: #field_type_ref }
-                //         });
-                //         quote! { { #(#named_fields),* } }
-                //     }
-                //     Fields::Unnamed(fields) => {
-                //
-                //         let unnamed_fields = fields.unnamed.iter().enumerate().map(|(index,_)| {
-                //             let entry = format_ident!("par{}", index);
-                //             quote! {#entry.into_serializable()}
-                //         });
-                //         let rv = quote! { ::( #(#unnamed_fields),* ) };
-                //         rv
-                //     }
-                //     Fields::Unit => quote! {},
-                // };
-                //
-                // let rv =    quote! { #enum_name_ref_ident #variant_ident #ref_fields =>  #enum_name_ident  #variant_ident #ref_fields_into_serializable };
-
-                // eprintln!(
-                //     "Enum line: {}",
-                //     rv
-                // );
             }
-
-            // for line in enum_fields.iter() {
-            //     eprintln!("{}", line);
-            // }
 
             let output = quote! {
 
