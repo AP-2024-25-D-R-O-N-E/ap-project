@@ -122,7 +122,9 @@ impl SCGui {
             {
                 client_state.available_peers = ids.clone();
                 for peers in &client_state.available_peers {
-                    client_state.chat_histories.insert(*peers, vec![]);
+                    if !client_state.chat_histories.contains_key(peers) {
+                        client_state.chat_histories.insert(*peers, vec![]);
+                    }
                 }
             }
         }
@@ -149,6 +151,10 @@ impl SCGui {
                 client_state
                     .chat_histories
                     .insert(*partner, history.clone());
+
+                if *partner != client_state.current_peer.unwrap() {
+                    client_state.unread_messages.insert(*partner);
+                }
             }
         } else if let SCEventType::Client(ClientEvent::TextMessage { from, to, text }) =
             &event.event_type
@@ -175,6 +181,14 @@ impl SCGui {
 
                 if let Some(chat_history) = client_state.chat_histories.get_mut(from) {
                     chat_history.push(chat_msg.clone());
+
+                    if let Some(curr_peer) = client_state.current_peer {
+                        if curr_peer != *from {
+                            client_state.unread_messages.insert(*from);
+                        }
+                    } else {
+                        client_state.unread_messages.insert(*from);
+                    }
                 }
             }
         } else if let SCEventType::Client(ClientEvent::FileMessage {
@@ -205,6 +219,9 @@ impl SCGui {
 
                 if let Some(chat_history) = client_state.chat_histories.get_mut(from) {
                     chat_history.push(chat_msg.clone());
+                    if *from != client_state.current_peer.unwrap() {
+                        client_state.unread_messages.insert(*from);
+                    }
                 }
             }
         } else if let SCEventType::Client(ClientEvent::CreatedFileLocal {
