@@ -12,6 +12,7 @@ use std::{
     collections::{HashMap, HashSet, VecDeque},
     path::PathBuf,
 };
+use tempfile::TempDir;
 use wg_2024::{
     network::{NodeId, SourceRoutingHeader},
     packet::{
@@ -42,6 +43,8 @@ pub struct ClientLuca {
     topology_modified: Arc<Mutex<bool>>, // checks if the topology has been modified
     edge_nodes: Arc<RwLock<HashSet<NodeId>>>, // edge_nodes can't be used in a route
     server_id: NodeId,                   // stores the server_id (it's only one)
+    condv: Arc<Condvar>,
+    temp_dir: Arc<TempDir>,
 }
 
 impl ClientTrait for ClientLuca {
@@ -51,6 +54,7 @@ impl ClientTrait for ClientLuca {
         scr: Receiver<ClientCommand>,
         packet_r: Receiver<Packet>,
         packet_s: HashMap<NodeId, Sender<Packet>>,
+        temp_dir: Arc<TempDir>,
     ) -> Self
     where
         Self: Sized,
@@ -67,7 +71,9 @@ impl ClientTrait for ClientLuca {
             ack_packet_buffer: Arc::new(Mutex::new(HashMap::new())),
             topology_modified: Arc::new(Mutex::new(false)),
             edge_nodes: Arc::new(RwLock::new(HashSet::new())),
-            server_id: 0, //initialized to 0, but we always know its real value thanks to the initial flooding
+            server_id: 0,
+            condv: Arc::new(Condvar::new()), //initialized to 0, but we always know its real value thanks to the initial flooding
+            temp_dir,
         }
     }
 
@@ -78,7 +84,7 @@ impl ClientTrait for ClientLuca {
         let scs = self.scs.clone();
         let (nack_s, nack_r) = unbounded::<Packet>();
         let (fragment_s, fragment_r) = unbounded::<(NodeId, u64, Fragment)>();
-        let condv = Condvar::new();
+        let condv = self.condv.clone();
         let ack_packet_buffer = self.ack_packet_buffer.clone();
         let topology = self.topology.clone();
         let id = self.id;
@@ -179,8 +185,8 @@ impl ClientLuca {
                             let fragments = Self::disassemble(message);
                             for frag in fragments{
                                 fragment_s.send((self.server_id, session_id, frag.clone()));
-                                session_id += 1;
                             }
+                            session_id += 1;
                         }
                     }
                 },
@@ -208,7 +214,7 @@ impl ClientLuca {
         scs: Sender<ClientEvent>,
         fragment_r: Receiver<(NodeId, u64, Fragment)>,
         nack_r: Receiver<Packet>,
-        condv: Condvar,
+        condv: Arc<Condvar>,
         ack_packet_buffer: Arc<Mutex<HashMap<(u64, u64), Packet>>>,
         topology: Arc<RwLock<GraphMap<NodeId, (), Undirected>>>,
         topology_modified: Arc<Mutex<bool>>,
@@ -217,7 +223,7 @@ impl ClientLuca {
         // records the routing table for the client (updated when an update to the topology is made)
         let mut routing_table: HashMap<NodeId, Vec<NodeId>> = HashMap::new();
 
-        const MAX_OUTPUT_BUFFER: usize = 10;
+        const MAX_OUTPUT_BUFFER: usize = 1024;
 
         loop {
             select_biased!(
@@ -451,7 +457,8 @@ impl ClientLuca {
                 let event = ClientEvent::FileMessage {
                     from,
                     to,
-                    file_path: byte_vec_to_file(file_name, extension, file).unwrap(), // check this for errors maybe
+                    file_path: byte_vec_to_file(file_name, extension, file, self.temp_dir.clone())
+                        .unwrap(), // check this for errors maybe
                 };
                 self.scs.send(event);
             }
@@ -466,7 +473,7 @@ impl ClientLuca {
             MessageData::ResponseHistory { partner, history } => {
                 let event = ClientEvent::ResponseHistoryReceived {
                     partner,
-                    history: raw_vec_to_chat_vec(history),
+                    history: raw_vec_to_chat_vec(history, self.temp_dir.clone()),
                 };
                 self.scs.send(event);
             }
@@ -504,6 +511,7 @@ impl ClientLuca {
                 self.id,
                 packet
             );
+            self.condv.notify_all();
         }
     }
 

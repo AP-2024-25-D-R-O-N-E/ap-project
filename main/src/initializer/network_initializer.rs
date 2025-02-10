@@ -13,11 +13,12 @@ use rustbusters_drone::RustBustersDrone;
 use rusteze_drone::RustezeDrone;
 use rusty_drones::RustyDrone;
 use skylink::SkyLinkDrone;
+use tempfile::TempDir;
 use LeDron_James::Drone as LeDron_JamesDrone;
 
 use std::{
     collections::{HashMap, HashSet},
-    sync::{Arc, Barrier},
+    sync::{Arc, Barrier, Mutex, RwLock},
     thread::{self, sleep, JoinHandle},
     time::Duration,
 };
@@ -33,10 +34,7 @@ use wg_2024::{
 use d_r_o_n_e_drone::MyDrone;
 
 use crate::{
-    client::{
-        client_leonardo::ClientLeonardo, client_luca::ClientLuca, client_test::Client,
-        client_test_2::Client2, ClientTrait,
-    },
+    client::{client_leonardo::ClientLeonardo, client_luca::ClientLuca, ClientTrait},
     server::{server_gino::ChatServer, ServerTrait},
     simulation_controller::{
         edge::UiEdgePayload,
@@ -62,11 +60,12 @@ pub struct NetworkInitializer {
     pub server_command_channels: HashMap<NodeId, (Sender<ServerCommand>, Receiver<ServerCommand>)>,
     pub topology: StableGraph<UiNodePayload, UiEdgePayload, Undirected>,
 
+    temp_dir: Arc<TempDir>,
     handles: HashMap<NodeId, JoinHandle<()>>,
 }
 
 impl NetworkInitializer {
-    pub fn new(config_path: String) -> NetworkInitializer {
+    pub fn new(config_path: String, temp_dir: Arc<TempDir>) -> NetworkInitializer {
         let config = parse_config(config_path);
         NetworkInitializer {
             packet_channels: HashMap::new(), // packets
@@ -79,6 +78,7 @@ impl NetworkInitializer {
             handles: HashMap::new(),
             topology: NetworkInitializer::get_topology_from_config(&config),
             config,
+            temp_dir,
         }
     }
 
@@ -181,6 +181,8 @@ impl NetworkInitializer {
 
             let client_id: NodeId = client.id;
 
+            let temp_dir = Arc::clone(&self.temp_dir);
+
             let barrier_clone = Arc::clone(&client_barrier);
 
             self.handles.insert(
@@ -193,6 +195,7 @@ impl NetworkInitializer {
                         packet_send,
                         packet_recv,
                         client_id,
+                        temp_dir,
                     );
                     log::info!(
                         "{}, {:?}",
@@ -232,6 +235,8 @@ impl NetworkInitializer {
 
             let server_id: NodeId = server.id;
 
+            let temp_dir = Arc::clone(&self.temp_dir);
+
             let barrier_clone = Arc::clone(&server_barrier);
             self.handles.insert(
                 server_id,
@@ -243,6 +248,7 @@ impl NetworkInitializer {
                         packet_send,
                         packet_recv,
                         server_id,
+                        temp_dir,
                     );
                     log::info!(
                         "{}, {:?}",
@@ -344,6 +350,7 @@ impl NetworkInitializer {
         packet_send: HashMap<u8, Sender<Packet>>,
         packet_recv: Receiver<Packet>,
         server_id: u8,
+        temp_dir: Arc<TempDir>,
     ) -> Box<dyn ServerTrait> {
         Box::new(ChatServer::new(
             server_id,
@@ -351,6 +358,7 @@ impl NetworkInitializer {
             command_receiver,
             packet_recv,
             packet_send,
+            temp_dir,
         ))
     }
 
@@ -361,6 +369,7 @@ impl NetworkInitializer {
         packet_send: HashMap<u8, Sender<Packet>>,
         packet_recv: Receiver<Packet>,
         client_id: u8,
+        temp_dir: Arc<TempDir>,
     ) -> Box<dyn ClientTrait> {
         match index {
             0 => Box::new(ClientLuca::new(
@@ -369,6 +378,7 @@ impl NetworkInitializer {
                 command_receiver,
                 packet_recv,
                 packet_send,
+                temp_dir,
             )),
             _ => Box::new(ClientLeonardo::new(
                 client_id,
@@ -376,6 +386,7 @@ impl NetworkInitializer {
                 command_receiver,
                 packet_recv,
                 packet_send,
+                temp_dir,
             )),
         }
     }

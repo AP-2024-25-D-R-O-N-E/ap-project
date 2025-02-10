@@ -22,6 +22,7 @@ use petgraph::{
     Undirected,
 };
 use serde::de::DeserializeSeed;
+use tempfile::TempDir;
 use wg_2024::{
     network::{NodeId, SourceRoutingHeader},
     packet::{
@@ -63,6 +64,8 @@ pub struct ClientLeonardo {
     ack_buffer: Arc<Mutex<HashMap<(u64, u64), Packet>>>,
     topology_modified: Arc<Mutex<bool>>,
     edge_nodes: Arc<RwLock<HashSet<NodeId>>>,
+    condv: Arc<Condvar>,
+    temp_dir: Arc<TempDir>,
 }
 
 impl ClientTrait for ClientLeonardo {
@@ -72,6 +75,7 @@ impl ClientTrait for ClientLeonardo {
         sim_contr_recv: Receiver<ClientCommand>,
         packet_recv: Receiver<Packet>,
         packet_send: HashMap<NodeId, Sender<Packet>>,
+        temp_dir: Arc<TempDir>,
     ) -> Self
     where
         Self: Sized,
@@ -89,6 +93,8 @@ impl ClientTrait for ClientLeonardo {
             ack_buffer: Arc::new(Mutex::new(HashMap::new())),
             topology_modified: Arc::new(Mutex::new(false)),
             edge_nodes: Arc::new(RwLock::new(HashSet::new())),
+            condv: Arc::new(Condvar::new()),
+            temp_dir,
         }
     }
 
@@ -108,7 +114,7 @@ impl ClientTrait for ClientLeonardo {
         let ack_buffer = self.ack_buffer.clone();
         let topology = self.topology.clone();
         let edge_nodes = self.edge_nodes.clone();
-        let condv = Condvar::new();
+        let condv = self.condv.clone();
 
         thread::spawn(move || {
             Self::sender_thread(
@@ -117,7 +123,7 @@ impl ClientTrait for ClientLeonardo {
                 sim_contr_send,
                 fragment_receiver,
                 nacks_recv,
-                Condvar::new(),
+                condv,
                 ack_buffer,
                 topology,
                 edge_nodes,
@@ -131,6 +137,7 @@ impl ClientTrait for ClientLeonardo {
         let sim_control_send = self.sim_contr_send.clone();
         let fragment_sender = fragment_sender.clone();
         let chat_server_id = self.chat_server_id.clone();
+        let temp_dir = self.temp_dir.clone();
 
         thread::spawn(move || {
             Self::message_handler_thread(
@@ -141,6 +148,7 @@ impl ClientTrait for ClientLeonardo {
                 thread_receiver,
                 fragment_sender,
                 sim_control_send,
+                temp_dir,
             );
         });
 
@@ -233,13 +241,13 @@ impl ClientLeonardo {
         sim_contr_send: Sender<ClientEvent>,
         fragment_recv: Receiver<(NodeId, u64, Fragment)>,
         nack_recv: Receiver<Packet>,
-        condv: Condvar,
+        condv: Arc<Condvar>,
         ack_packet_buffer: Arc<Mutex<HashMap<(u64, u64), Packet>>>,
         topology: Arc<RwLock<GraphMap<NodeId, f64, Undirected>>>,
         edge_nodes: Arc<RwLock<HashSet<NodeId>>>,
     ) {
         // temporary number
-        const MAX_OUTPUT_BUFFER: usize = 10;
+        const MAX_OUTPUT_BUFFER: usize = 1024;
 
         loop {
             select_biased!(
@@ -308,6 +316,7 @@ impl ClientLeonardo {
         command_recv: Receiver<Message>,
         fragment_sender: Sender<(NodeId, u64, Fragment)>,
         sim_send: Sender<ClientEvent>,
+        temp_dir: Arc<TempDir>,
     ) {
         let mut session_id = 1;
 
@@ -343,7 +352,7 @@ impl ClientLeonardo {
                                 Self::client_ack(sim_send.clone());
                             },
                             MessageData::ResponseHistory{partner, history} => {
-                                Self::response_history(partner, history, sim_send.clone());
+                                Self::response_history(partner, history, sim_send.clone(), temp_dir.clone());
                             },
                             MessageData::UnregisteredSenderError => {
                                 Self::unregistered_sender_error(sim_send.clone());
@@ -358,7 +367,7 @@ impl ClientLeonardo {
                                 Self::text_message_received(from, to, text, sim_send.clone());
                             },
                             MessageData::FileMessage { from, to, file, file_name, extension } => {
-                                Self::file_message_received(from, to, file, file_name, extension, sim_send.clone());
+                                Self::file_message_received(from, to, file, file_name, extension, sim_send.clone(), temp_dir.clone());
                             },
                             _ => {}
 
@@ -443,6 +452,7 @@ impl ClientLeonardo {
                 ack.fragment_index,
                 s_id
             );
+            self.condv.notify_all();
         } else {
             log::error!(
                 "{} Ack received for fragment {} of message {} but it was not found in the buffer",
@@ -502,6 +512,7 @@ impl ClientLeonardo {
                 s_id
             );
             resend.send(p);
+            self.condv.notify_all();
         } else {
             log::error!(
                 "{} Nack received for fragment {} of message {} but it was not found in the buffer",
@@ -673,10 +684,11 @@ impl ClientLeonardo {
         partner: NodeId,
         history: Vec<RawChatMessage>,
         sim_send: Sender<ClientEvent>,
+        temp_dir: Arc<TempDir>,
     ) {
         sim_send.send(ClientEvent::ResponseHistoryReceived {
             partner,
-            history: raw_vec_to_chat_vec(history),
+            history: raw_vec_to_chat_vec(history, temp_dir.clone()),
         });
     }
 
@@ -708,11 +720,12 @@ impl ClientLeonardo {
         file_name: OsString,
         extension: OsString,
         sim_send: Sender<ClientEvent>,
+        temp_dir: Arc<TempDir>,
     ) {
         sim_send.send(ClientEvent::FileMessage {
             from,
             to,
-            file_path: byte_vec_to_file(file_name, extension, file).unwrap(),
+            file_path: byte_vec_to_file(file_name, extension, file, temp_dir.clone()).unwrap(),
         });
     }
 
@@ -787,7 +800,7 @@ impl ClientLeonardo {
             partner,
             MessageData::RequestHistory {
                 requester: self.id,
-                partner: partner,
+                partner,
             },
         );
         sender.send(m);

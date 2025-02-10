@@ -1,3 +1,4 @@
+use egui_file_dialog::FileDialog;
 use egui_graphs::Graph;
 use std::collections::HashMap;
 
@@ -18,6 +19,7 @@ pub struct State {
     pub node_info_section: NodeInfoSectionState,
     pub console_section: ConsoleSectionState,
     pub modify_topology_section: ModifyTopologyState,
+    pub file_dialog: FileDialog,
 }
 
 impl State {
@@ -40,6 +42,7 @@ impl State {
             node_info_section: NodeInfoSectionState::from(&sc.topology),
             console_section: Default::default(),
             modify_topology_section: ModifyTopologyState::from(&sc.topology),
+            file_dialog: Default::default(),
         }
     }
 }
@@ -72,6 +75,7 @@ impl Default for State {
             node_info_section: Default::default(),
             console_section: Default::default(),
             modify_topology_section,
+            file_dialog: Default::default(),
         }
     }
 }

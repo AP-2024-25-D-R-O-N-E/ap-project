@@ -1,4 +1,9 @@
-use std::{collections::VecDeque, thread::sleep, time::Duration};
+use std::{
+    collections::VecDeque,
+    sync::{Arc, Mutex, RwLock},
+    thread::sleep,
+    time::Duration,
+};
 
 use crate::{
     fragmentation::message::{self, Message, MessageData},
@@ -7,13 +12,19 @@ use crate::{
 };
 use colored::Colorize;
 use simple_logger::SimpleLogger;
+use tempfile::{tempdir, TempDir};
 use wg_2024::{network::SourceRoutingHeader, packet::*};
 
 #[test]
 fn client_test() {
     super::initialize();
-    let mut network_initializer =
-        NetworkInitializer::new("src/topology_configs/config_no_pdr.toml".to_string());
+
+    let temp_dir: Arc<TempDir> = Arc::new(tempdir().unwrap());
+
+    let mut network_initializer = NetworkInitializer::new(
+        "src/topology_configs/config_no_pdr.toml".to_string(),
+        temp_dir.clone(),
+    );
 
     let sc = network_initializer.init_network().unwrap();
     sleep(Duration::from_millis(100));

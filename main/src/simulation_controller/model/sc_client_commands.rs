@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use wg_2024::network::NodeId;
 
 use super::{ClientCommand, SimulationController};
@@ -45,6 +47,18 @@ impl SimulationController {
                 channel.send(ClientCommand::SendTextMessageTo {
                     receiver: node_to,
                     message: msg,
+                });
+            }
+            None => log::error!("Specified client does not exist"),
+        }
+    }
+
+    pub fn send_file_msg(&self, node_from: NodeId, node_to: NodeId, file_path: PathBuf) {
+        match self.client_command_channels.get(&node_from) {
+            Some(channel) => {
+                channel.send(ClientCommand::SendFileMessageTo {
+                    receiver: node_to,
+                    file_path,
                 });
             }
             None => log::error!("Specified client does not exist"),

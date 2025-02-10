@@ -1,5 +1,8 @@
 use petgraph::{graph::NodeIndex, prelude::StableGraph, Undirected};
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet},
+    path::PathBuf,
+};
 use wg_2024::network::NodeId;
 
 use crate::{
@@ -70,6 +73,7 @@ pub struct ClientState {
     pub current_peer: Option<NodeId>,
     pub last_peer: Option<NodeId>,
     pub chat_histories: HashMap<NodeId, Vec<ChatMessage>>,
+    pub selected_file_path: Option<PathBuf>,
 }
 
 #[derive(Debug, Clone)]

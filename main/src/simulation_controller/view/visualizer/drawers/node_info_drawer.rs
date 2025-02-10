@@ -1,6 +1,10 @@
 use colored::Colorize;
-use egui::{CollapsingHeader, Context, Layout, RichText, ScrollArea, TextEdit, Ui, Window};
+use egui::{
+    epaint::tessellator::path, CollapsingHeader, Context, Label, Layout, RichText, ScrollArea,
+    TextEdit, Ui, Window,
+};
 use egui_extras::{Column, TableBuilder};
+use egui_file_dialog::{DialogMode, DialogState};
 use petgraph::graph::{EdgeIndex, NodeIndex};
 
 use crate::{
@@ -369,32 +373,60 @@ fn draw_client_specific(
     ));
 
     ui.horizontal(|ui| {
+        if ui.button("📎").clicked() {
+            state.file_dialog.open(
+                DialogMode::SelectFile,
+                true,
+                Some(&format!("Client {}", curr_node_wg_id)),
+            );
+        }
+
+        if let Some(path) = state.file_dialog.take_selected() {
+            if state.file_dialog.operation_id() == Some(&format!("Client {}", curr_node_wg_id)) {
+                get_client_node_state(&mut state.node_info_section, node_index)
+                    .selected_file_path = Some(path.clone());
+            }
+        }
+
         if ui.button("Send to".to_string()).clicked()
             || (re.lost_focus() && re.ctx.input(|i| i.key_pressed(egui::Key::Enter)))
         {
             let state = get_client_node_state(&mut state.node_info_section, node_index);
 
-            if let Some(curr_peer) = state.current_peer {
-                simulation_controller.send_txt_msg(
-                    curr_node_wg_id,
-                    curr_peer,
-                    state.curr_msg.clone(),
-                );
-                if curr_node_wg_id != curr_peer {
-                    state
-                        .chat_histories
-                        .entry(curr_peer)
-                        .or_insert(vec![])
-                        .push(ChatMessage::TextMessage {
-                            from: curr_node_wg_id,
-                            to: curr_peer,
-                            text: state.curr_msg.clone(),
-                        });
+            if !state.curr_msg.is_empty() {
+                if let Some(curr_peer) = state.current_peer {
+                    simulation_controller.send_txt_msg(
+                        curr_node_wg_id,
+                        curr_peer,
+                        state.curr_msg.clone(),
+                    );
+                    if curr_node_wg_id != curr_peer {
+                        state
+                            .chat_histories
+                            .entry(curr_peer)
+                            .or_insert(vec![])
+                            .push(ChatMessage::TextMessage {
+                                from: curr_node_wg_id,
+                                to: curr_peer,
+                                text: state.curr_msg.clone(),
+                            });
+                    }
+                    ui.memory_mut(|mem| mem.request_focus(re.id));
+                    state.curr_msg.clear();
+                } else {
+                    println!("No peer selected");
                 }
-                ui.memory_mut(|mem| mem.request_focus(re.id));
-                state.curr_msg.clear();
-            } else {
-                println!("No peer selected");
+            }
+
+            if let Some(path) = &state.selected_file_path {
+                if let Some(curr_peer) = state.current_peer {
+                    simulation_controller.send_file_msg(curr_node_wg_id, curr_peer, path.clone());
+                    state.selected_file_path = None;
+                    // update history on file send since the destination file is reconstructed
+                    simulation_controller.open_chat_with(curr_node_wg_id, curr_peer);
+                } else {
+                    println!("No peer selected");
+                }
             }
         }
 
@@ -433,6 +465,12 @@ fn draw_client_specific(
             {
                 simulation_controller.open_chat_with(curr_node_wg_id, current_peer);
             }
+        }
+
+        if let Some(path) =
+            &get_client_node_state(&mut state.node_info_section, node_index).selected_file_path
+        {
+            ui.add(Label::new(path.file_name().unwrap_or_default().to_string_lossy()).truncate());
         }
 
         let client_state = get_client_node_state(&mut state.node_info_section, node_index);

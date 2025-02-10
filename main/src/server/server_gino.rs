@@ -4,6 +4,7 @@ use std::{
     ffi::OsString,
     sync::{Arc, Condvar, Mutex, RwLock},
     thread::{self, JoinHandle},
+    time::Duration,
 };
 
 use bincode::de::read;
@@ -18,6 +19,7 @@ use petgraph::{
     Directed, Undirected,
 };
 use serde::de::DeserializeSeed;
+use tempfile::TempDir;
 use wg_2024::{
     network::{NodeId, SourceRoutingHeader},
     packet::{
@@ -29,7 +31,8 @@ use crate::{
     client,
     fragmentation::{
         self,
-        message::{self, Message, MessageData, RawChatMessage},
+        file_handling::{byte_vec_to_file, chat_vec_to_raw_vec},
+        message::{self, ChatMessage, Message, MessageData, RawChatMessage},
         Fragmenter,
     },
     simulation_controller::structs::{ServerCommand, ServerEvent},
@@ -50,6 +53,8 @@ pub struct ChatServer {
     topology_modified: Arc<Mutex<bool>>, // flag to check if the topology has been modified
     edge_nodes: Arc<RwLock<HashSet<NodeId>>>, // stores the edge nodes that can't be used in a route
     pdr_estimation: Arc<RwLock<HashMap<NodeId, (f64, u64, u64)>>>, // stores the pdr estimation for each node
+    condv: Arc<Condvar>,
+    temp_dir: Arc<TempDir>,
 }
 
 impl ServerTrait for ChatServer {
@@ -59,6 +64,7 @@ impl ServerTrait for ChatServer {
         sim_contr_recv: Receiver<ServerCommand>,
         packet_recv: Receiver<Packet>,
         packet_send: HashMap<NodeId, Sender<Packet>>,
+        temp_dir: Arc<TempDir>,
     ) -> Self
     where
         Self: Sized,
@@ -76,6 +82,8 @@ impl ServerTrait for ChatServer {
             topology_modified: Arc::new(Mutex::new(false)),
             edge_nodes: Arc::new(RwLock::new(HashSet::new())),
             pdr_estimation: Arc::new(RwLock::new(HashMap::new())),
+            condv: Arc::new(Condvar::new()),
+            temp_dir,
         }
     }
 
@@ -91,7 +99,7 @@ impl ServerTrait for ChatServer {
 
         let (fragment_send, fragment_recv) = unbounded::<(NodeId, u64, Fragment)>();
 
-        let condv = Condvar::new();
+        let condv = self.condv.clone();
 
         let ack_packet_buffer = self.ack_packet_buffer.clone();
 
@@ -128,9 +136,16 @@ impl ServerTrait for ChatServer {
         let (ready_send, ready_recv) = unbounded::<(NodeId, u64)>();
 
         let id = self.id;
+        let temp_dir = self.temp_dir.clone();
 
         threads.push(thread::spawn(move || {
-            ChatServer::message_handler_thread(id, fragment_buffers, ready_recv, fragment_send);
+            ChatServer::message_handler_thread(
+                id,
+                fragment_buffers,
+                ready_recv,
+                fragment_send,
+                temp_dir,
+            );
         }));
 
         // at the end call the receiver thread (which is this one)
@@ -189,6 +204,7 @@ impl Fragmenter for ChatServer {
 impl ChatServer {
     fn receiver_thread(&mut self, ready_send: Sender<(NodeId, u64)>, nack_send: Sender<Packet>) {
         loop {
+            thread::sleep(Duration::from_micros(50));
             select_biased!(
                 recv(self.sim_contr_recv) -> cmd => {
                     if let Ok(command) = cmd {
@@ -224,7 +240,7 @@ impl ChatServer {
         sim_contr_send: Sender<ServerEvent>,
         fragment_recv: Receiver<(NodeId, u64, Fragment)>,
         nack_recv: Receiver<Packet>,
-        condv: Condvar,
+        condv: Arc<Condvar>,
         ack_packet_buffer: Arc<Mutex<HashMap<(u64, u64), Packet>>>,
         topology: Arc<RwLock<GraphMap<NodeId, (), Directed>>>,
         topology_modified: Arc<Mutex<bool>>,
@@ -235,9 +251,11 @@ impl ChatServer {
         let mut routing_table: HashMap<NodeId, Vec<NodeId>> = HashMap::new();
 
         // temporary number
-        const MAX_OUTPUT_BUFFER: usize = 10;
+        const MAX_OUTPUT_BUFFER: usize = 128;
 
         loop {
+            // crossbeam channels block if the buffer is too fast (or something?) so we need to sleep for a bit
+            thread::sleep(Duration::from_micros(500));
             select_biased!(
                 recv(nack_recv) -> nack_res => {
                     if let Ok(mut packet) = nack_res {
@@ -310,10 +328,11 @@ impl ChatServer {
         fragment_buffers: Arc<RwLock<HashMap<(NodeId, u64), Vec<Fragment>>>>,
         ready_recv: Receiver<(NodeId, u64)>,
         fragment_send: Sender<(NodeId, u64, Fragment)>,
+        temp_dir: Arc<TempDir>,
     ) {
         let mut client_table: HashSet<NodeId> = HashSet::new();
         // history has the nodes ordered in ascending order, i.e. the first NodeId is lower than the second
-        let mut history_table: HashMap<(NodeId, NodeId), Vec<RawChatMessage>> = HashMap::new();
+        let mut history_table: HashMap<(NodeId, NodeId), Vec<ChatMessage>> = HashMap::new();
         // stores the latest session id
         let mut session_id = 1;
 
@@ -375,6 +394,7 @@ impl ChatServer {
                                 extension,
                                 id,
                                 &mut history_table,
+                                temp_dir.clone(),
                             )
                         }
                     }
@@ -564,6 +584,8 @@ impl ChatServer {
                 self.id,
                 packet
             );
+            self.condv.notify_all();
+
             let mut pdr_estimation_lock = self.pdr_estimation.write().unwrap();
             for nodes in packet.routing_header.hops.windows(2) {
                 let (ratio, mut success, failure) = *pdr_estimation_lock.get(&nodes[0]).unwrap();
@@ -618,6 +640,7 @@ impl ChatServer {
         let mut ack_packet_buffer_lock = self.ack_packet_buffer.lock().unwrap();
 
         if let Some(packet) = ack_packet_buffer_lock.remove(&ack_key) {
+            self.condv.notify_all();
             if fast_return {
                 return;
             }
@@ -803,7 +826,7 @@ impl ChatServer {
         requester: NodeId,
         partner: NodeId,
         id: NodeId,
-        history_table: &HashMap<(NodeId, NodeId), Vec<RawChatMessage>>,
+        history_table: &HashMap<(NodeId, NodeId), Vec<ChatMessage>>,
     ) -> Option<Message> {
         // order the nodes in ascending order to keep the history consistent
         let mut key_tuple: (NodeId, NodeId) = (requester, partner);
@@ -816,7 +839,10 @@ impl ChatServer {
         Some(Message::new(
             id,
             requester,
-            MessageData::ResponseHistory { partner, history },
+            MessageData::ResponseHistory {
+                partner,
+                history: chat_vec_to_raw_vec(history),
+            },
         ))
     }
 
@@ -825,7 +851,7 @@ impl ChatServer {
         to: NodeId,
         text: String,
         id: NodeId,
-        history_table: &mut HashMap<(NodeId, NodeId), Vec<RawChatMessage>>,
+        history_table: &mut HashMap<(NodeId, NodeId), Vec<ChatMessage>>,
     ) -> Option<Message> {
         let message = Message::new(
             id,
@@ -847,7 +873,7 @@ impl ChatServer {
         history_table
             .entry(key_tuple)
             .or_default()
-            .push(RawChatMessage::TextMessage { from, to, text });
+            .push(ChatMessage::TextMessage { from, to, text });
 
         Some(message)
     }
@@ -859,7 +885,8 @@ impl ChatServer {
         file_name: OsString,
         extension: OsString,
         id: NodeId,
-        history_table: &mut HashMap<(NodeId, NodeId), Vec<RawChatMessage>>,
+        history_table: &mut HashMap<(NodeId, NodeId), Vec<ChatMessage>>,
+        temp_dir: Arc<TempDir>,
     ) -> Option<Message> {
         let message = Message::new(
             id,
@@ -879,16 +906,16 @@ impl ChatServer {
             key_tuple = (to, from);
         }
 
+        let file_path = byte_vec_to_file(file_name, extension, file, temp_dir.clone()).unwrap();
+
         // add the message to the history table
         history_table
             .entry(key_tuple)
             .or_default()
-            .push(RawChatMessage::FileMessage {
+            .push(ChatMessage::FileMessage {
                 from,
                 to,
-                file,
-                file_name,
-                extension,
+                file_path,
             });
 
         Some(message)
