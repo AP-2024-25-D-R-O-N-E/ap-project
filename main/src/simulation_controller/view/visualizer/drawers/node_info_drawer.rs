@@ -166,11 +166,10 @@ pub fn draw_node_info(
                                     if !state.toolbar_section.loggin_enabled {
                                         return;
                                     }
-                                    for (_, event) in state
+                                    for event in state
                                         .events
                                         .get_events_list(DisplayOptions::from_index(payload.wg_id))
                                         .iter()
-                                        .enumerate()
                                     {
                                         body.row(30.0, |mut row| {
                                             event.draw(&mut row);

@@ -119,7 +119,6 @@ impl ClientTrait for ClientLeonardo {
             );
         });
 
-        let id = self.id;
         let fragment_buffer = self.fragment_buffer.clone();
         let ready_for_handler = ready_for_handler.clone();
         let thread_receiver = thread_receiver.clone();
@@ -130,7 +129,6 @@ impl ClientTrait for ClientLeonardo {
 
         thread::spawn(move || {
             Self::message_handler_thread(
-                id,
                 chat_server_id,
                 fragment_buffer,
                 ready_for_handler,
@@ -305,7 +303,6 @@ impl ClientLeonardo {
     }
 
     fn message_handler_thread(
-        id: NodeId,
         server_id: Arc<Mutex<NodeId>>,
         fragment_buffers: LockRef<HashMap<(NodeId, u64), Vec<Fragment>>>,
         ready: Receiver<(NodeId, u64)>,
@@ -434,7 +431,7 @@ impl ClientLeonardo {
 
         let res = send_channel.send(packet.clone());
 
-        if let Err(_) = res {
+        if res.is_err() {
             log::error!("The send inside channel gave an error, this shouldn't be happening");
         } else {
             match sim_contr_send.send(ClientEvent::PacketSent(packet.clone())) {
@@ -454,7 +451,7 @@ impl ClientLeonardo {
         let key = (s_id, ack.fragment_index);
 
         //if receiving ack then removing it from the the ack buffer
-        if let Some(_) = ack_buffer_lock.remove(&key) {
+        if ack_buffer_lock.remove(&key).is_some() {
             log::debug!(
                 "{} Ack received for fragment {} of message {}",
                 "↳ client".purple(),
@@ -693,7 +690,7 @@ impl ClientLeonardo {
 
         let res = send_channel.send(packet.clone());
 
-        if let Err(packet) = res {
+        if let Err(_packet) = res {
             log::error!("The send inside channel gave an error, this shouldn't be happening");
         } else {
             match self
@@ -830,7 +827,7 @@ impl ClientLeonardo {
 
             let res = recv.send(packet.clone());
 
-            if let Err(_) = res {
+            if res.is_err() {
                 log::error!("The send inside channel gave an error, this shouldn't be happening");
             } else {
                 match self

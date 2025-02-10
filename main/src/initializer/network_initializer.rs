@@ -213,7 +213,7 @@ impl NetworkInitializer {
         log::info!("{}", "Clients initialized successfully!".bold().green());
 
         let server_barrier = Arc::new(Barrier::new(self.config.server.len() + 1));
-        for (_, server) in self.config.server.iter().enumerate() {
+        for server in self.config.server.iter() {
             let server_event_send = unbounded::<ServerEvent>();
             let server_command_rec = unbounded::<ServerCommand>();
 

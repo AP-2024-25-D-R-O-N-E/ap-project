@@ -6,7 +6,7 @@ use wg_2024::{
     packet::{NackType, Packet, PacketType},
 };
 
-use crate::simulation_controller::{state::State, SCEvent, SCEventType};
+use crate::simulation_controller::{SCEvent, SCEventType};
 
 use super::draw_event_as_json;
 

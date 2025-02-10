@@ -715,7 +715,7 @@ impl ChatServer {
 
         let res = send_channel.send(packet.clone());
 
-        if let Err(_) = res {
+        if res.is_err() {
             log::error!("The send inside channel gave an error, this shouldn't be happening");
         } else {
             match self.sim_contr_send.send(ServerEvent::PacketSent(packet)) {
@@ -743,7 +743,7 @@ impl ChatServer {
 
             let res = sender.send(packet.clone());
 
-            if let Err(_) = res {
+            if res.is_err() {
                 log::error!("The send inside channel gave an error, this shouldn't be happening");
             } else {
                 match self.sim_contr_send.send(ServerEvent::PacketSent(packet)) {
