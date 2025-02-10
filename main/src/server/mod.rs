@@ -1,4 +1,5 @@
 pub mod server_gino;
+pub mod utils;
 
 use std::{
     collections::HashMap,

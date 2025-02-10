@@ -1,3 +1,4 @@
+use crate::server::utils::LockRef;
 use std::{
     cell::RefCell,
     collections::{HashMap, HashSet, VecDeque},
@@ -6,8 +7,6 @@ use std::{
     thread::{self, JoinHandle},
     time::Duration,
 };
-
-type LockRef<T> = Arc<RwLock<T>>;
 
 use bincode::de::read;
 use colored::Colorize;
@@ -40,7 +39,10 @@ use crate::{
     simulation_controller::structs::{ServerCommand, ServerEvent},
 };
 
-use super::ServerTrait;
+use super::{
+    utils::{FileDescriptor, ServerChannels, ServerTopology},
+    ServerTrait,
+};
 
 pub struct ChatServer {
     id: NodeId,
@@ -118,16 +120,11 @@ impl ServerTrait for ChatServer {
         threads.push(thread::spawn(move || {
             ChatServer::sender_thread(
                 id,
-                packet_sender,
-                sim_contr_sender,
-                fragment_recv,
-                nack_recv,
                 condv,
                 ack_packet_buffer,
-                topology,
                 topology_modified,
-                edge_nodes,
-                pdr_estimation,
+                ServerChannels::new(packet_sender, sim_contr_sender, fragment_recv, nack_recv),
+                ServerTopology::new(topology, edge_nodes, pdr_estimation),
             );
         }));
 
@@ -238,17 +235,25 @@ impl ChatServer {
 
     fn sender_thread(
         id: NodeId,
-        packet_sender: LockRef<HashMap<u8, Sender<Packet>>>,
-        sim_contr_send: Sender<ServerEvent>,
-        fragment_recv: Receiver<(NodeId, u64, Fragment)>,
-        nack_recv: Receiver<Packet>,
         condv: Arc<Condvar>,
         ack_packet_buffer: Arc<Mutex<HashMap<(u64, u64), Packet>>>,
-        topology: LockRef<GraphMap<NodeId, (), Directed>>,
         topology_modified: Arc<Mutex<bool>>,
-        edge_nodes: LockRef<HashSet<NodeId>>,
-        pdr_estimation: LockRef<HashMap<NodeId, (f64, u64, u64)>>,
+        server_channels: ServerChannels,
+        server_topology: ServerTopology,
     ) {
+        let ServerChannels {
+            packet_sender,
+            sim_contr_send,
+            fragment_recv,
+            nack_recv,
+        } = server_channels;
+
+        let ServerTopology {
+            topology,
+            edge_nodes,
+            pdr_estimation,
+        } = server_topology;
+
         // records the routing table for the server (this is only updated when an update to the topology is made)
         let mut routing_table: HashMap<NodeId, Vec<NodeId>> = HashMap::new();
 
@@ -391,10 +396,7 @@ impl ChatServer {
                             Self::file_message(
                                 from,
                                 to,
-                                file,
-                                file_name,
-                                extension,
-                                id,
+                                FileDescriptor::new(file, file_name, extension, id),
                                 &mut history_table,
                                 temp_dir.clone(),
                             )
@@ -884,13 +886,17 @@ impl ChatServer {
     fn file_message(
         from: NodeId,
         to: NodeId,
-        file: Vec<u8>,
-        file_name: OsString,
-        extension: OsString,
-        id: NodeId,
+        fd: FileDescriptor,
         history_table: &mut HashMap<(NodeId, NodeId), Vec<ChatMessage>>,
         temp_dir: Arc<TempDir>,
     ) -> Option<Message> {
+        let FileDescriptor {
+            file,
+            file_name,
+            extension,
+            id,
+        } = fd;
+
         let message = Message::new(
             id,
             to,
