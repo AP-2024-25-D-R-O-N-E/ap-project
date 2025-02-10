@@ -1,6 +1,6 @@
 use std::{
     borrow::Cow,
-    ffi::{OsStr, OsString},
+    ffi::{OsStr, OsString}, fs,
 };
 
 use colored::Colorize;
@@ -382,12 +382,13 @@ fn draw_client_specific(
             state.file_dialog.open(
                 DialogMode::SelectFile,
                 true,
-                Some(&format!("Client {}", curr_node_wg_id)),
+                Some(&format!("Client {} open", curr_node_wg_id)),
             );
         }
 
         if let DialogState::Selected(_) = state.file_dialog.state() {
-            if state.file_dialog.operation_id() == Some(&format!("Client {}", curr_node_wg_id)) {
+            if state.file_dialog.operation_id() == Some(&format!("Client {} open", curr_node_wg_id))
+            {
                 if let Some(path) = state.file_dialog.take_selected() {
                     get_client_node_state(&mut state.node_info_section, node_index)
                         .selected_file_path = Some(path.clone());
@@ -504,6 +505,8 @@ fn draw_client_no_grid_specific(
                 .auto_shrink([false, false])
                 .stick_to_bottom(true)
                 .show(ui, |ui| {
+                    let curr_node_wg_id = get_payload_from_state(state, node_index).unwrap().wg_id;
+
                     let client_state =
                         get_client_node_state(&mut state.node_info_section, node_index);
 
@@ -514,9 +517,9 @@ fn draw_client_no_grid_specific(
                             Some(curr_peer) => match client_state.chat_histories.get(&curr_peer) {
                                 Some(history) => {
                                     for message in history {
-                                        let (from, to, text, image) = match message {
+                                        let (from, to, text, uri) = match message {
                                             ChatMessage::TextMessage { from, to, text } => {
-                                                (from, to, Cow::Owned(text.to_string()), false)
+                                                (from, to, text, None)
                                             }
                                             ChatMessage::FileMessage {
                                                 from,
@@ -544,7 +547,7 @@ fn draw_client_no_grid_specific(
 
                                                 fp.push_str(file_path.to_str().unwrap());
 
-                                                (from, to, Cow::Owned(fp), is_image)
+                                                (from, to, &file_path.to_string_lossy().to_string(), Some(fp))
                                             }
                                         };
 
@@ -554,15 +557,36 @@ fn draw_client_no_grid_specific(
                                             egui::Align::LEFT
                                         };
 
-                                        if image {
+                                        if let Some(uri) = uri {
                                             ui.with_layout(
                                                 Layout::top_down_justified(align),
                                                 |ui| {
                                                     ui.add(
-                                                        egui::Image::from_uri(text)
+                                                        egui::Image::from_uri(uri)
                                                             .maintain_aspect_ratio(true)
                                                             .shrink_to_fit(),
-                                                    );
+                                                    )
+                                                    .context_menu(|ui| {
+                                                        if ui.button("save image").clicked() {
+                                                            state.file_dialog.open(
+                                                                DialogMode::SaveFile,
+                                                                true,
+                                                                Some(&format!(
+                                                                    "Client {} save",
+                                                                    curr_node_wg_id
+                                                                )),
+                                                            );
+                                                        }
+                                                        if let DialogState::Selected(_) = state.file_dialog.state() {
+                                                            if state.file_dialog.operation_id() == Some(&format!("Client {} save", curr_node_wg_id))
+                                                            {
+                                                                if let Some(path) = state.file_dialog.take_selected() {
+                                                                    let res = fs::copy(&*text, &path);
+                                                                    println!("saved image from to {:?} with res {:?}", path, res);
+                                                                }
+                                                            }
+                                                        }
+                                                    });
                                                     ui.separator();
                                                 },
                                             );
