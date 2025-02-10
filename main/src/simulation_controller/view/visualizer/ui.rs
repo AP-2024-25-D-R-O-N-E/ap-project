@@ -122,7 +122,9 @@ impl SCGui {
             {
                 client_state.available_peers = ids.clone();
                 for peers in &client_state.available_peers {
-                    client_state.chat_histories.insert(*peers, vec![]);
+                    if client_state.chat_histories.get(peers).is_none() {
+                        client_state.chat_histories.insert(*peers, vec![]);
+                    }
                 }
             }
         }
