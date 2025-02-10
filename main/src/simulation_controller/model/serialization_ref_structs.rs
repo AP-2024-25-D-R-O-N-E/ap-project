@@ -212,7 +212,7 @@ pub enum ClientEventRef {
         file_path: PathBuf,
     },
 
-    CreatedFileLocal{
+    CreatedFileLocal {
         from: NodeId,
         to: NodeId,
         file_path: PathBuf,

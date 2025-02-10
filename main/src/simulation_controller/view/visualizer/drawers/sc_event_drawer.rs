@@ -94,9 +94,7 @@ impl SCEvent {
                     egui::RichText::new("UnsupportedMessageTypeError").color(colors::MUTED_RED),
                 ),
                 ClientEvent::CreatedFileLocal {
-                    from,
-                    to: _,
-                    file_path,
+                    from, file_path, ..
                 } => ui.label(
                     egui::RichText::new(format!(
                         "Client {} created local file\nFile path: {:?}",
