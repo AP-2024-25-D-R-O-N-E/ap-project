@@ -5,22 +5,17 @@ pub mod utils;
 use std::{
     collections::HashMap,
     fmt::Debug,
-    sync::{Arc, Mutex, RwLock},
+    sync::Arc,
 };
 
-use client_luca::ClientLuca;
-use colored::Colorize;
-use crossbeam::channel::{select_biased, Receiver, Sender};
+use crossbeam::channel::{Receiver, Sender};
 use tempfile::TempDir;
 use wg_2024::{
     network::NodeId,
-    packet::{Ack, FloodRequest, FloodResponse, Fragment, Nack, Packet, PacketType},
+    packet::Packet,
 };
 
-use crate::{
-    fragmentation::{message::Message, Fragmenter},
-    simulation_controller::structs::{ClientCommand, ClientEvent},
-};
+use crate::simulation_controller::structs::{ClientCommand, ClientEvent};
 
 // since we're doing the communication stuff, both clients will need to implement ClientTrait
 pub trait ClientTrait {

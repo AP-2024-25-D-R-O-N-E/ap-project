@@ -1,18 +1,12 @@
-use egui_graphs::{Edge, Graph, Node};
-use petgraph::{
-    csr::DefaultIx,
-    graph::{EdgeIndex, NodeIndex},
-    prelude::StableGraph,
-    Undirected,
-};
-use std::collections::{HashMap, HashSet, VecDeque};
+use petgraph::graph::{EdgeIndex, NodeIndex};
+use std::collections::{HashSet, VecDeque};
 use wg_2024::network::NodeId;
 
 use crate::{
     initializer::drone_vendor::DroneVendor,
     simulation_controller::{
-        edge::{CustomEdgeShape, UiEdgePayload},
-        node::{CustomNodeShape, UiDroneNode, UiNodePayload, UiNodeType},
+        edge::UiEdgePayload,
+        node::{UiDroneNode, UiNodePayload, UiNodeType},
         state::{GraphSectionState, State},
         util::*,
         SimulationController,
@@ -408,17 +402,17 @@ where
     let mut visited = HashSet::new();
     queue.push_back(start);
 
-    while (!queue.is_empty()) {
+    while !queue.is_empty() {
         let curr_node = queue.pop_front().unwrap();
 
-        if (visited.contains(&curr_node)) {
+        if visited.contains(&curr_node) {
             continue;
         }
 
         for neighbor in graph.neighbors_undirected(curr_node) {
             let mut has_active_edge = false;
             for edge in graph.edges_connecting(curr_node, neighbor) {
-                if (edge.weight().payload().is_active) {
+                if edge.weight().payload().is_active {
                     has_active_edge = true;
                     break;
                 }
@@ -451,10 +445,10 @@ where
     };
     queue.push_back(first_node);
 
-    while (!queue.is_empty()) {
+    while !queue.is_empty() {
         let curr_node = queue.pop_front().unwrap();
 
-        if (visited.contains(&curr_node)) {
+        if visited.contains(&curr_node) {
             continue;
         }
 
@@ -507,10 +501,10 @@ where
     }
     queue.push_back(first_node.unwrap());
 
-    while (!queue.is_empty()) {
+    while !queue.is_empty() {
         let curr_node = queue.pop_front().unwrap();
 
-        if (visited.contains(&curr_node)) {
+        if visited.contains(&curr_node) {
             continue;
         }
 

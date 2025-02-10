@@ -1,6 +1,6 @@
 use wg_2024::network::NodeId;
 
-use super::{ClientCommand, ServerCommand, SimulationController};
+use super::{ServerCommand, SimulationController};
 
 impl SimulationController {
     pub fn send_server_start_flood(&self, node_id: NodeId) {

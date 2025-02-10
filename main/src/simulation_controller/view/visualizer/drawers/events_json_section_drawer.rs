@@ -1,11 +1,10 @@
 use crate::simulation_controller::{serialization_ref_structs::IntoSerializable, SCEvent};
 use egui::Ui;
-use egui_extras::syntax_highlighting::CodeTheme;
 
 use crate::simulation_controller::state::{events_state, State};
 
 pub fn draw_all_events_as_json(ui: &mut Ui, state: &State) {
-    let mut json = String::new();
+    let json = String::new();
     for event in state
         .events
         .get_events_list(events_state::DisplayOptions::ALL)

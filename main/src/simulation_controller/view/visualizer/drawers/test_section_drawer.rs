@@ -1,29 +1,16 @@
 use super::utils::display_status_flag;
-use egui::{CollapsingHeader, Color32, RichText, Ui};
-use egui_graphs::{Edge, Node};
-use petgraph::{
-    algo::{self, connected_components, dijkstra::dijkstra},
-    csr::DefaultIx,
-    graph::{EdgeIndex, NodeIndex},
-    prelude::StableGraph,
-    visit::{IntoEdges, Visitable},
-    Undirected,
-};
-use std::{
-    collections::{HashSet, VecDeque},
-    hash::Hash,
-    str::FromStr,
-};
+use egui::{CollapsingHeader, Ui};
+use petgraph::algo::{self};
+use std::str::FromStr;
 use wg_2024::{
-    network::{NodeId, SourceRoutingHeader},
+    network::SourceRoutingHeader,
     packet::{FloodRequest, NodeType, Packet, PacketType},
 };
 
 use super::super::util::graph::*;
 
 use crate::simulation_controller::{
-    edge::{CustomEdgeShape, UiEdgePayload},
-    node::{CustomNodeShape, UiNodePayload, UiNodeType},
+    node::UiNodeType,
     state::{AckType, State},
     util::*,
     SimulationController,
@@ -134,7 +121,7 @@ pub fn send_msg_fragment_section(
             parse_data(state.test_section.msg_fragment_routing_path_string.clone()),
             parse_data(state.test_section.msg_frag_data_string.clone()),
         ) {
-            (Ok(mut parsed_path_vec), Ok(mut parsed_data_vec)) => {
+            (Ok(parsed_path_vec), Ok(mut parsed_data_vec)) => {
                 if parsed_data_vec.len() > 128 {
                     state.test_section.packet_sender_status_flag =
                         Some(Err("Data should be at most 128 chars long".to_string()));
@@ -337,7 +324,7 @@ where
     }
 
     let mut ok = true;
-    let mut parsed_data_vec: Vec<T> = path
+    let parsed_data_vec: Vec<T> = path
         .split(',')
         .filter_map(|s| {
             let rv = s.trim().parse::<T>().ok();

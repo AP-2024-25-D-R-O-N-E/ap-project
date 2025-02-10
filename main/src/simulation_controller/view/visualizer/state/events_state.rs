@@ -1,6 +1,4 @@
-use crate::simulation_controller::{ClientEvent, SCEvent, SCEventType, ServerEvent};
-use petgraph::graph::NodeIndex;
-use wg_2024::{controller::DroneEvent, packet::Packet};
+use crate::simulation_controller::{SCEvent, SCEventType};
 
 #[derive(Default)]
 pub struct EventsState {

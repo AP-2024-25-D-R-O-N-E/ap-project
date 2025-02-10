@@ -18,7 +18,7 @@ use LeDron_James::Drone as LeDron_JamesDrone;
 
 use std::{
     collections::{HashMap, HashSet},
-    sync::{Arc, Barrier, Mutex, RwLock},
+    sync::{Arc, Barrier},
     thread::{self, sleep, JoinHandle},
     time::Duration,
 };

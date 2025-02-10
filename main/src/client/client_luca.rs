@@ -1,9 +1,8 @@
 use colored::Colorize;
 use crossbeam::channel::{select_biased, unbounded, Receiver, Sender};
-use egui_graphs::{Edge, Node};
 use petgraph::{
     algo,
-    prelude::{GraphMap, StableGraph},
+    prelude::GraphMap,
     Undirected,
 };
 use std::sync::{Arc, Condvar, Mutex, RwLock};
@@ -25,7 +24,7 @@ use crate::{
     client::utils::SenderThreadChannels,
     fragmentation::{
         file_handling::{byte_vec_to_file, file_to_byte_vec, raw_vec_to_chat_vec},
-        message::{MessageData, RawChatMessage},
+        message::MessageData,
     },
 };
 use crate::{
@@ -193,7 +192,7 @@ impl ClientLuca {
                     }
                 },
                 recv(self.packet_r) -> res => {
-                    if let Ok(mut packet) = res {
+                    if let Ok(packet) = res {
 
                         self.scs.send(ClientEvent::PacketReceived(packet.clone()));
 
@@ -272,7 +271,7 @@ impl ClientLuca {
 
                         let fragment_index = fragment.fragment_index;
 
-                        let mut packet = Packet {
+                        let packet = Packet {
                             routing_header: SourceRoutingHeader {
                                 hops: routing_table.get(&destination).unwrap().clone(),
                                 hop_index: 1
@@ -299,7 +298,7 @@ impl ClientLuca {
 
 //Thread: receiver
 impl ClientLuca {
-    fn manage_flood_request(&self, mut packet: Packet) {
+    fn manage_flood_request(&self, packet: Packet) {
         log::debug!(
             "{} {} received a flood request: {:?}",
             "↳ client".green(),
@@ -424,7 +423,7 @@ impl ClientLuca {
                     self.manage_assemble_msg(message);
                 }
             } else {
-                let mut frag_buffer = fragment_buffer_lock
+                let frag_buffer = fragment_buffer_lock
                     .get_mut(&(packet_source, packet_msg_id))
                     .unwrap();
 
@@ -576,7 +575,7 @@ impl ClientLuca {
 
         let res = send_channel.send(packet.clone());
 
-        if let Err(mut packet) = res {
+        if let Err(packet) = res {
             log::error!("Error in the send inside channel");
         } else {
             self.scs.send(ClientEvent::PacketSent(packet));
@@ -601,7 +600,7 @@ impl ClientLuca {
 
             let res = sender.send(packet.clone());
 
-            if let Err(mut packet) = res {
+            if let Err(packet) = res {
                 log::error!("Error in the send inside channel");
             } else {
                 self.scs.send(ClientEvent::PacketSent(packet));
@@ -764,7 +763,7 @@ impl ClientLuca {
 
         let r = send_channel.send(packet.clone());
 
-        if let Err(mut packet) = r {
+        if let Err(packet) = r {
             log::error!("The send inside channel gave an error")
         } else {
             scs.send(ClientEvent::PacketSent(packet));

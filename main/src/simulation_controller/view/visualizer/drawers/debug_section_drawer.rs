@@ -1,9 +1,6 @@
 use egui::{CollapsingHeader, ScrollArea, Ui};
 
-use crate::simulation_controller::{
-    node::UiNodeType::{Client, Drone, Server},
-    state::State,
-};
+use crate::simulation_controller::state::State;
 
 pub fn draw_section_debug(ui: &mut Ui, state: &mut State) {
     CollapsingHeader::new("Infos")

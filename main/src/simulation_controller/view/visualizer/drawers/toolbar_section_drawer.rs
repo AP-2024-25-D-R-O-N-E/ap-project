@@ -1,13 +1,8 @@
-use egui::{Layout, Response, Ui, Widget};
+use egui::Ui;
 
-use crate::simulation_controller::{
-    node::{UiDroneNode, UiNodePayload},
-    serialization_ref_structs::IntoSerializable,
-    state::{DisplayOptions, State},
-    util,
-};
+use crate::simulation_controller::state::State;
 
-use super::{display_status_flag, get_result_flag_widget, get_status_flag_widget, toggle_compact};
+use super::{get_result_flag_widget, toggle_compact};
 
 //Emojis 🧪📋🛠️❌📂
 pub fn draw_toolbar_section(ui: &mut Ui, state: &mut State) {

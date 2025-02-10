@@ -1,6 +1,6 @@
 use colored::Colorize;
 use petgraph::{
-    prelude::{StableGraph, StableUnGraph},
+    prelude::StableGraph,
     Undirected,
 };
 use std::{io, thread::sleep, time::Duration};
@@ -9,7 +9,7 @@ use wg_2024::{
     packet::{NackType, NodeType, PacketType},
 };
 
-use std::{collections::HashMap, thread::JoinHandle};
+use std::collections::HashMap;
 
 use crossbeam::channel::{Receiver, Sender};
 use wg_2024::{

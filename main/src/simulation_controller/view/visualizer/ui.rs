@@ -1,26 +1,18 @@
 use std::time::Instant;
 use std::vec;
 
-use super::state::{events_state, NodeState};
+use super::state::NodeState;
 use crate::fragmentation::message::ChatMessage;
-use crate::simulation_controller::serialization_ref_structs::IntoSerializable;
 use crate::simulation_controller::{
-    ClientEvent, SCEvent, SCEventType, ServerEvent, SimulationController,
+    ClientEvent, SCEvent, SCEventType, SimulationController,
 };
 
-use super::state::EventsState;
 use eframe::{run_native, App, CreationContext, NativeOptions};
-use egui::text::LayoutJob;
 use egui::{Context, ScrollArea, Window};
 
-use egui_extras::syntax_highlighting::CodeTheme;
 use egui_graphs::events::Event;
 
 use petgraph::graph::NodeIndex;
-use syntect::easy::HighlightLines;
-use syntect::highlighting::ThemeSet;
-use syntect::parsing::{SyntaxReference, SyntaxSet};
-use syntect::util::as_24_bit_terminal_escaped;
 use wg_2024::controller::DroneEvent;
 
 use super::drawers::{

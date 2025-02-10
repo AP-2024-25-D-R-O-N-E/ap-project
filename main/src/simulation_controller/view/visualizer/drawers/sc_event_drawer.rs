@@ -3,14 +3,14 @@ use egui::{Color32, Response, Ui};
 use egui_extras::TableRow;
 use wg_2024::{
     controller,
-    packet::{self, NackType, Packet, PacketType},
+    packet::{NackType, Packet, PacketType},
 };
 
 use crate::simulation_controller::{
-    serialization_ref_structs::IntoSerializable, state::State, SCEvent, SCEventType,
+    state::State, SCEvent, SCEventType,
 };
 
-use super::{draw_all_events_as_json, draw_event_as_json};
+use super::draw_event_as_json;
 
 impl SCEvent {
     pub fn draw(&self, row: &mut TableRow, state: &mut State) {

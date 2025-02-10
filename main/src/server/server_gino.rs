@@ -1,25 +1,18 @@
 use crate::server::utils::LockRef;
 use std::{
-    cell::RefCell,
     collections::{HashMap, HashSet, VecDeque},
-    ffi::OsString,
     sync::{Arc, Condvar, Mutex, RwLock},
     thread::{self, JoinHandle},
     time::Duration,
 };
 
-use bincode::de::read;
 use colored::Colorize;
-use crossbeam::{
-    channel::{select_biased, unbounded, Receiver, Sender},
-    select,
-};
+use crossbeam::channel::{select_biased, unbounded, Receiver, Sender};
 use petgraph::{
     algo,
-    prelude::{GraphMap, StableGraph},
-    Directed, Undirected,
+    prelude::GraphMap,
+    Directed,
 };
-use serde::de::DeserializeSeed;
 use tempfile::TempDir;
 use wg_2024::{
     network::{NodeId, SourceRoutingHeader},
@@ -29,11 +22,9 @@ use wg_2024::{
 };
 
 use crate::{
-    client,
     fragmentation::{
-        self,
         file_handling::{byte_vec_to_file, chat_vec_to_raw_vec},
-        message::{self, ChatMessage, Message, MessageData, RawChatMessage},
+        message::{ChatMessage, Message, MessageData},
         Fragmenter,
     },
     simulation_controller::structs::{ServerCommand, ServerEvent},
@@ -215,7 +206,7 @@ impl ChatServer {
                     }
                 },
                 recv(self.packet_recv) -> res => {
-                    if let Ok(mut packet) = res {
+                    if let Ok(packet) = res {
                         // send packet to the simulation controller
                         self.sim_contr_send.send(ServerEvent::PacketReceived(packet.clone()));
 
@@ -306,7 +297,7 @@ impl ChatServer {
 
                         let fragment_index = fragment.fragment_index;
 
-                        let mut packet = Packet {
+                        let packet = Packet {
                             routing_header: SourceRoutingHeader {
                                 hops: routing_table.get(&destination).unwrap().clone(),
                                 hop_index: 1
@@ -349,7 +340,7 @@ impl ChatServer {
 
             // assemble the message
             if let Some(fragments) = fragment_buffers_lock.remove(&(source, msg_id)) {
-                let mut message = Self::assemble(fragments);
+                let message = Self::assemble(fragments);
 
                 log::debug!(
                     "{} {} assembled message: {:?}",
@@ -359,7 +350,7 @@ impl ChatServer {
                 );
 
                 // check the message type and act accordingly
-                let mut resp_message: Option<Message> = match message.message_data {
+                let resp_message: Option<Message> = match message.message_data {
                     MessageData::RegisterAsClient(client) => {
                         Self::register_client(&mut client_table, client, id)
                     }
@@ -433,7 +424,7 @@ impl ChatServer {
 
 // Receiver thread functions
 impl ChatServer {
-    fn manage_flood_request(&self, mut packet: Packet) {
+    fn manage_flood_request(&self, packet: Packet) {
         log::debug!(
             "{} {} received a flood request: {:?}",
             "↳ server".green(),
@@ -555,7 +546,7 @@ impl ChatServer {
                     ready_send.send((packet_source, packet_msg_id));
                 }
             } else {
-                let mut frag_buffer = fragment_buffers_lock
+                let frag_buffer = fragment_buffers_lock
                     .get_mut(&(packet_source, packet_msg_id))
                     .unwrap();
 
@@ -685,7 +676,7 @@ impl ChatServer {
 
         let res = send_channel.send(packet.clone());
 
-        if let Err(mut packet) = res {
+        if let Err(packet) = res {
             log::error!("The send inside channel gave an error, this shouldn't be happening");
         } else {
             self.sim_contr_send.send(ServerEvent::PacketSent(packet));
@@ -710,7 +701,7 @@ impl ChatServer {
 
             let res = sender.send(packet.clone());
 
-            if let Err(mut packet) = res {
+            if let Err(packet) = res {
                 log::error!("The send inside channel gave an error, this shouldn't be happening");
             } else {
                 self.sim_contr_send.send(ServerEvent::PacketSent(packet));
@@ -787,7 +778,7 @@ impl ChatServer {
 
         let res = send_channel.send(packet.clone());
 
-        if let Err(mut packet) = res {
+        if let Err(packet) = res {
             log::error!("The send inside channel gave an error, this shouldn't be happening");
             println!("{} error {:?}", "ERROR".red(), packet);
         } else {

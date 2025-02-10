@@ -6,21 +6,14 @@ use std::{
     thread::{self},
 };
 
-use bincode::de::read;
 use colored::Colorize;
-use crossbeam::{
-    channel::{select_biased, unbounded, Receiver, Sender},
-    select,
-};
-use eframe::glow::PACK_ROW_LENGTH;
-use egui::accesskit::Node;
+use crossbeam::channel::{select_biased, unbounded, Receiver, Sender};
 use petgraph::{
     algo,
     data::Build,
-    prelude::{GraphMap, StableGraph},
+    prelude::GraphMap,
     Undirected,
 };
-use serde::de::DeserializeSeed;
 use tempfile::TempDir;
 use wg_2024::{
     network::{NodeId, SourceRoutingHeader},
@@ -31,11 +24,9 @@ use wg_2024::{
 };
 
 use crate::{
-    client,
     fragmentation::{
-        self,
         file_handling::{byte_vec_to_file, file_to_byte_vec, raw_vec_to_chat_vec},
-        message::{self, Message, MessageData, RawChatMessage},
+        message::{Message, MessageData, RawChatMessage},
         Fragmenter,
     },
     simulation_controller::structs::{ClientCommand, ClientEvent},
@@ -59,7 +50,7 @@ pub struct ClientLeonardo {
     packet_send: LockRef<HashMap<NodeId, Sender<Packet>>>,
 
     //topology of the net, weight depends on prd
-    topology: LockRef<GraphMap<NodeId, (f64), Undirected>>,
+    topology: LockRef<GraphMap<NodeId, f64, Undirected>>,
 
     //buffers for the fragments
     fragment_buffer: LockRef<HashMap<(NodeId, u64), Vec<Fragment>>>,
@@ -259,7 +250,7 @@ impl ClientLeonardo {
         loop {
             select_biased!(
                 recv(nack_recv) -> nack_res => {
-                    if let Ok(mut packet) = nack_res {
+                    if let Ok(packet) = nack_res {
                         // recalculate route if topology was modified
 
                         let destination = *packet.routing_header.hops.last().unwrap();
@@ -291,7 +282,7 @@ impl ClientLeonardo {
 
                         let fragment_index = fragment.fragment_index;
 
-                        let mut packet = Packet {
+                        let packet = Packet {
                             routing_header: SourceRoutingHeader {
                                 hops: route,
                                 hop_index: 1
@@ -408,7 +399,7 @@ impl ClientLeonardo {
             start_id,
             |end| end == destination_id,
             |(a, b, weight)| {
-                if (destination_id == b || destination_id == a) {
+                if destination_id == b || destination_id == a {
                     return 1;
                 }
                 let avoid_nodes_lock = avoid_nodes.read().unwrap();
@@ -442,7 +433,7 @@ impl ClientLeonardo {
 
         let res = send_channel.send(packet.clone());
 
-        if let Err(mut packet) = res {
+        if let Err(packet) = res {
             log::error!("The send inside channel gave an error, this shouldn't be happening");
         } else {
             sim_contr_send.send(ClientEvent::PacketSent(packet));
@@ -477,7 +468,7 @@ impl ClientLeonardo {
             let h1 = header_vec[i];
             let h2 = header_vec[i + 1];
             let mut topology_lock = self.topology.write().unwrap();
-            let mut curr_weight = *topology_lock.edge_weight(h1, h2).unwrap();
+            let curr_weight = *topology_lock.edge_weight(h1, h2).unwrap();
             topology_lock.update_edge(h1, h2, (curr_weight * 0.60) - 0.40);
         }
     }
@@ -503,7 +494,7 @@ impl ClientLeonardo {
                     let h1 = header_vec[i];
                     let h2 = header_vec[i + 1];
                     let mut topology_lock = self.topology.write().unwrap();
-                    let mut curr_weight = *topology_lock.edge_weight(h1, h2).unwrap();
+                    let curr_weight = *topology_lock.edge_weight(h1, h2).unwrap();
                     topology_lock.update_edge(h1, h2, (curr_weight * 0.60) + 0.40);
                 }
             }
@@ -648,7 +639,7 @@ impl ClientLeonardo {
                     ready.send((p_source, id));
                 }
             } else {
-                let mut buffer = fragment_buffer_lock.get_mut(&(p_source, id)).unwrap();
+                let buffer = fragment_buffer_lock.get_mut(&(p_source, id)).unwrap();
                 buffer.push(f);
 
                 if buffer.len() == tot as usize {
@@ -672,7 +663,7 @@ impl ClientLeonardo {
 
         let res = send_channel.send(packet.clone());
 
-        if let Err(mut packet) = res {
+        if let Err(packet) = res {
             log::error!("The send inside channel gave an error, this shouldn't be happening");
         } else {
             self.sim_contr_send.send(ClientEvent::PacketSent(packet));
@@ -761,7 +752,7 @@ impl ClientLeonardo {
 
             let res = recv.send(packet.clone());
 
-            if let Err(mut packet) = res {
+            if let Err(packet) = res {
                 log::error!("The send inside channel gave an error, this shouldn't be happening");
             } else {
                 self.sim_contr_send.send(ClientEvent::PacketSent(packet));

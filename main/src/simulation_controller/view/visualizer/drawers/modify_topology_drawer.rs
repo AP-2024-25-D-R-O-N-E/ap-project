@@ -1,25 +1,19 @@
 use super::super::util::graph::*;
-use egui::{CollapsingHeader, Context, RichText, ScrollArea, Ui, Window};
-use egui_extras::{Size, StripBuilder};
-use petgraph::graph::{EdgeIndex, NodeIndex};
+use egui::{CollapsingHeader, RichText, Ui};
 use wg_2024::network::NodeId;
 
 use crate::{
     initializer::drone_vendor::DroneVendor,
     simulation_controller::{
-        node::{UiDroneNode, UiNodePayload, UiNodeType},
-        state::{DisplayOptions, NodeInfoSectionState, State},
+        node::UiNodeType,
+        state::State,
         util::{
-            self, add_drone, check_drone_addition, check_node_removal, colors, parse_string,
-            remove_node,
+            add_drone, check_drone_addition, colors, parse_string,
         },
         SimulationController,
     },
 };
 
-use crate::simulation_controller::util::{
-    get_drone_node_from_state, get_payload_from_state, get_payload_mut_from_state,
-};
 
 pub fn draw_modify_topology_section(
     ui: &mut Ui,
@@ -185,7 +179,7 @@ fn insert_drone(state: &mut State, simulation_controller: &mut SimulationControl
     );
 
     let mut first_free_id = state.modify_topology_section.id + 1;
-    while (state.graph_section.node_id_map.contains_key(&first_free_id)) {
+    while state.graph_section.node_id_map.contains_key(&first_free_id) {
         first_free_id += 1;
     }
 
@@ -232,12 +226,12 @@ pub fn add_remove_sender_section(
         let node1 = state.graph_section.g.selected_nodes()[0];
         let node2 = state.graph_section.g.selected_nodes()[1];
 
-        if (check_edge_removal(
+        if check_edge_removal(
             &mut state.graph_section.g,
             &mut state.test_section.channel_modifier_status_flag,
             node1,
             node2,
-        )) {
+        ) {
             remove_edges_between(
                 &mut state.graph_section.g,
                 &mut state.test_section.channel_modifier_status_flag,

@@ -1,5 +1,5 @@
 use egui::{ScrollArea, Ui};
-use egui_extras::{Column, Table, TableBuilder};
+use egui_extras::{Column, TableBuilder};
 
 use crate::simulation_controller::state::{DisplayOptions, State};
 

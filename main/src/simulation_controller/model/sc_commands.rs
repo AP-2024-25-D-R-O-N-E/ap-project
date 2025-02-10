@@ -3,7 +3,7 @@ use std::{
     sync::{Arc, Barrier},
 };
 
-use crossbeam::channel::{unbounded, Sender};
+use crossbeam::channel::unbounded;
 use wg_2024::{
     controller::*,
     network::NodeId,
@@ -12,7 +12,7 @@ use wg_2024::{
 
 use crate::initializer::{
     drone_vendor::DroneVendor,
-    network_initializer::{spawn_drone_thread, spawn_drone_thread_by_vendor},
+    network_initializer::spawn_drone_thread_by_vendor,
 };
 
 use super::{simulation_controller::SimulationController, ClientCommand, ServerCommand};

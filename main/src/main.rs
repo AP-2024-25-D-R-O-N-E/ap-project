@@ -6,7 +6,7 @@ use simple_logger::SimpleLogger;
 use simulation_controller::visualizer::ui::run_gui;
 use std::{
     fs,
-    sync::{Arc, Mutex, RwLock},
+    sync::Arc,
 };
 use tempfile::{tempdir, TempDir};
 
@@ -34,7 +34,7 @@ fn main() {
     // temp dir for the entire simulation, behaves like a static variable
     let temp_dir: Arc<TempDir> = Arc::new(tempdir().unwrap());
 
-    let mut simulation_controller = NetworkInitializer::new(
+    let simulation_controller = NetworkInitializer::new(
         "main/src/topology_configs/config.toml".to_string(),
         temp_dir.clone(),
     )

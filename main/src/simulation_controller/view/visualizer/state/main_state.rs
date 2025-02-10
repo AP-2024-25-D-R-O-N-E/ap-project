@@ -1,5 +1,4 @@
 use egui_file_dialog::FileDialog;
-use egui_graphs::Graph;
 use std::collections::HashMap;
 
 use crate::simulation_controller::{node::UiNodeType, SimulationController};

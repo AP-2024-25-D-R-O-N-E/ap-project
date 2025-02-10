@@ -1,4 +1,4 @@
-use egui::{Label, RichText, Ui, Widget};
+use egui::{Label, RichText, Ui};
 
 use crate::simulation_controller::util::{colors, StatusFlag};
 

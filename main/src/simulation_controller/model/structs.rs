@@ -1,4 +1,4 @@
-use std::{fs::File, path::PathBuf};
+use std::path::PathBuf;
 
 use crossbeam::channel::Sender;
 use wg_2024::{
@@ -7,7 +7,7 @@ use wg_2024::{
     packet::{self, Packet},
 };
 
-use crate::fragmentation::message::{ChatMessage, RawChatMessage};
+use crate::fragmentation::message::ChatMessage;
 
 /// From client to controller
 #[derive(Debug, Clone)]

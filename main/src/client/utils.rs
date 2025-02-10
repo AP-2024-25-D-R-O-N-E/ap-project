@@ -1,17 +1,14 @@
 use std::{
-    collections::{HashMap, HashSet},
-    ffi::OsString,
-    sync::{Arc, Mutex, RwLock},
+    collections::HashMap,
+    sync::{Arc, RwLock},
 };
 
 use crossbeam::channel::{Receiver, Sender};
-use petgraph::{prelude::GraphMap, Directed};
-use tempfile::TempDir;
 use wg_2024::packet::{Fragment, Packet};
 
 use crate::{
-    fragmentation::message::{ChatMessage, Message},
-    simulation_controller::{serialization_ref_structs::NodeId, ClientEvent, ServerEvent},
+    fragmentation::message::Message,
+    simulation_controller::{serialization_ref_structs::NodeId, ClientEvent},
 };
 
 pub type LockRef<T> = Arc<RwLock<T>>;

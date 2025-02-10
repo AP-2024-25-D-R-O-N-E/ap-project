@@ -3,22 +3,18 @@ pub mod utils;
 
 use std::{
     collections::HashMap,
-    fmt::{write, Debug},
-    sync::{Arc, Mutex, RwLock},
+    fmt::Debug,
+    sync::Arc,
 };
 
-use colored::Colorize;
-use crossbeam::channel::{select_biased, Receiver, Sender};
+use crossbeam::channel::{Receiver, Sender};
 use tempfile::TempDir;
 use wg_2024::{
     network::NodeId,
-    packet::{Ack, FloodRequest, FloodResponse, Fragment, Nack, Packet, PacketType},
+    packet::Packet,
 };
 
-use crate::{
-    fragmentation::{message::Message, Fragmenter},
-    simulation_controller::structs::{ServerCommand, ServerEvent},
-};
+use crate::simulation_controller::structs::{ServerCommand, ServerEvent};
 
 pub trait ServerTrait {
     fn new(

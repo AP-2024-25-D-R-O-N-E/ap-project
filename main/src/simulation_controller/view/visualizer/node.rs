@@ -1,5 +1,5 @@
 use egui::{
-    epaint::TextShape, text::Fonts, Color32, FontFamily, FontId, Pos2, Rect, Rounding, Shadow,
+    Color32, FontId, Pos2, Rect, Rounding, Shadow,
     Shape, Stroke, Vec2,
 };
 use egui_graphs::{DisplayNode, NodeProps};

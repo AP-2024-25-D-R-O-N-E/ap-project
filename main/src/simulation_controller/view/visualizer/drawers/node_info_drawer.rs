@@ -1,22 +1,21 @@
 use std::{
-    borrow::Cow,
-    ffi::{OsStr, OsString},
+    ffi::OsStr,
     fs,
 };
 
 use colored::Colorize;
 use egui::{
-    epaint::tessellator::path, CollapsingHeader, Context, Label, Layout, RichText, ScrollArea,
+    CollapsingHeader, Context, Label, Layout, RichText, ScrollArea,
     TextEdit, Ui, Window,
 };
 use egui_extras::{install_image_loaders, Column, TableBuilder};
 use egui_file_dialog::{DialogMode, DialogState};
-use petgraph::graph::{EdgeIndex, NodeIndex};
+use petgraph::graph::NodeIndex;
 
 use crate::{
     fragmentation::message::ChatMessage,
     simulation_controller::{
-        node::{UiDroneNode, UiNodePayload, UiNodeType},
+        node::UiNodeType,
         state::{
             ClientState, DisplayOptions, DroneState, NodeInfoSectionState, ServerState, State,
         },
@@ -485,7 +484,7 @@ fn draw_client_specific(
         }
 
         let client_state = get_client_node_state(&mut state.node_info_section, node_index);
-        if (client_state.last_peer != client_state.current_peer) {
+        if client_state.last_peer != client_state.current_peer {
             client_state.last_peer = client_state.current_peer;
             if let Some(current_peer) = client_state.current_peer {
                 simulation_controller.open_chat_with(curr_node_wg_id, current_peer);

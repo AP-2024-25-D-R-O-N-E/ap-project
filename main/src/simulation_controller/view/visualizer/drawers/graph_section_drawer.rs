@@ -1,6 +1,6 @@
 use egui::Ui;
 use egui_graphs::{
-    GraphView, LayoutHierarchical, LayoutRandom, LayoutStateHierarchical, LayoutStateRandom,
+    GraphView, LayoutRandom, LayoutStateRandom,
 };
 
 use crate::simulation_controller::{edge::UiEdgePayload, node::UiNodePayload, state::State};

@@ -3,7 +3,7 @@ use std::{
     fs::File,
     io::{Read, Write},
     path::PathBuf,
-    sync::{Arc, Mutex, RwLock},
+    sync::Arc,
 };
 
 use tempfile::{Builder, TempDir};

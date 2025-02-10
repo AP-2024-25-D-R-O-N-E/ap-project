@@ -1,5 +1,5 @@
 // use egui::epaint::*;
-use egui::{epaint::PathStroke, Color32, Pos2, Shape, Stroke};
+use egui::{Pos2, Shape, Stroke};
 use egui_graphs::{DefaultEdgeShape, DisplayEdge, DisplayNode, DrawContext, EdgeProps, Node};
 use petgraph::{stable_graph::IndexType, EdgeType};
 
