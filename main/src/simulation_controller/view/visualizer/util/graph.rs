@@ -518,7 +518,7 @@ where
         }
     }
 
-    let total_excluded_count = crashed_drones.union(&excluded_nodes).count();
+    let total_excluded_count = crashed_drones.union(excluded_nodes).count();
     // println!("Visited count: {}", visited.len());
     // println!("Graph node count: {}", graph.node_count());
     // println!("Total crashed drones: {crashed_drones:?}");
