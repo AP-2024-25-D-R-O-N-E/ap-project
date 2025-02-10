@@ -7,6 +7,7 @@ pub struct ToolbarSectionState {
     pub handle_shortcuts: bool,
     pub events_json_open: bool,
     pub loggin_enabled: bool,
+    pub auto_flood: bool,
 }
 
 impl Default for ToolbarSectionState {
@@ -20,6 +21,7 @@ impl Default for ToolbarSectionState {
             handle_shortcuts: true,
             events_json_open: false,
             loggin_enabled: true,
+            auto_flood: true,
         }
     }
 }

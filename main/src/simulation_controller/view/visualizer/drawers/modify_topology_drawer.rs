@@ -101,19 +101,21 @@ pub fn draw_modify_topology_section(
                 });
 
             if ui.button("Spawn").clicked() && can_insert_drone(state) {
-                for (_, node_content) in state.graph_section.g.nodes_iter() {
-                    let payload = node_content.payload();
-                    match &payload.node_type {
-                        UiNodeType::Server(_) => {
-                            simulation_controller.send_server_start_flood(payload.wg_id);
+                insert_drone(state, simulation_controller);
+                if state.toolbar_section.auto_flood {
+                    for (_, node_content) in state.graph_section.g.nodes_iter() {
+                        let payload = node_content.payload();
+                        match &payload.node_type {
+                            UiNodeType::Server(_) => {
+                                simulation_controller.send_server_start_flood(payload.wg_id);
+                            }
+                            UiNodeType::Client(_) => {
+                                simulation_controller.send_client_start_flood(payload.wg_id);
+                            }
+                            UiNodeType::Drone(_) => (),
                         }
-                        UiNodeType::Client(_) => {
-                            simulation_controller.send_client_start_flood(payload.wg_id);
-                        }
-                        UiNodeType::Drone(_) => (),
                     }
                 }
-                insert_drone(state, simulation_controller);
             }
 
             if let Some(status) = &state.modify_topology_section.status_flag {

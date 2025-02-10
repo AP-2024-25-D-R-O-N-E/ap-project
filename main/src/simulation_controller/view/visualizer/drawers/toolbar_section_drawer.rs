@@ -91,6 +91,11 @@ pub fn draw_toolbar_section(ui: &mut Ui, state: &mut State) {
         toggle_compact::toggle_ui_compact(ui, &mut state.toolbar_section.loggin_enabled);
         ui.label("Enable logging");
 
+        toggle_compact::toggle_ui_compact(ui, &mut state.toolbar_section.auto_flood);
+        ui.label("Auto flood").on_hover_text(
+            "Issues flood request on each edge node every time a new drone is spawned",
+        );
+
         ui.separator();
 
         ui.add(get_result_flag_widget(
