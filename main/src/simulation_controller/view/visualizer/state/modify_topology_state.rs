@@ -2,7 +2,7 @@ use petgraph::{prelude::StableGraph, Undirected};
 use wg_2024::network::NodeId;
 
 use crate::{
-    initializer::drone_vendor::DroneVendor,
+    initializer::node_vendor::DroneVendor,
     simulation_controller::{edge::UiEdgePayload, node::UiNodePayload, util::StatusFlag},
 };
 

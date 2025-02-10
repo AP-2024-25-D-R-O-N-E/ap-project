@@ -3,7 +3,7 @@ use std::collections::{HashSet, VecDeque};
 use wg_2024::network::NodeId;
 
 use crate::{
-    initializer::drone_vendor::DroneVendor,
+    initializer::node_vendor::{DroneVendor, Vendor},
     simulation_controller::{
         edge::UiEdgePayload,
         node::{UiDroneNode, UiNodePayload, UiNodeType},
@@ -296,7 +296,7 @@ pub fn add_drone(
 ) {
     let new_node_graph_index = graph_section_state.g.add_node(UiNodePayload {
         node_type: UiNodeType::Drone(UiDroneNode::new(pdr)),
-        vendor: drone_vendor,
+        vendor: Vendor::Drone(drone_vendor),
         wg_id,
     });
 

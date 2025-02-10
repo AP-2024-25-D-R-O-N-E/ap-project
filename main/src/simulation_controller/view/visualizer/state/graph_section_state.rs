@@ -12,7 +12,7 @@ use petgraph::{
 use wg_2024::network::NodeId;
 
 use crate::{
-    initializer::drone_vendor::DroneVendor,
+    initializer::node_vendor::{DroneVendor, Vendor},
     simulation_controller::{
         edge::{CustomEdgeShape, UiEdgePayload},
         node::{CustomNodeShape, UiClientNode, UiDroneNode, UiNodePayload, UiServerNode},
@@ -94,47 +94,47 @@ fn generate_graph() -> StableGraph<UiNodePayload, UiEdgePayload, Undirected> {
 
     let a = graph.add_node(UiNodePayload {
         node_type: UiNodeType::Client(UiClientNode {}),
-        vendor: DroneVendor::MyDrone,
+        vendor: Vendor::Drone(DroneVendor::MyDrone),
         wg_id: 0,
     });
     let b = graph.add_node(UiNodePayload {
         node_type: UiNodeType::Drone(UiDroneNode::default()),
-        vendor: DroneVendor::MyDrone,
+        vendor: Vendor::Drone(DroneVendor::MyDrone),
         wg_id: 1,
     });
     let c = graph.add_node(UiNodePayload {
         node_type: UiNodeType::Drone(UiDroneNode::default()),
-        vendor: DroneVendor::MyDrone,
+        vendor: Vendor::Drone(DroneVendor::MyDrone),
         wg_id: 2,
     });
     let d = graph.add_node(UiNodePayload {
         node_type: UiNodeType::Server(UiServerNode {}),
-        vendor: DroneVendor::MyDrone,
+        vendor: Vendor::Drone(DroneVendor::MyDrone),
         wg_id: 3,
     });
     let e = graph.add_node(UiNodePayload {
         node_type: UiNodeType::Drone(UiDroneNode::default()),
-        vendor: DroneVendor::MyDrone,
+        vendor: Vendor::Drone(DroneVendor::MyDrone),
         wg_id: 4,
     });
     let f = graph.add_node(UiNodePayload {
         node_type: UiNodeType::Drone(UiDroneNode::default()),
-        vendor: DroneVendor::MyDrone,
+        vendor: Vendor::Drone(DroneVendor::MyDrone),
         wg_id: 5,
     });
     let g = graph.add_node(UiNodePayload {
         node_type: UiNodeType::Drone(UiDroneNode::default()),
-        vendor: DroneVendor::MyDrone,
+        vendor: Vendor::Drone(DroneVendor::MyDrone),
         wg_id: 6,
     });
     let h = graph.add_node(UiNodePayload {
         node_type: UiNodeType::Server(UiServerNode {}),
-        vendor: DroneVendor::MyDrone,
+        vendor: Vendor::Drone(DroneVendor::MyDrone),
         wg_id: 7,
     });
     let i = graph.add_node(UiNodePayload {
         node_type: UiNodeType::Server(UiServerNode {}),
-        vendor: DroneVendor::MyDrone,
+        vendor: Vendor::Drone(DroneVendor::MyDrone),
         wg_id: 8,
     });
 

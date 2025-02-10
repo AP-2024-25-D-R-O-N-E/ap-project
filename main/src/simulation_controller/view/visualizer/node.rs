@@ -2,7 +2,7 @@ use egui::{Color32, FontId, Pos2, Rect, Rounding, Shadow, Shape, Stroke, Vec2};
 use egui_graphs::{DisplayNode, NodeProps};
 use petgraph::{stable_graph::IndexType, EdgeType};
 
-use crate::{initializer::drone_vendor::DroneVendor, simulation_controller::util};
+use crate::{initializer::node_vendor::{DroneVendor, Vendor}, simulation_controller::util};
 
 fn get_text(ctx: &egui_graphs::DrawContext, text: String, pos: Pos2) -> Shape {
     ctx.ctx.fonts(|fonts| {
@@ -20,7 +20,7 @@ fn get_text(ctx: &egui_graphs::DrawContext, text: String, pos: Pos2) -> Shape {
 #[derive(Clone)]
 pub struct UiNodePayload {
     pub node_type: UiNodeType,
-    pub vendor: DroneVendor,
+    pub vendor: Vendor,
     pub wg_id: wg_2024::network::NodeId,
 }
 impl UiNodePayload {

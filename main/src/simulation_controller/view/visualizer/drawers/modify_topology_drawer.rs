@@ -5,7 +5,7 @@ use egui::{CollapsingHeader, RichText, Ui};
 use wg_2024::network::NodeId;
 
 use crate::{
-    initializer::drone_vendor::DroneVendor,
+    initializer::node_vendor::DroneVendor,
     simulation_controller::{
         node::UiNodeType,
         state::State,

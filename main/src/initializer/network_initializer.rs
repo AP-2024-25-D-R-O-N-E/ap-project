@@ -46,7 +46,7 @@ use crate::{
 
 use super::{
     config_parsing::{parse_config, InitConfig},
-    drone_vendor::DroneVendor,
+    node_vendor::{ClientVendor, DroneVendor, ServerVendor, Vendor},
     util::DroneChannels,
 };
 
@@ -61,6 +61,8 @@ pub struct NetworkInitializer {
     pub server_command_channels: HashMap<NodeId, (Sender<ServerCommand>, Receiver<ServerCommand>)>,
     pub topology: StableGraph<UiNodePayload, UiEdgePayload, Undirected>,
     pub drone_vendors: HashMap<NodeId, DroneVendor>,
+    pub client_vendors: HashMap<NodeId, ClientVendor>,
+    pub server_vendors: HashMap<NodeId, ServerVendor>,
 
     temp_dir: Arc<TempDir>,
     handles: HashMap<NodeId, JoinHandle<()>>,
@@ -72,7 +74,17 @@ impl NetworkInitializer {
 
         let mut drone_vendors = HashMap::new();
         for (index, drone) in config.drone.iter().enumerate() {
-            drone_vendors.insert(drone.id, drone_vendo_from_id(index));
+            drone_vendors.insert(drone.id, drone_vendor_from_id(index));
+        }
+
+        let mut client_vendors = HashMap::new();
+        for (index, client) in config.client.iter().enumerate() {
+            client_vendors.insert(client.id, client_vendor_from_id(index));
+        }
+
+        let mut server_vendors = HashMap::new();
+        for (index, server) in config.server.iter().enumerate() {
+            server_vendors.insert(server.id, server_vendor_from_id(index));
         }
 
         NetworkInitializer {
@@ -84,10 +96,17 @@ impl NetworkInitializer {
             server_event_channels: HashMap::new(),
             server_command_channels: HashMap::new(),
             handles: HashMap::new(),
-            topology: NetworkInitializer::get_topology_from_config(&config, &drone_vendors),
+            topology: NetworkInitializer::get_topology_from_config(
+                &config,
+                &drone_vendors,
+                &client_vendors,
+                &server_vendors,
+            ),
             config,
             temp_dir,
             drone_vendors,
+            client_vendors,
+            server_vendors,
         }
     }
 
@@ -288,6 +307,8 @@ impl NetworkInitializer {
     pub fn get_topology_from_config(
         config: &InitConfig,
         drone_vendors: &HashMap<NodeId, DroneVendor>,
+        client_vendors: &HashMap<NodeId, ClientVendor>,
+        server_vendors: &HashMap<NodeId, ServerVendor>,
     ) -> StableGraph<UiNodePayload, UiEdgePayload, Undirected> {
         let mut graph = StableUnGraph::<UiNodePayload, UiEdgePayload>::default();
 
@@ -300,23 +321,33 @@ impl NetworkInitializer {
                 .clone();
             let n = graph.add_node(UiNodePayload {
                 node_type: UiNodeType::Drone(UiDroneNode::new(drone.pdr)),
-                vendor,
+                vendor: Vendor::Drone(vendor),
                 wg_id: drone.id,
             });
             node_map_function.insert(drone.id, n);
         }
+
         for server in &config.server {
+            let vendor = server_vendors
+                .get(&server.id)
+                .unwrap_or(&ServerVendor::GinosServer)
+                .clone();
             let n = graph.add_node(UiNodePayload {
                 node_type: UiNodeType::Server(UiServerNode {}),
-                vendor: DroneVendor::Unknown,
+                vendor: Vendor::Server(vendor),
                 wg_id: server.id,
             });
             node_map_function.insert(server.id, n);
         }
+
         for client in &config.client {
+            let vendor = client_vendors
+                .get(&client.id)
+                .unwrap_or(&ClientVendor::Unknown)
+                .clone();
             let n = graph.add_node(UiNodePayload {
                 node_type: UiNodeType::Client(UiClientNode {}),
-                vendor: DroneVendor::Unknown,
+                vendor: Vendor::Client(vendor),
                 wg_id: client.id,
             });
             node_map_function.insert(client.id, n);
@@ -663,7 +694,7 @@ pub fn spawn_drone_thread<T: Drone>(
     })
 }
 
-pub fn drone_vendo_from_id(id: usize) -> DroneVendor {
+pub fn drone_vendor_from_id(id: usize) -> DroneVendor {
     match id % 10 {
         0 => DroneVendor::RustafarianDrone,
         1 => DroneVendor::LockheedRustin,
@@ -676,6 +707,21 @@ pub fn drone_vendo_from_id(id: usize) -> DroneVendor {
         8 => DroneVendor::LeDronJamesDrone,
         9 => DroneVendor::SkyLinkDrone,
         _ => DroneVendor::MyDrone,
+    }
+}
+
+pub fn client_vendor_from_id(id: usize) -> ClientVendor {
+    match id % 2 {
+        0 => ClientVendor::LeonardosClient,
+        1 => ClientVendor::LucasClient,
+        _ => ClientVendor::LeonardosClient,
+    }
+}
+
+pub fn server_vendor_from_id(id: usize) -> ServerVendor {
+    match id % 1 {
+        0 => ServerVendor::GinosServer,
+        _ => ServerVendor::GinosServer,
     }
 }
 
