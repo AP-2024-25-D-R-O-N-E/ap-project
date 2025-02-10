@@ -3,3 +3,4 @@ testout = "test -- --nocapture"
 
 [env]
 RUST_LOG = "Warn"
+RUSTAFARIAN_LOG_LEVEL = "NONE"
