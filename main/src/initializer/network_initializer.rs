@@ -213,7 +213,7 @@ impl NetworkInitializer {
         log::info!("{}", "Clients initialized successfully!".bold().green());
 
         let server_barrier = Arc::new(Barrier::new(self.config.server.len() + 1));
-        for (index, server) in self.config.server.iter().enumerate() {
+        for (_, server) in self.config.server.iter().enumerate() {
             let server_event_send = unbounded::<ServerEvent>();
             let server_command_rec = unbounded::<ServerCommand>();
 
@@ -242,7 +242,6 @@ impl NetworkInitializer {
                 server_id,
                 thread::spawn(move || {
                     let mut server = Self::create_server(
-                        index as u8,
                         command_receiver,
                         command_send,
                         packet_send,
@@ -267,15 +266,6 @@ impl NetworkInitializer {
 
         Ok(SimulationController::new(self))
         // create simulation controller and give all the join handles to it + the channels
-    }
-
-    //just for testing purposes
-    pub fn get_send_channel(&self, drone_id: NodeId) -> &Sender<Packet> {
-        &self.packet_channels.get(&drone_id).unwrap().0
-    }
-
-    pub fn get_drone_command_channel(&self, drone_id: NodeId) -> &Sender<DroneCommand> {
-        &self.drone_command_channels[&drone_id].0
     }
 
     /// Constructs graph from config file.
@@ -344,7 +334,6 @@ impl NetworkInitializer {
     }
 
     fn create_server(
-        index: u8,
         command_receiver: Receiver<ServerCommand>,
         command_send: Sender<ServerEvent>,
         packet_send: HashMap<u8, Sender<Packet>>,
@@ -494,6 +483,7 @@ impl NetworkInitializer {
     }
 }
 
+#[allow(dead_code)]
 pub fn create_drone_from_vendor(
     drone_vendor: DroneVendor,
     id: NodeId,
