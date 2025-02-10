@@ -181,7 +181,12 @@ impl SCGui {
 
                 if let Some(chat_history) = client_state.chat_histories.get_mut(from) {
                     chat_history.push(chat_msg.clone());
-                    if *from != client_state.current_peer.unwrap() {
+
+                    if let Some(curr_peer) = client_state.current_peer {
+                        if curr_peer != *from {
+                            client_state.unread_messages.insert(*from);
+                        }
+                    } else {
                         client_state.unread_messages.insert(*from);
                     }
                 }
