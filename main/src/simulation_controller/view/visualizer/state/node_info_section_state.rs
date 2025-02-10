@@ -74,6 +74,7 @@ pub struct ClientState {
     pub last_peer: Option<NodeId>,
     pub chat_histories: HashMap<NodeId, Vec<ChatMessage>>,
     pub selected_file_path: Option<PathBuf>,
+    pub unread_messages: HashSet<NodeId>,
 }
 
 #[derive(Debug, Clone)]

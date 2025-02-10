@@ -1,6 +1,9 @@
 use std::{ffi::OsStr, fs};
 
-use egui::{CollapsingHeader, Context, Label, Layout, RichText, ScrollArea, TextEdit, Ui, Window};
+use egui::{
+    text::LayoutJob, CollapsingHeader, Color32, Context, Label, Layout, RichText, ScrollArea,
+    TextEdit, TextFormat, Ui, Window,
+};
 use egui_extras::{install_image_loaders, Column, TableBuilder};
 use egui_file_dialog::{DialogMode, DialogState};
 use petgraph::graph::NodeIndex;
@@ -374,22 +377,63 @@ fn draw_client_specific(
         // make a combo box with the values from state.
         let selected_text =
             match get_client_node_state(&mut state.node_info_section, node_index).current_peer {
-                Some(id) => format!("Client {id}"),
+                Some(id) => {
+                    get_client_node_state(&mut state.node_info_section, node_index)
+                        .unread_messages
+                        .remove(&id);
+                    format!("Client {id}")
+                }
                 None => "Select client".to_string(),
             };
 
+        let mut string_job = LayoutJob::default();
+        string_job.append(&selected_text, 0.0, TextFormat::default());
+
+        if !get_client_node_state(&mut state.node_info_section, node_index)
+            .unread_messages
+            .is_empty()
+        {
+            string_job.append(
+                "   📲",
+                0.0,
+                TextFormat {
+                    color: Color32::LIGHT_RED,
+                    ..TextFormat::default()
+                },
+            );
+        }
+
+        // 🔔 🔴 • 📲
+
         egui::ComboBox::from_label("")
-            .selected_text(selected_text)
+            .selected_text(string_job)
             .show_ui(ui, |ui| {
                 for node_id in get_client_node_state(&mut state.node_info_section, node_index)
                     .available_peers
                     .clone()
                 {
+                    let mut client_job = LayoutJob::default();
+                    client_job.append(&format!("Client {node_id}"), 0.0, TextFormat::default());
+
+                    if get_client_node_state(&mut state.node_info_section, node_index)
+                        .unread_messages
+                        .contains(&node_id)
+                    {
+                        client_job.append(
+                            "   •",
+                            0.0,
+                            TextFormat {
+                                color: Color32::LIGHT_RED,
+                                ..TextFormat::default()
+                            },
+                        );
+                    }
+
                     ui.selectable_value(
                         &mut get_client_node_state(&mut state.node_info_section, node_index)
                             .current_peer,
                         Some(node_id),
-                        format!("Client {node_id}"),
+                        client_job,
                     );
                 }
 
