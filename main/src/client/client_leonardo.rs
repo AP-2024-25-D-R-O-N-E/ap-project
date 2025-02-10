@@ -982,7 +982,7 @@ impl Fragmenter for ClientLeonardo {
         for fragment in message_fragments {
             data.extend(fragment.data);
         }
-        let message: Message = bincode::deserialize(&data).unwrap();
+        let message: Message = Message::from_u8(data);
         message
     }
 
