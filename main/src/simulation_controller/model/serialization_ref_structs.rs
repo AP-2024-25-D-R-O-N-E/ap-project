@@ -10,7 +10,7 @@ use wg_2024::controller::*;
 use wg_2024::network::*;
 use wg_2024::packet::*;
 
-use serde::ser::{SerializeStruct, Serializer};
+use serde::ser::SerializeStruct;
 use serde::Serialize;
 
 pub type NodeId = u8;

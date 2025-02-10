@@ -42,7 +42,7 @@ impl SimulationController {
             Some(current_hop) => match &self.packet_channels.get(&current_hop) {
                 Some(channel) => match &packet.pack_type {
                     PacketType::MsgFragment(_) => {
-                        channel.0.send(packet);
+                        let _ = channel.0.send(packet);
                         log::info!("Sending to node {}", current_hop)
                     }
                     _ => {
@@ -83,7 +83,7 @@ impl SimulationController {
             Some(current_hop) => match &self.packet_channels.get(&current_hop) {
                 Some(channel) => match &packet.pack_type {
                     PacketType::Ack(_) => {
-                        channel.0.send(packet);
+                        let _ = channel.0.send(packet);
                         log::info!("Sending to node {}", current_hop)
                     }
                     _ => {
@@ -346,6 +346,7 @@ impl SimulationController {
         }
     }
 
+    #[allow(dead_code)]
     pub fn send_control_packet(&self, server_command: ServerCommand, node_id: NodeId) {
         match &self.server_command_channels.get(&node_id) {
             Some(channel) => match channel.send(server_command) {

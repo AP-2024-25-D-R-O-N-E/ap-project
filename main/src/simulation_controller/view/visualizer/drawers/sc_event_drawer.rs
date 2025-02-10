@@ -95,7 +95,7 @@ impl SCEvent {
                 ),
                 ClientEvent::CreatedFileLocal {
                     from,
-                    to,
+                    to: _,
                     file_path,
                 } => ui.label(
                     egui::RichText::new(format!(
