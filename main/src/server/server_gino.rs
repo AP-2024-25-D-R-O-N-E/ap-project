@@ -662,6 +662,9 @@ impl ChatServer {
             }
         }
 
+        // signal that the topology has been modified
+        let mut topology_modified_lock = self.topology_modified.lock().unwrap();
+
         let ack_key = (session_id, nack.fragment_index);
 
         let mut ack_packet_buffer_lock = self.ack_packet_buffer.lock().unwrap();
@@ -672,8 +675,6 @@ impl ChatServer {
                 return;
             }
 
-            // signal that the topology has been modified
-            let mut topology_modified_lock = self.topology_modified.lock().unwrap();
             //change the pdr for dropped
             let mut pdr_estimation_lock = self.pdr_estimation.write().unwrap();
             let dropped_node = nack_routing[0];
