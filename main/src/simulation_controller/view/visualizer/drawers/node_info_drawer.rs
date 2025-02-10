@@ -1,9 +1,14 @@
+use std::{
+    borrow::Cow,
+    ffi::{OsStr, OsString},
+};
+
 use colored::Colorize;
 use egui::{
     epaint::tessellator::path, CollapsingHeader, Context, Label, Layout, RichText, ScrollArea,
     TextEdit, Ui, Window,
 };
-use egui_extras::{Column, TableBuilder};
+use egui_extras::{install_image_loaders, Column, TableBuilder};
 use egui_file_dialog::{DialogMode, DialogState};
 use petgraph::graph::{EdgeIndex, NodeIndex};
 
@@ -390,9 +395,6 @@ fn draw_client_specific(
             }
         }
 
-        
-        
-
         if ui.button("Send to".to_string()).clicked()
             || (re.lost_focus() && re.ctx.input(|i| i.key_pressed(egui::Key::Enter)))
         {
@@ -512,16 +514,37 @@ fn draw_client_no_grid_specific(
                             Some(curr_peer) => match client_state.chat_histories.get(&curr_peer) {
                                 Some(history) => {
                                     for message in history {
-                                        let (from, to, text) = match message {
+                                        let (from, to, text, image) = match message {
                                             ChatMessage::TextMessage { from, to, text } => {
-                                                (from, to, text)
+                                                (from, to, Cow::Owned(text.to_string()), false)
                                             }
                                             ChatMessage::FileMessage {
                                                 from,
                                                 to,
                                                 file_path,
                                             } => {
-                                                (from, to, &file_path.to_string_lossy().to_string())
+                                                let mut is_image = false;
+
+                                                let mut fp = String::new();
+
+                                                if let Some(extension) = file_path.extension() {
+                                                    install_image_loaders(ui.ctx());
+
+                                                    match extension {
+                                                        ext if ext == OsStr::new("png")
+                                                            || ext == OsStr::new("jpg")
+                                                            || ext == OsStr::new("jpeg") =>
+                                                        {
+                                                            is_image = true;
+                                                            fp.push_str("file:///");
+                                                        }
+                                                        _ => {}
+                                                    }
+                                                }
+
+                                                fp.push_str(file_path.to_str().unwrap());
+
+                                                (from, to, Cow::Owned(fp), is_image)
                                             }
                                         };
 
@@ -531,10 +554,27 @@ fn draw_client_no_grid_specific(
                                             egui::Align::LEFT
                                         };
 
-                                        ui.with_layout(Layout::top_down_justified(align), |ui| {
-                                            ui.selectable_label(false, text);
-                                            ui.separator();
-                                        });
+                                        if image {
+                                            ui.with_layout(
+                                                Layout::top_down_justified(align),
+                                                |ui| {
+                                                    ui.add(
+                                                        egui::Image::from_uri(text)
+                                                            .maintain_aspect_ratio(true)
+                                                            .shrink_to_fit(),
+                                                    );
+                                                    ui.separator();
+                                                },
+                                            );
+                                        } else {
+                                            ui.with_layout(
+                                                Layout::top_down_justified(align),
+                                                |ui: &mut Ui| {
+                                                    ui.selectable_label(false, text);
+                                                    ui.separator();
+                                                },
+                                            );
+                                        }
 
                                         ui.end_row();
                                     }
