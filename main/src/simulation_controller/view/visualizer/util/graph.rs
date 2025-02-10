@@ -250,7 +250,7 @@ pub fn check_drone_addition(
     // Helper function to validate client connection
     fn check_drone_client(graph: &mut UiGraph, client: NodeIndex) -> Result<(), String> {
         let neighbors: Vec<NodeIndex> = get_neigbors_with_disabled_edges(&graph.g, client);
-        println!("Neighbors: {neighbors:?}");
+        // println!("Neighbors: {neighbors:?}");
         if neighbors.len() >= 2 {
             Err("Client nodes can have at most 2 neighbors".to_string())
         } else {
@@ -519,12 +519,11 @@ where
     }
 
     let total_excluded_count = crashed_drones.union(&excluded_nodes).count();
-    println!("Visited count: {}", visited.len());
-    println!("Graph node count: {}", graph.node_count());
-    println!("Total crashed drones: {crashed_drones:?}");
-    println!("Total excluded count: {total_excluded_count:?}");
-
-    println!("{visited:?}");
+    // println!("Visited count: {}", visited.len());
+    // println!("Graph node count: {}", graph.node_count());
+    // println!("Total crashed drones: {crashed_drones:?}");
+    // println!("Total excluded count: {total_excluded_count:?}");
+    // println!("{visited:?}");
 
     visited.len() == graph.node_count() - total_excluded_count
 }

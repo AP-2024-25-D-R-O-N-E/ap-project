@@ -825,9 +825,11 @@ impl ChatServer {
 
         let res = send_channel.send(packet.clone());
 
-        if let Err(packet) = res {
-            log::error!("The send inside channel gave an error, this shouldn't be happening");
-            println!("{} error {:?}", "ERROR".red(), packet);
+        if let Err(err) = res {
+            log::error!(
+                "The send inside channel gave an error, this shouldn't be happening {}",
+                err
+            );
         } else {
             let _ = sim_contr_send.send(ServerEvent::PacketSent(packet));
         }

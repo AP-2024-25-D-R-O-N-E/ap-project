@@ -74,10 +74,10 @@ pub fn draw_node_info(
                     ui.end_row();
 
                     if ui.button("Close").clicked() {
-                        println!(
-                            "closing {:?} of {:?}",
-                            node_index, state.node_info_section.opened_windows
-                        );
+                        // println!(
+                        //     "closing {:?} of {:?}",
+                        //     node_index, state.node_info_section.opened_windows
+                        // );
                         state.node_info_section.opened_windows.remove(&node_index);
                     }
                     if ui.button("Close others").clicked() {
@@ -357,7 +357,7 @@ fn draw_client_specific(
                     ui.memory_mut(|mem| mem.request_focus(re.id));
                     state.curr_msg.clear();
                 } else {
-                    println!("No peer selected");
+                    // println!("No peer selected");
                 }
             }
 
@@ -366,7 +366,7 @@ fn draw_client_specific(
                     simulation_controller.send_file_msg(curr_node_wg_id, curr_peer, path.clone());
                     state.selected_file_path = None;
                 } else {
-                    println!("No peer selected");
+                    // println!("No peer selected");
                 }
             }
         }
@@ -523,7 +523,7 @@ fn draw_client_no_grid_specific(ui: &mut Ui, node_index: NodeIndex, state: &mut 
                                                             {
                                                                 if let Some(path) = state.file_dialog.take_selected() {
                                                                     let res = fs::copy(file_path, &path);
-                                                                    println!("saved image from {file_path:?} to {path:?} with res {res:?}");
+                                                                    // println!("saved image from {file_path:?} to {path:?} with res {res:?}");
                                                                     log::debug!("saved image from {:?} to {:?} with res {:?}", file_path, path, res);
                                                                 }
                                                             }

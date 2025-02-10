@@ -761,7 +761,6 @@ impl ClientLuca {
     }
 
     fn add_sender(&mut self, id: NodeId, sender: Sender<Packet>) -> Option<Message> {
-        println!("{} {}", " -> added sender ".green(), id);
         self.packet_s.write().unwrap().insert(id, sender);
         None
     }

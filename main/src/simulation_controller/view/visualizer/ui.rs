@@ -90,7 +90,6 @@ impl SCGui {
                             self.state.node_info_section.open_window(*node);
                         }
                         self.state.node_info_section.open_window(node_index);
-                        println!();
                     }
                     _ => {}
                 }
@@ -147,7 +146,6 @@ impl SCGui {
                 .get_mut(sender_node_index)
                 .unwrap()
             {
-                println!("{history:?}");
                 client_state
                     .chat_histories
                     .insert(*partner, history.clone());

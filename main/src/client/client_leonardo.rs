@@ -847,7 +847,6 @@ impl ClientLeonardo {
     }
 
     fn add_sender(&mut self, id: NodeId, sender: Sender<Packet>) {
-        println!("{} {}", " -> added sender ".green(), id);
         self.packet_send.write().unwrap().insert(id, sender);
     }
 
