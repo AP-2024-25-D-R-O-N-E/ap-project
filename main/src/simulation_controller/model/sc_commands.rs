@@ -11,15 +11,30 @@ use wg_2024::{
 };
 
 use crate::initializer::{
-    drone_vendor::DroneVendor,
-    network_initializer::spawn_drone_thread_by_vendor,
+    drone_vendor::DroneVendor, network_initializer::spawn_drone_thread_by_vendor,
 };
 
 use super::{simulation_controller::SimulationController, ClientCommand, ServerCommand};
 
 impl SimulationController {
-    pub fn send_default_msg_fragment(&self, node_id: NodeId) {
+    #[allow(dead_code)]
+    pub fn send_default_msg_fragment(&self) {
         self.send_msg_fragment(self.default_msg_fragment.clone());
+    }
+
+    #[allow(dead_code)]
+    pub fn send_default_flood_request(&self, node_id: NodeId) {
+        self.send_flood_request(self.default_flood.clone(), node_id);
+    }
+
+    #[allow(dead_code)]
+    pub fn send_default_ack(&self) {
+        self.send_ack(self.default_ack.clone());
+    }
+
+    #[allow(dead_code)]
+    pub fn send_default_nack(&self) {
+        self.send_nack(self.default_nack.clone());
     }
 
     pub fn send_msg_fragment(&self, packet: Packet) {
@@ -42,21 +57,17 @@ impl SimulationController {
         }
     }
 
-    pub fn send_default_flood_request(&self, node_id: NodeId) {
-        self.send_flood_request(self.default_flood.clone(), 1);
-    }
-
     pub fn send_flood_request(&self, packet: Packet, node: NodeId) {
         match packet.pack_type.clone() {
             PacketType::FloodRequest(flood_req) => match &self.packet_channels.get(&node) {
-                Some(channel) => {
-                    channel.0.send(packet);
-                    log::info!(
+                Some(channel) => match channel.0.send(packet) {
+                    Ok(_) => log::info!(
                         "Sending to node {}, initiated by {}",
                         node,
                         flood_req.initiator_id
-                    )
-                }
+                    ),
+                    Err(err) => log::error!("Channel error {}", err),
+                },
                 None => {
                     log::error!("Specified node does not exist")
                 }
@@ -65,10 +76,6 @@ impl SimulationController {
                 log::error!("Provided package is not a flood request")
             }
         }
-    }
-
-    pub fn send_default_ack(&self, node_id: NodeId) {
-        self.send_ack(self.default_ack.clone());
     }
 
     pub fn send_ack(&self, packet: Packet) {
@@ -92,18 +99,14 @@ impl SimulationController {
         }
     }
 
-    pub fn send_default_nack(&self, node_id: NodeId) {
-        self.send_nack(self.default_nack.clone());
-    }
-
     pub fn send_nack(&self, packet: Packet) {
         match packet.routing_header.current_hop() {
             Some(current_hop) => match &self.packet_channels.get(&current_hop) {
                 Some(channel) => match &packet.pack_type {
-                    PacketType::Nack(_) => {
-                        channel.0.send(packet);
-                        log::info!("Sending to node {}", current_hop)
-                    }
+                    PacketType::Nack(_) => match channel.0.send(packet) {
+                        Ok(_) => log::info!("Sending to node {}", current_hop),
+                        Err(err) => log::error!("Channel error {}", err),
+                    },
                     _ => {
                         log::error!("Provided package is not an nack")
                     }
@@ -119,9 +122,10 @@ impl SimulationController {
 
     pub fn send_crash_command(&self, node_id: NodeId) {
         match &self.drone_command_channels.get(&node_id) {
-            Some(channel) => {
-                channel.send(DroneCommand::Crash);
-            }
+            Some(channel) => match channel.send(DroneCommand::Crash) {
+                Ok(_) => log::info!("Crash command sent to node {}", node_id),
+                Err(err) => log::error!("Channel error {}", err),
+            },
             None => {
                 log::error!("Specified node does not exist");
             }
@@ -130,9 +134,10 @@ impl SimulationController {
 
     pub fn send_set_pdr_command(&self, node_id: NodeId, new_pdr: f32) {
         match &self.drone_command_channels.get(&node_id) {
-            Some(channel) => {
-                channel.send(DroneCommand::SetPacketDropRate(new_pdr));
-            }
+            Some(channel) => match channel.send(DroneCommand::SetPacketDropRate(new_pdr)) {
+                Ok(_) => log::info!("PDR set to {} for node {}", new_pdr, node_id),
+                Err(err) => log::error!("Channel error {}", err),
+            },
             None => {
                 log::error!("Specified node does not exist");
             }
@@ -146,7 +151,11 @@ impl SimulationController {
             &self.packet_channels.get(&node_to_id),
         ) {
             (Some(c1), Some(c2)) => {
-                c1.send(DroneCommand::AddSender(node_to_id, c2.0.clone()));
+                match c1.send(DroneCommand::AddSender(node_to_id, c2.0.clone())) {
+                    Ok(_) => log::info!("Sender {} added to  {}", node_to_id, node_id),
+                    Err(err) => log::error!("Channel error {}", err),
+                }
+
                 true
             }
             _ => false,
@@ -159,7 +168,10 @@ impl SimulationController {
                 &self.packet_channels.get(&node_to_id),
             ) {
                 (Some(c1), Some(c2)) => {
-                    c1.send(ClientCommand::AddSender(node_to_id, c2.0.clone()));
+                    match c1.send(ClientCommand::AddSender(node_to_id, c2.0.clone())) {
+                        Ok(_) => log::info!("Sender {} added to  {}", node_to_id, node_id),
+                        Err(err) => log::error!("Channel error {}", err),
+                    }
                     true
                 }
                 _ => false,
@@ -173,7 +185,10 @@ impl SimulationController {
                 &self.packet_channels.get(&node_to_id),
             ) {
                 (Some(c1), Some(c2)) => {
-                    c1.send(ServerCommand::AddSender(node_to_id, c2.0.clone()));
+                    match c1.send(ServerCommand::AddSender(node_to_id, c2.0.clone())) {
+                        Ok(_) => log::info!("Sender {} added to  {}", node_to_id, node_id),
+                        Err(err) => log::error!("Channel error {}", err),
+                    }
                     true
                 }
                 _ => false,
@@ -198,7 +213,10 @@ impl SimulationController {
                 if c2.is_none() {
                     log::warn!("Trying to remove a channel from unexisting node");
                 }
-                c1.send(DroneCommand::RemoveSender(node_to_id));
+                match c1.send(DroneCommand::RemoveSender(node_to_id)) {
+                    Ok(_) => log::info!("Sender {} removed from  {}", node_to_id, node_id),
+                    Err(err) => log::error!("Channel error {}", err),
+                }
                 true
             }
             _ => false,
@@ -214,7 +232,10 @@ impl SimulationController {
                     if c2.is_none() {
                         log::warn!("Trying to remove a channel from unexisting node");
                     }
-                    c1.send(ClientCommand::RemoveSender(node_to_id));
+                    match c1.send(ClientCommand::RemoveSender(node_to_id)) {
+                        Ok(_) => log::info!("Sender {} removed from  {}", node_to_id, node_id),
+                        Err(err) => log::error!("Channel error {}", err),
+                    }
                     true
                 }
                 _ => false,
@@ -231,7 +252,10 @@ impl SimulationController {
                     if c2.is_none() {
                         log::warn!("Trying to remove a channel from unexisting node");
                     }
-                    c1.send(ServerCommand::RemoveSender(node_to_id));
+                    match c1.send(ServerCommand::RemoveSender(node_to_id)) {
+                        Ok(_) => log::info!("Sender {} removed from  {}", node_to_id, node_id),
+                        Err(err) => log::error!("Channel error {}", err),
+                    }
                     true
                 }
                 _ => false,
@@ -291,10 +315,10 @@ impl SimulationController {
 
     pub fn handle_sc_shortcut(&self, packet: Packet) {
         match &packet.pack_type {
-            PacketType::MsgFragment(fragment) => {
+            PacketType::MsgFragment(_) => {
                 log::error!("Techinally, msg fragments cannot be sent throug sc shortcuts")
             }
-            PacketType::FloodRequest(flood_request) => {
+            PacketType::FloodRequest(_) => {
                 log::error!("Techinally, flood requests cannot be sent throug sc shortcuts")
             }
             _ => {}
@@ -305,27 +329,20 @@ impl SimulationController {
                 Some(channel) => {
                     let mut new_packet = packet.clone();
                     new_packet.routing_header.hop_index = new_packet.routing_header.hops.len() - 1;
-                    channel.0.send(new_packet);
-                    println!("Sending shortcut to node {}", last_hop);
-                    log::info!("Sending shortcut to node {}", last_hop)
+                    match channel.0.send(new_packet) {
+                        Ok(_) => {
+                            log::info!("Sending shortcut to node {}", last_hop)
+                        }
+                        Err(err) => {
+                            log::error!("Channel error {}", err)
+                        }
+                    }
                 }
                 None => {
                     log::error!("Shortcut destination does not exist")
                 }
             },
             None => log::error!("Cannot get shortcut destination"),
-        }
-    }
-
-    pub fn send_control_packet(&self, server_command: ServerCommand, node_id: NodeId) {
-        match &self.server_command_channels.get(&node_id) {
-            Some(channel) => {
-                channel.send(server_command);
-                log::info!("Sending to node {}", node_id)
-            }
-            None => {
-                log::error!("Specified node does not exist")
-            }
         }
     }
 }

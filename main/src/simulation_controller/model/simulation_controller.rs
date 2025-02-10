@@ -1,8 +1,5 @@
 use colored::Colorize;
-use petgraph::{
-    prelude::StableGraph,
-    Undirected,
-};
+use petgraph::{prelude::StableGraph, Undirected};
 use std::{io, thread::sleep, time::Duration};
 use wg_2024::{
     network::SourceRoutingHeader,
@@ -169,15 +166,15 @@ impl SimulationController {
                         Ok(action_number) => match action_number {
                             1 => SimulationController::prompt_id_and_execute(
                                 "Insert a node id".to_string(),
-                                |id| self.send_default_msg_fragment(id),
+                                |id| self.send_default_msg_fragment(),
                             ),
                             2 => SimulationController::prompt_id_and_execute(
                                 "Insert a node id".to_string(),
-                                |id| self.send_default_ack(id),
+                                |id| self.send_default_ack(),
                             ),
                             3 => SimulationController::prompt_id_and_execute(
                                 "Insert a node id".to_string(),
-                                |id| self.send_default_nack(id),
+                                |id| self.send_default_nack(),
                             ),
                             4 => SimulationController::prompt_id_and_execute(
                                 "Insert a node id".to_string(),
