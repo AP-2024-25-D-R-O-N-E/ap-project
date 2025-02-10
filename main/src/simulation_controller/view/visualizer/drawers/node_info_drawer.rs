@@ -1,6 +1,7 @@
 use std::{
     borrow::Cow,
-    ffi::{OsStr, OsString}, fs,
+    ffi::{OsStr, OsString},
+    fs,
 };
 
 use colored::Colorize;
@@ -430,8 +431,10 @@ fn draw_client_specific(
                 if let Some(curr_peer) = state.current_peer {
                     simulation_controller.send_file_msg(curr_node_wg_id, curr_peer, path.clone());
                     state.selected_file_path = None;
-                    // update history on file send since the destination file is reconstructed
-                    simulation_controller.open_chat_with(curr_node_wg_id, curr_peer);
+                    // update history on file send since the destination file is reconstructed, but only if we're not the receiver
+                    if curr_node_wg_id != curr_peer {
+                        simulation_controller.open_chat_with(curr_node_wg_id, curr_peer);
+                    }
                 } else {
                     println!("No peer selected");
                 }
@@ -501,7 +504,7 @@ fn draw_client_no_grid_specific(
     CollapsingHeader::new("Chat")
         .default_open(true)
         .show(ui, |ui| {
-            ScrollArea::both()
+            ScrollArea::vertical()
                 .auto_shrink([false, false])
                 .stick_to_bottom(true)
                 .show(ui, |ui| {
@@ -510,6 +513,117 @@ fn draw_client_no_grid_specific(
                     let client_state =
                         get_client_node_state(&mut state.node_info_section, node_index);
 
+                        match client_state.current_peer {
+                            Some(curr_peer) => match client_state.chat_histories.get(&curr_peer) {
+                                Some(history) => {
+                                    for message in history {
+                                        match message {
+                                            ChatMessage::TextMessage { from, to, text } => {
+
+                                                let align = if *to == curr_peer {
+                                                    egui::Align::RIGHT
+                                                } else {
+                                                    egui::Align::LEFT
+                                                };
+
+                                                ui.with_layout(
+                                                    Layout::top_down_justified(align),
+                                                    |ui: &mut Ui| {
+                                                        ui.selectable_label(false, text);
+                                                    },
+                                                );
+                                            }
+                                            ChatMessage::FileMessage {
+                                                from,
+                                                to,
+                                                file_path,
+                                            } => {
+                                                let align = if *to == curr_peer {
+                                                    egui::Align::RIGHT
+                                                } else {
+                                                    egui::Align::LEFT
+                                                };
+
+                                                let mut image_uri = None;
+
+                                                if let Some(extension) = file_path.extension() {
+                                                    install_image_loaders(ui.ctx());
+
+                                                    image_uri = match extension {
+                                                        ext if ext == OsStr::new("png")
+                                                            || ext == OsStr::new("jpg")
+                                                            || ext == OsStr::new("jpeg") =>
+                                                        {
+                                                            let mut fp = String::new();
+                                                            fp.push_str("file:///");
+                                                            fp.push_str(file_path.to_str().unwrap());
+                                                            Some(fp)
+                                                        }
+                                                        _ => None
+                                                    }
+                                                }
+
+                                                ui.with_layout(
+                                                    Layout::top_down_justified(align),
+                                                    |ui| {
+                                                        if let Some(uri) = image_uri {
+                                                            ui.set_min_height(60.0);
+                                                            ui.add(
+                                                            egui::Image::from_uri(uri)
+                                                            .show_loading_spinner(true)
+                                                            .max_height(60.0)
+                                                            .maintain_aspect_ratio(true)
+                                                            .shrink_to_fit())
+                                                        } else {
+                                                            ui.label("📁 File: ".to_string() + &file_path.file_name().unwrap_or_default().to_string_lossy())
+                                                        }
+                                                        .context_menu(|ui| {
+                                                            if ui.button("Save File As").clicked() {
+                                                                state.file_dialog.open(
+                                                                    DialogMode::SaveFile,
+                                                                    true,
+                                                                    Some(&format!(
+                                                                        "Client {} save {:?}",
+                                                                        curr_node_wg_id,
+                                                                        file_path
+                                                                    )),
+                                                                );
+                                                            }
+                                                        });
+                                                        if let DialogState::Selected(_) = state.file_dialog.state() {
+                                                            if state.file_dialog.operation_id() == Some(&format!(
+                                                                "Client {} save {:?}",
+                                                                curr_node_wg_id,
+                                                                file_path
+                                                            ))
+                                                            {
+                                                                if let Some(path) = state.file_dialog.take_selected() {
+                                                                    let res = fs::copy(&*file_path, &path);
+                                                                    println!("saved image from {:?} to {:?} with res {:?}", &*file_path, path, res);
+                                                                    log::debug!("saved image from {:?} to {:?} with res {:?}", &*file_path, path, res);
+                                                                }
+                                                            }
+                                                        }
+                                                    },
+                                                );
+
+                                            }
+                                        };
+
+                                        ui.separator();
+                                        ui.end_row();
+                                    }
+                                }
+                                None => {
+                                    ui.label("No chat history available.");
+                                }
+                            },
+                            None => {
+                                ui.label("No current peer selected.");
+                            }
+                        }
+
+                    /* 
                     egui::Grid::new("common_grid")
                         .num_columns(1)
                         .spacing([40.0, 4.0])
@@ -610,7 +724,8 @@ fn draw_client_no_grid_specific(
                             None => {
                                 ui.label("No current peer selected.");
                             }
-                        });
+                        }); 
+                    */
                 });
         });
 }

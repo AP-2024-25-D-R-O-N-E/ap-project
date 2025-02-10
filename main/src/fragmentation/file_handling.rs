@@ -91,7 +91,6 @@ impl From<ChatMessage> for RawChatMessage {
                 to,
                 file_path,
             } => {
-                println!("file_path: {:?}", file_path);
                 let (file, file_name, extension) = file_to_byte_vec(file_path).unwrap();
                 RawChatMessage::FileMessage {
                     from,

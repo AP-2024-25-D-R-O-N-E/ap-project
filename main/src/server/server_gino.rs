@@ -204,7 +204,7 @@ impl Fragmenter for ChatServer {
 impl ChatServer {
     fn receiver_thread(&mut self, ready_send: Sender<(NodeId, u64)>, nack_send: Sender<Packet>) {
         loop {
-            thread::sleep(Duration::from_micros(50));
+            // thread::sleep(Duration::from_micros(50));
             select_biased!(
                 recv(self.sim_contr_recv) -> cmd => {
                     if let Ok(command) = cmd {
@@ -251,7 +251,7 @@ impl ChatServer {
         let mut routing_table: HashMap<NodeId, Vec<NodeId>> = HashMap::new();
 
         // temporary number
-        const MAX_OUTPUT_BUFFER: usize = 128;
+        const MAX_OUTPUT_BUFFER: usize = 1024;
 
         loop {
             // crossbeam channels block if the buffer is too fast (or something?) so we need to sleep for a bit
@@ -785,6 +785,7 @@ impl ChatServer {
 
         if let Err(mut packet) = res {
             log::error!("The send inside channel gave an error, this shouldn't be happening");
+            println!("{} error {:?}","ERROR".red(), packet);
         } else {
             sim_contr_send.send(ServerEvent::PacketSent(packet));
         }
