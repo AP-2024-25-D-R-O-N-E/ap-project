@@ -142,6 +142,7 @@ pub fn draw_node_info(
                         .show(ui, |ui| {
                             //TODO draw node events
                             // ui.label(egui::RichText::new("This is red text!").color(egui::Color32::LIGHT_GRAY));
+
                             let events = state.events.get_events_list(DisplayOptions::ALL);
                             let text_height = ui.text_style_height(&egui::TextStyle::Body);
                             let payload = state
@@ -173,6 +174,9 @@ pub fn draw_node_info(
                                     });
                                 })
                                 .body(|mut body| {
+                                    if !state.toolbar_section.loggin_enabled {
+                                        return;
+                                    }
                                     for (index, event) in state
                                         .events
                                         .get_events_list(DisplayOptions::from_index(payload.wg_id))

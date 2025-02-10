@@ -31,6 +31,9 @@ pub fn draw_section_console(ui: &mut Ui, state: &mut State) {
                     });
                 })
                 .body(|mut body| {
+                    if !state.toolbar_section.loggin_enabled {
+                        return;
+                    }
                     let mut hover_index = None;
                     for (index, event) in state
                         .events

@@ -93,6 +93,9 @@ pub fn draw_toolbar_section(ui: &mut Ui, state: &mut State) {
         toggle_compact::toggle_ui_compact(ui, &mut state.toolbar_section.handle_shortcuts);
         ui.label("Handle shortcuts");
 
+        toggle_compact::toggle_ui_compact(ui, &mut state.toolbar_section.loggin_enabled);
+        ui.label("Enable logging");
+
         ui.separator();
 
         ui.add(get_result_flag_widget(

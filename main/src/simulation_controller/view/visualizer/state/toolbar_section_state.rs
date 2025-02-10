@@ -6,6 +6,7 @@ pub struct ToolbarSectionState {
     pub modify_topology_open: bool,
     pub handle_shortcuts: bool,
     pub events_json_open: bool,
+    pub loggin_enabled: bool,
 }
 
 impl Default for ToolbarSectionState {
@@ -18,6 +19,7 @@ impl Default for ToolbarSectionState {
             modify_topology_open: false,
             handle_shortcuts: true,
             events_json_open: false,
+            loggin_enabled: true,
         }
     }
 }
