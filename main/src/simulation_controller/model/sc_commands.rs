@@ -250,7 +250,7 @@ impl SimulationController {
         &mut self,
         node_id: NodeId,
         pdr: f32,
-        neighbors: &Vec<NodeId>,
+        neighbors: &[NodeId],
         vendor: DroneVendor,
     ) {
         let drone_packet_channel = unbounded::<Packet>();

@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 #[derive(PartialEq, Clone, Copy)]
 pub enum DroneVendor {
     RustafarianDrone,
@@ -12,9 +14,9 @@ pub enum DroneVendor {
     Unknown,
 }
 
-impl ToString for DroneVendor {
-    fn to_string(&self) -> String {
-        match self {
+impl Display for DroneVendor {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
             DroneVendor::RustafarianDrone => "RustafarianDrone".to_string(),
             DroneVendor::LockheedRustin => "LockheedRustin".to_string(),
             DroneVendor::RustyDrone => "RustyDrone".to_string(),
@@ -25,6 +27,7 @@ impl ToString for DroneVendor {
             DroneVendor::RustRoveri => "RustRoveri".to_string(),
             DroneVendor::MyDrone => "MyDrone".to_string(),
             DroneVendor::Unknown => "Unknown".to_string(),
-        }
+        };
+        write!(f, "{}", s)
     }
 }

@@ -44,6 +44,8 @@ use crate::{
 
 use super::ClientTrait;
 
+type LockRef<T> = Arc<RwLock<T>>;
+
 pub struct ClientLeonardo {
     id: NodeId,
     flood_id: u64,
@@ -54,16 +56,16 @@ pub struct ClientLeonardo {
     sim_contr_recv: Receiver<ClientCommand>,
     //channels with drones
     packet_recv: Receiver<Packet>,
-    packet_send: Arc<RwLock<HashMap<NodeId, Sender<Packet>>>>,
+    packet_send: LockRef<HashMap<NodeId, Sender<Packet>>>,
 
     //topology of the net, weight depends on prd
-    topology: Arc<RwLock<GraphMap<NodeId, (f64), Undirected>>>,
+    topology: LockRef<GraphMap<NodeId, (f64), Undirected>>,
 
     //buffers for the fragments
-    fragment_buffer: Arc<RwLock<HashMap<(NodeId, u64), Vec<Fragment>>>>,
+    fragment_buffer: LockRef<HashMap<(NodeId, u64), Vec<Fragment>>>,
     ack_buffer: Arc<Mutex<HashMap<(u64, u64), Packet>>>,
     topology_modified: Arc<Mutex<bool>>,
-    edge_nodes: Arc<RwLock<HashSet<NodeId>>>,
+    edge_nodes: LockRef<HashSet<NodeId>>,
     condv: Arc<Condvar>,
     temp_dir: Arc<TempDir>,
 }
@@ -237,14 +239,14 @@ impl ClientLeonardo {
 
     fn sender_thread(
         id: NodeId,
-        packet_sender: Arc<RwLock<HashMap<u8, Sender<Packet>>>>,
+        packet_sender: LockRef<HashMap<u8, Sender<Packet>>>,
         sim_contr_send: Sender<ClientEvent>,
         fragment_recv: Receiver<(NodeId, u64, Fragment)>,
         nack_recv: Receiver<Packet>,
         condv: Arc<Condvar>,
         ack_packet_buffer: Arc<Mutex<HashMap<(u64, u64), Packet>>>,
-        topology: Arc<RwLock<GraphMap<NodeId, f64, Undirected>>>,
-        edge_nodes: Arc<RwLock<HashSet<NodeId>>>,
+        topology: LockRef<GraphMap<NodeId, f64, Undirected>>,
+        edge_nodes: LockRef<HashSet<NodeId>>,
     ) {
         // temporary number
         const MAX_OUTPUT_BUFFER: usize = 1024;
@@ -311,7 +313,7 @@ impl ClientLeonardo {
     fn message_handler_thread(
         id: NodeId,
         server_id: Arc<Mutex<NodeId>>,
-        fragment_buffers: Arc<RwLock<HashMap<(NodeId, u64), Vec<Fragment>>>>,
+        fragment_buffers: LockRef<HashMap<(NodeId, u64), Vec<Fragment>>>,
         ready: Receiver<(NodeId, u64)>,
         command_recv: Receiver<Message>,
         fragment_sender: Sender<(NodeId, u64, Fragment)>,
@@ -387,8 +389,8 @@ impl ClientLeonardo {
     fn find_route(
         start_id: NodeId,
         destination_id: NodeId,
-        avoid_nodes: Arc<RwLock<HashSet<NodeId>>>,
-        topology: Arc<RwLock<GraphMap<NodeId, f64, Undirected>>>,
+        avoid_nodes: LockRef<HashSet<NodeId>>,
+        topology: LockRef<GraphMap<NodeId, f64, Undirected>>,
     ) -> Vec<NodeId> {
         let topology_lock = topology.read().unwrap();
 
@@ -415,7 +417,7 @@ impl ClientLeonardo {
 
     fn send_msg_packet(
         id: NodeId,
-        packet_sender: Arc<RwLock<HashMap<u8, Sender<Packet>>>>,
+        packet_sender: LockRef<HashMap<u8, Sender<Packet>>>,
         sim_contr_send: Sender<ClientEvent>,
         packet: Packet,
     ) {
@@ -863,9 +865,9 @@ impl Fragmenter for ClientLeonardo {
             let mut len: u8 = 0;
             let mut data: [u8; FRAGMENT_DSIZE] = [0; FRAGMENT_DSIZE];
 
-            for i in 0..FRAGMENT_DSIZE {
+            for item in data.iter_mut().take(FRAGMENT_DSIZE) {
                 if let Some(byte) = fragments_u8.pop() {
-                    data[i] = byte;
+                    *item = byte;
                     len += 1;
                 } else {
                     break;

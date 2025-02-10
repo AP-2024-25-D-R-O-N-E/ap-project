@@ -303,7 +303,7 @@ pub fn check_drone_addition(
 
 pub fn add_drone(
     graph_section_state: &mut GraphSectionState,
-    neighbors_wg_ids: &Vec<NodeId>,
+    neighbors_wg_ids: &[NodeId],
     wg_id: NodeId,
     pdr: f32,
     drone_vendor: DroneVendor,
@@ -316,9 +316,8 @@ pub fn add_drone(
     });
 
     let neighbors_graph_ids: Vec<NodeIndex> = neighbors_wg_ids
-        .clone()
-        .into_iter()
-        .map(|node| *graph_section_state.node_id_map.get(&node).unwrap())
+        .iter()
+        .map(|node| *graph_section_state.node_id_map.get(node).unwrap())
         .collect();
 
     for node in neighbors_graph_ids {

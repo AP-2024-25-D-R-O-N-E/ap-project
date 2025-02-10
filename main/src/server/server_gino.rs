@@ -7,6 +7,8 @@ use std::{
     time::Duration,
 };
 
+type LockRef<T> = Arc<RwLock<T>>;
+
 use bincode::de::read;
 use colored::Colorize;
 use crossbeam::{
@@ -45,14 +47,14 @@ pub struct ChatServer {
     sim_contr_send: Sender<ServerEvent>,
     sim_contr_recv: Receiver<ServerCommand>,
     packet_recv: Receiver<Packet>,
-    packet_send: Arc<RwLock<HashMap<NodeId, Sender<Packet>>>>,
+    packet_send: LockRef<HashMap<NodeId, Sender<Packet>>>,
     flood_id: u64, // keeps track of the current flood index
-    topology: Arc<RwLock<GraphMap<NodeId, (), Directed>>>, // nodes don't register type, as they're instead inside the client_table. Directed makes it possible to estimate the edge weights for PDR
-    fragment_buffers: Arc<RwLock<HashMap<(NodeId, u64), Vec<Fragment>>>>, // stores fragments until they're ready to be assembled
+    topology: LockRef<GraphMap<NodeId, (), Directed>>, // nodes don't register type, as they're instead inside the client_table. Directed makes it possible to estimate the edge weights for PDR
+    fragment_buffers: LockRef<HashMap<(NodeId, u64), Vec<Fragment>>>, // stores fragments until they're ready to be assembled
     ack_packet_buffer: Arc<Mutex<HashMap<(u64, u64), Packet>>>, // stores packets that need to await an ack. The tuple is (session_id, frag_index)
     topology_modified: Arc<Mutex<bool>>, // flag to check if the topology has been modified
-    edge_nodes: Arc<RwLock<HashSet<NodeId>>>, // stores the edge nodes that can't be used in a route
-    pdr_estimation: Arc<RwLock<HashMap<NodeId, (f64, u64, u64)>>>, // stores the pdr estimation for each node
+    edge_nodes: LockRef<HashSet<NodeId>>, // stores the edge nodes that can't be used in a route
+    pdr_estimation: LockRef<HashMap<NodeId, (f64, u64, u64)>>, // stores the pdr estimation for each node
     condv: Arc<Condvar>,
     temp_dir: Arc<TempDir>,
 }
@@ -181,9 +183,9 @@ impl Fragmenter for ChatServer {
         for i in 0..frag_numbers {
             let mut fragment_data: [u8; 128] = [0; 128];
             let mut lenght: u8 = 0;
-            for index in 0..128 {
+            for item in &mut fragment_data {
                 if let Some(byte) = message_data.pop() {
-                    fragment_data[index] = byte;
+                    *item = byte;
                     lenght += 1;
                 } else {
                     break;
@@ -236,16 +238,16 @@ impl ChatServer {
 
     fn sender_thread(
         id: NodeId,
-        packet_sender: Arc<RwLock<HashMap<u8, Sender<Packet>>>>,
+        packet_sender: LockRef<HashMap<u8, Sender<Packet>>>,
         sim_contr_send: Sender<ServerEvent>,
         fragment_recv: Receiver<(NodeId, u64, Fragment)>,
         nack_recv: Receiver<Packet>,
         condv: Arc<Condvar>,
         ack_packet_buffer: Arc<Mutex<HashMap<(u64, u64), Packet>>>,
-        topology: Arc<RwLock<GraphMap<NodeId, (), Directed>>>,
+        topology: LockRef<GraphMap<NodeId, (), Directed>>,
         topology_modified: Arc<Mutex<bool>>,
-        edge_nodes: Arc<RwLock<HashSet<NodeId>>>,
-        pdr_estimation: Arc<RwLock<HashMap<NodeId, (f64, u64, u64)>>>,
+        edge_nodes: LockRef<HashSet<NodeId>>,
+        pdr_estimation: LockRef<HashMap<NodeId, (f64, u64, u64)>>,
     ) {
         // records the routing table for the server (this is only updated when an update to the topology is made)
         let mut routing_table: HashMap<NodeId, Vec<NodeId>> = HashMap::new();
@@ -292,7 +294,7 @@ impl ChatServer {
                         // receives normal packets
 
                         // choose the route for the packet
-                        if routing_table.get(&destination).is_none() {
+                        if !routing_table.contains_key(&destination) {
                             // if the routing table doesn't have the next hop, then we need to update the routing table
                             Self::find_route(id, destination, &mut routing_table, topology.clone(), edge_nodes.clone(), pdr_estimation.clone());
                         }
@@ -325,7 +327,7 @@ impl ChatServer {
 
     fn message_handler_thread(
         id: NodeId,
-        fragment_buffers: Arc<RwLock<HashMap<(NodeId, u64), Vec<Fragment>>>>,
+        fragment_buffers: LockRef<HashMap<(NodeId, u64), Vec<Fragment>>>,
         ready_recv: Receiver<(NodeId, u64)>,
         fragment_send: Sender<(NodeId, u64, Fragment)>,
         temp_dir: Arc<TempDir>,
@@ -729,9 +731,9 @@ impl ChatServer {
         id: NodeId,
         destination: NodeId,
         routing_table: &mut HashMap<NodeId, Vec<NodeId>>,
-        topology: Arc<RwLock<GraphMap<NodeId, (), Directed>>>,
-        edge_nodes: Arc<RwLock<HashSet<NodeId>>>,
-        pdr_estimation: Arc<RwLock<HashMap<NodeId, (f64, u64, u64)>>>,
+        topology: LockRef<GraphMap<NodeId, (), Directed>>,
+        edge_nodes: LockRef<HashSet<NodeId>>,
+        pdr_estimation: LockRef<HashMap<NodeId, (f64, u64, u64)>>,
     ) {
         let topology_lock = topology.read().unwrap();
 
@@ -767,7 +769,7 @@ impl ChatServer {
 
     fn send_msg_packet(
         id: NodeId,
-        packet_sender: Arc<RwLock<HashMap<u8, Sender<Packet>>>>,
+        packet_sender: LockRef<HashMap<u8, Sender<Packet>>>,
         sim_contr_send: Sender<ServerEvent>,
         packet: Packet,
     ) {
@@ -785,7 +787,7 @@ impl ChatServer {
 
         if let Err(mut packet) = res {
             log::error!("The send inside channel gave an error, this shouldn't be happening");
-            println!("{} error {:?}","ERROR".red(), packet);
+            println!("{} error {:?}", "ERROR".red(), packet);
         } else {
             sim_contr_send.send(ServerEvent::PacketSent(packet));
         }

@@ -30,18 +30,20 @@ use crate::{
     simulation_controller::structs::{ClientCommand, ClientEvent},
 };
 
+type LockRef<T> = Arc<RwLock<T>>;
+
 pub struct ClientLuca {
     id: NodeId,
     scs: Sender<ClientEvent>,
     scr: Receiver<ClientCommand>,
     packet_r: Receiver<Packet>,
-    packet_s: Arc<RwLock<HashMap<NodeId, Sender<Packet>>>>,
+    packet_s: LockRef<HashMap<NodeId, Sender<Packet>>>,
     flood_id: u64, //current flood index
-    topology: Arc<RwLock<GraphMap<NodeId, (), Undirected>>>,
-    fragment_buffer: Arc<RwLock<HashMap<(NodeId, u64), Vec<Fragment>>>>, //stores the fragments that need to be assembled
+    topology: LockRef<GraphMap<NodeId, (), Undirected>>,
+    fragment_buffer: LockRef<HashMap<(NodeId, u64), Vec<Fragment>>>, //stores the fragments that need to be assembled
     ack_packet_buffer: Arc<Mutex<HashMap<(u64, u64), Packet>>>, //stores packets waiting for an ack
     topology_modified: Arc<Mutex<bool>>, // checks if the topology has been modified
-    edge_nodes: Arc<RwLock<HashSet<NodeId>>>, // edge_nodes can't be used in a route
+    edge_nodes: LockRef<HashSet<NodeId>>, // edge_nodes can't be used in a route
     server_id: NodeId,                   // stores the server_id (it's only one)
     condv: Arc<Condvar>,
     temp_dir: Arc<TempDir>,
@@ -139,9 +141,9 @@ impl Fragmenter for ClientLuca {
         for i in 0..frag_numbers {
             let mut fragment_data: [u8; 128] = [0; 128];
             let mut lenght: u8 = 0;
-            for index in 0..128 {
+            for item in &mut fragment_data {
                 if let Some(byte) = message_data.pop() {
-                    fragment_data[index] = byte;
+                    *item = byte;
                     lenght += 1;
                 } else {
                     break;
@@ -210,15 +212,15 @@ impl ClientLuca {
 
     fn sender_thread(
         id: NodeId,
-        packet_s: Arc<RwLock<HashMap<u8, Sender<Packet>>>>,
+        packet_s: LockRef<HashMap<u8, Sender<Packet>>>,
         scs: Sender<ClientEvent>,
         fragment_r: Receiver<(NodeId, u64, Fragment)>,
         nack_r: Receiver<Packet>,
         condv: Arc<Condvar>,
         ack_packet_buffer: Arc<Mutex<HashMap<(u64, u64), Packet>>>,
-        topology: Arc<RwLock<GraphMap<NodeId, (), Undirected>>>,
+        topology: LockRef<GraphMap<NodeId, (), Undirected>>,
         topology_modified: Arc<Mutex<bool>>,
-        edge_nodes: Arc<RwLock<HashSet<NodeId>>>,
+        edge_nodes: LockRef<HashSet<NodeId>>,
     ) {
         // records the routing table for the client (updated when an update to the topology is made)
         let mut routing_table: HashMap<NodeId, Vec<NodeId>> = HashMap::new();
@@ -258,7 +260,7 @@ impl ClientLuca {
                 recv(fragment_r) -> frag_res => {
                     if let Ok((destination, session_id, fragment)) = frag_res {
                         // choose the route for the packet
-                        if routing_table.get(&destination).is_none() {
+                        if !routing_table.contains_key(&destination) {
                             // if the routing table doesn't have the next hop, then we need to update the routing table
                             Self::find_route(id, destination, &mut routing_table, topology.clone(), edge_nodes.clone());
                         }
@@ -690,8 +692,8 @@ impl ClientLuca {
         id: NodeId,
         destination: NodeId,
         routing_table: &mut HashMap<NodeId, Vec<NodeId>>,
-        topology: Arc<RwLock<GraphMap<NodeId, (), Undirected>>>,
-        edge_nodes: Arc<RwLock<HashSet<NodeId>>>,
+        topology: LockRef<GraphMap<NodeId, (), Undirected>>,
+        edge_nodes: LockRef<HashSet<NodeId>>,
     ) {
         let topology_lock = topology.read().unwrap();
 
@@ -722,7 +724,7 @@ impl ClientLuca {
 
     fn send_msg_packet(
         id: NodeId,
-        packet_s: Arc<RwLock<HashMap<u8, Sender<Packet>>>>,
+        packet_s: LockRef<HashMap<u8, Sender<Packet>>>,
         scs: Sender<ClientEvent>,
         packet: Packet,
     ) {
