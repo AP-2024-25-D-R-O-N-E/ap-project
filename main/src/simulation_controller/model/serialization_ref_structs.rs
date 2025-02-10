@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use crossbeam::channel::Sender;
-use macros::IntoSerializable;
+use macros::AsSerializable;
 
 use crate::fragmentation::message::ChatMessage;
 
@@ -15,101 +15,98 @@ use serde::Serialize;
 
 pub type NodeId = u8;
 
-pub trait IntoSerializable {
+pub trait AsSerializable {
     type Output;
-    fn into_serializable(&self) -> Self::Output;
+    fn as_serializable(&self) -> Self::Output;
 }
 
-impl IntoSerializable for usize {
+impl AsSerializable for usize {
     type Output = usize;
-    fn into_serializable(&self) -> Self::Output {
+    fn as_serializable(&self) -> Self::Output {
         *self
     }
 }
 
-impl IntoSerializable for NodeId {
+impl AsSerializable for NodeId {
     type Output = NodeId;
-    fn into_serializable(&self) -> Self::Output {
+    fn as_serializable(&self) -> Self::Output {
         *self
     }
 }
 
-impl IntoSerializable for u64 {
+impl AsSerializable for u64 {
     type Output = u64;
-    fn into_serializable(&self) -> Self::Output {
+    fn as_serializable(&self) -> Self::Output {
         *self
     }
 }
 
-impl IntoSerializable for String {
+impl AsSerializable for String {
     type Output = String;
-    fn into_serializable(&self) -> Self::Output {
+    fn as_serializable(&self) -> Self::Output {
         self.clone()
     }
 }
 
-impl<const N: usize> IntoSerializable for [u8; N] {
+impl<const N: usize> AsSerializable for [u8; N] {
     type Output = [u8; N];
-    fn into_serializable(&self) -> Self::Output {
+    fn as_serializable(&self) -> Self::Output {
         *self
     }
 }
 
-impl IntoSerializable for PathBuf {
+impl AsSerializable for PathBuf {
     type Output = PathBuf;
-    fn into_serializable(&self) -> Self::Output {
+    fn as_serializable(&self) -> Self::Output {
         self.clone()
     }
 }
 
-impl<T, U> IntoSerializable for (T, U)
+impl<T, U> AsSerializable for (T, U)
 where
-    T: Clone + IntoSerializable,
-    U: Clone + IntoSerializable,
+    T: Clone + AsSerializable,
+    U: Clone + AsSerializable,
 {
-    type Output = (
-        <T as IntoSerializable>::Output,
-        <U as IntoSerializable>::Output,
-    );
-    fn into_serializable(&self) -> Self::Output {
-        (self.0.into_serializable(), self.1.into_serializable())
+    type Output = (<T as AsSerializable>::Output, <U as AsSerializable>::Output);
+    fn as_serializable(&self) -> Self::Output {
+        (self.0.as_serializable(), self.1.as_serializable())
     }
 }
 
-impl<T> IntoSerializable for Vec<T>
+impl<T> AsSerializable for Vec<T>
 where
-    T: Clone + IntoSerializable,
+    T: Clone + AsSerializable,
 {
-    type Output = Vec<<T as IntoSerializable>::Output>;
-    fn into_serializable(&self) -> Self::Output {
-        self.iter().map(|item| item.into_serializable()).collect()
+    type Output = Vec<<T as AsSerializable>::Output>;
+    fn as_serializable(&self) -> Self::Output {
+        self.iter().map(|item| item.as_serializable()).collect()
     }
 }
 
-impl<T> IntoSerializable for Sender<T>
+impl<T> AsSerializable for Sender<T>
 where
     T: Clone,
 {
     type Output = Sender<T>;
-    fn into_serializable(&self) -> Self::Output {
+    fn as_serializable(&self) -> Self::Output {
         self.clone()
     }
 }
 
-#[derive(Serialize, IntoSerializable, Debug, Clone)]
+#[derive(Serialize, AsSerializable, Debug, Clone)]
 pub struct SourceRoutingHeaderRef {
     pub hop_index: usize,
     pub hops: Vec<NodeId>,
 }
 
-#[derive(Serialize, IntoSerializable, Debug, Clone)]
+#[derive(Serialize, AsSerializable, Debug, Clone)]
 pub struct PacketRef {
     pub routing_header: SourceRoutingHeaderRef,
     pub session_id: u64,
     pub pack_type: PacketTypeRef,
 }
 
-#[derive(IntoSerializable, Serialize, Debug, Clone)]
+#[derive(AsSerializable, Serialize, Debug, Clone)]
 pub enum PacketTypeRef {
     MsgFragment(FragmentRef),
     Ack(AckRef),
@@ -118,13 +115,13 @@ pub enum PacketTypeRef {
     FloodResponse(FloodResponseRef),
 }
 
-#[derive(Serialize, IntoSerializable, Debug, Clone)]
+#[derive(Serialize, AsSerializable, Debug, Clone)]
 pub struct NackRef {
     pub fragment_index: u64, // If the packet is not a fragment, it's considered as a whole, so fragment_index will be 0.
     pub nack_type: NackTypeRef,
 }
 
-#[derive(Serialize, IntoSerializable, Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Serialize, AsSerializable, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NackTypeRef {
     ErrorInRouting(NodeId), // contains id of not neighbor
     DestinationIsDrone,
@@ -132,12 +129,12 @@ pub enum NackTypeRef {
     UnexpectedRecipient(NodeId),
 }
 
-#[derive(Serialize, IntoSerializable, Debug, Clone)]
+#[derive(Serialize, AsSerializable, Debug, Clone)]
 pub struct AckRef {
     pub fragment_index: u64,
 }
 
-#[derive(IntoSerializable, Debug, Clone)]
+#[derive(AsSerializable, Debug, Clone)]
 pub struct FragmentRef {
     pub fragment_index: u64,
     pub total_n_fragments: u64,
@@ -145,14 +142,14 @@ pub struct FragmentRef {
     pub data: [u8; FRAGMENT_DSIZE],
 }
 
-#[derive(Serialize, IntoSerializable, Debug, Clone)]
+#[derive(Serialize, AsSerializable, Debug, Clone)]
 pub struct FloodRequestRef {
     pub flood_id: u64,
     pub initiator_id: NodeId,
     pub path_trace: Vec<(NodeId, NodeTypeRef)>,
 }
 
-#[derive(Serialize, IntoSerializable, Debug, Clone)]
+#[derive(Serialize, AsSerializable, Debug, Clone)]
 pub struct FloodResponseRef {
     pub flood_id: u64,
 
@@ -160,7 +157,7 @@ pub struct FloodResponseRef {
     pub path_trace: Vec<(NodeId, NodeTypeRef)>,
 }
 
-#[derive(Serialize, IntoSerializable, Debug, Clone)]
+#[derive(Serialize, AsSerializable, Debug, Clone)]
 pub enum NodeTypeRef {
     Client,
     Drone,
@@ -196,7 +193,7 @@ impl Serialize for FragmentRef {
     }
 }
 
-#[derive(IntoSerializable, Serialize, Debug, Clone)]
+#[derive(AsSerializable, Serialize, Debug, Clone)]
 pub enum ClientEventRef {
     PacketSent(PacketRef),
     PacketReceived(PacketRef),
@@ -229,7 +226,7 @@ pub enum ClientEventRef {
     UnsupportedMessageTypeError,
 }
 
-#[derive(IntoSerializable, Serialize, Debug, PartialEq, Clone)]
+#[derive(AsSerializable, Serialize, Debug, PartialEq, Clone)]
 pub enum ChatMessageRef {
     TextMessage {
         from: NodeId,
@@ -243,27 +240,27 @@ pub enum ChatMessageRef {
     },
 }
 
-#[derive(IntoSerializable, Serialize, Debug, Clone)]
+#[derive(AsSerializable, Serialize, Debug, Clone)]
 pub enum ServerEventRef {
     PacketSent(PacketRef),
     PacketReceived(PacketRef),
 }
 
-#[derive(IntoSerializable, Serialize, Debug, Clone)]
+#[derive(AsSerializable, Serialize, Debug, Clone)]
 pub enum DroneEventRef {
     PacketSent(PacketRef),
     PacketDropped(PacketRef),
     ControllerShortcut(PacketRef),
 }
 
-#[derive(IntoSerializable, Serialize, Debug, Clone)]
+#[derive(AsSerializable, Serialize, Debug, Clone)]
 pub enum SCEventTypeRef {
     Client(ClientEventRef),
     Server(ServerEventRef),
     Drone(DroneEventRef),
 }
 
-#[derive(IntoSerializable, Serialize, Debug, Clone)]
+#[derive(AsSerializable, Serialize, Debug, Clone)]
 pub struct SCEventRef {
     pub event_type: SCEventTypeRef,
     pub sender_id: NodeId,
