@@ -32,7 +32,7 @@ fn main() {
     let temp_dir: Arc<TempDir> = Arc::new(tempdir().unwrap());
 
     let simulation_controller = NetworkInitializer::new(
-        "main/src/topology_configs/config.toml".to_string(),
+        "main/src/topology_configs/butterfly_3_clients.toml".to_string(),
         temp_dir.clone(),
     )
     .init_network();
