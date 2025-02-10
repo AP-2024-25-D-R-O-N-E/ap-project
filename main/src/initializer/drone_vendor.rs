@@ -10,6 +10,8 @@ pub enum DroneVendor {
     RustezeDrone,
     GetDroned,
     RustRoveri,
+    LeDronJamesDrone,
+    SkyLinkDrone,
     MyDrone,
     Unknown,
 }
@@ -17,17 +19,20 @@ pub enum DroneVendor {
 impl Display for DroneVendor {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let s = match self {
-            DroneVendor::RustafarianDrone => "RustafarianDrone".to_string(),
-            DroneVendor::LockheedRustin => "LockheedRustin".to_string(),
-            DroneVendor::RustyDrone => "RustyDrone".to_string(),
-            DroneVendor::RustBustersDrone => "RustBustersDrone".to_string(),
-            DroneVendor::CppEnjoyersDrone => "CppEnjoyersDrone".to_string(),
-            DroneVendor::RustezeDrone => "RustezeDrone".to_string(),
-            DroneVendor::GetDroned => "GetDroned".to_string(),
-            DroneVendor::RustRoveri => "RustRoveri".to_string(),
-            DroneVendor::MyDrone => "MyDrone".to_string(),
-            DroneVendor::Unknown => "Unknown".to_string(),
-        };
+            DroneVendor::RustafarianDrone => "RustafarianDrone",
+            DroneVendor::LockheedRustin => "LockheedRustin",
+            DroneVendor::RustyDrone => "RustyDrone",
+            DroneVendor::RustBustersDrone => "RustBustersDrone",
+            DroneVendor::CppEnjoyersDrone => "CppEnjoyersDrone",
+            DroneVendor::RustezeDrone => "RustezeDrone",
+            DroneVendor::GetDroned => "GetDroned",
+            DroneVendor::RustRoveri => "RustRoveri",
+            DroneVendor::MyDrone => "MyDrone",
+            DroneVendor::LeDronJamesDrone => "LeDronJamesDrone",
+            DroneVendor::Unknown => "Unknown",
+            DroneVendor::SkyLinkDrone => "SkyLinkDrone",
+        }
+        .to_string();
         write!(f, "{s}")
     }
 }
