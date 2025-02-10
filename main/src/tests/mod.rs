@@ -5,7 +5,6 @@ pub mod crash_test;
 pub mod message_serialization_test;
 pub mod server_features;
 
-use log::*;
 use simple_logger::SimpleLogger;
 use std::sync::Once;
 

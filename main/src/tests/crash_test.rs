@@ -1,3 +1,4 @@
+/*
 use std::{thread::sleep, time::Duration};
 
 use colored::Colorize;
@@ -8,7 +9,6 @@ use wg_2024::{
 };
 
 use crate::initializer::network_initializer::NetworkInitializer;
-/*
  TODO: test drone crashing with sc instead of network initializer
 =======
 

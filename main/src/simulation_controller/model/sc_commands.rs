@@ -345,4 +345,20 @@ impl SimulationController {
             None => log::error!("Cannot get shortcut destination"),
         }
     }
+
+    pub fn send_control_packet(&self, server_command: ServerCommand, node_id: NodeId) {
+        match &self.server_command_channels.get(&node_id) {
+            Some(channel) => match channel.send(server_command) {
+                Ok(_) => {
+                    log::info!("Control packet sent to node {}", node_id)
+                }
+                Err(err) => {
+                    log::error!("Channel error {}", err)
+                }
+            },
+            None => {
+                log::error!("Specified node does not exist")
+            }
+        }
+    }
 }

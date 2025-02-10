@@ -1,17 +1,11 @@
-use std::{
-    collections::VecDeque,
-    sync::{Arc, Mutex, RwLock},
-    thread::sleep,
-    time::Duration,
-};
+use std::{collections::VecDeque, sync::Arc, thread::sleep, time::Duration};
 
 use crate::{
-    fragmentation::message::{self, Message, MessageData},
+    fragmentation::message::{Message, MessageData},
     initializer::network_initializer::NetworkInitializer,
     simulation_controller::{ServerCommand, SimulationController},
 };
 use colored::Colorize;
-use simple_logger::SimpleLogger;
 use tempfile::{tempdir, TempDir};
 use wg_2024::{network::SourceRoutingHeader, packet::*};
 
@@ -19,9 +13,9 @@ use wg_2024::{network::SourceRoutingHeader, packet::*};
 fn server_functionality() {
     super::initialize();
     let temp_dir: Arc<TempDir> = Arc::new(tempdir().unwrap());
-    let mut network_initializer = NetworkInitializer::new(
+    let network_initializer = NetworkInitializer::new(
         "src/topology_configs/config_no_pdr.toml".to_string(),
-        temp_dir.clone(),
+        temp_dir,
     );
 
     let sc = network_initializer.init_network().unwrap();
@@ -195,22 +189,6 @@ fn chat_history(sc: &SimulationController) {
 
         sc.send_msg_fragment(packet);
     }
-}
-
-fn assemble(mut fragments: Vec<Fragment>) -> Message {
-    // sort fragments by index before assembling
-    fragments.sort_by(|a, b| a.fragment_index.cmp(&b.fragment_index));
-
-    let mut message_data: Vec<u8> = Vec::new();
-    for fragment in fragments {
-        if fragment.length < 128 {
-            message_data.extend(&fragment.data[0..fragment.length as usize]);
-        } else {
-            message_data.extend(&fragment.data);
-        }
-    }
-
-    Message::from_u8(message_data)
 }
 
 fn disassemble(msg: Message) -> std::collections::VecDeque<Fragment> {
