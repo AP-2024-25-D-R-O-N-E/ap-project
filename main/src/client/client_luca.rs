@@ -671,6 +671,17 @@ impl ClientLuca {
     fn send_file_msg(&self, receiver: NodeId, file_path: PathBuf) -> Option<Message> {
         let (file, file_name, extension) = file_to_byte_vec(file_path).unwrap();
 
+        // create file locally only if you're not the receiver
+        if receiver != self.id {
+
+            let file_path = byte_vec_to_file(file_name.clone(), extension.clone(), file.clone(), self.temp_dir.clone()).unwrap();
+
+            let local_file = ClientEvent::CreatedFileLocal { from: self.id, to: receiver, file_path };
+
+            self.scs.send(local_file);
+
+        }
+
         let msg = Message::new(
             self.id,
             receiver,

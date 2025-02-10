@@ -219,6 +219,36 @@ impl SCGui {
                     chat_history.push(chat_msg.clone());
                 }
             }
+        } else if let SCEventType::Client(ClientEvent::CreatedFileLocal {
+            from,
+            to,
+            file_path,
+        }) = &event.event_type
+        {
+            let sender_node_index = self
+                .state
+                .graph_section
+                .node_id_map
+                .get(&event.sender_id)
+                .unwrap();
+
+            if let NodeState::Client(client_state) = self
+                .state
+                .node_info_section
+                .states
+                .get_mut(&sender_node_index)
+                .unwrap()
+            {
+                let chat_msg = ChatMessage::FileMessage {
+                    from: *from,
+                    to: *to,
+                    file_path: file_path.clone(),
+                };
+
+                if let Some(chat_history) = client_state.chat_histories.get_mut(to) {
+                    chat_history.push(chat_msg.clone());
+                }
+            }
         }
     }
 

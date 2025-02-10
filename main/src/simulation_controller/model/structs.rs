@@ -20,7 +20,12 @@ pub enum ClientEvent {
         text: String,
     },
 
-    // the file message is only temporary and will be modified later
+    CreatedFileLocal{
+        from: NodeId,
+        to: NodeId,
+        file_path: PathBuf,
+    },
+
     FileMessage {
         from: NodeId,
         to: NodeId,
@@ -129,10 +134,11 @@ impl SCEventType {
                 ClientEvent::UnregisteredSenderError => None,
                 ClientEvent::UnregisteredRecipientError => None,
                 ClientEvent::UnsupportedMessageTypeError => None,
+                ClientEvent::CreatedFileLocal { from, to, file_path } => None,
             },
             SCEventType::Server(server_event) => match server_event {
                 ServerEvent::PacketSent(packet) => Some(packet.clone()),
-                ServerEvent::PacketReceived(packet) => None,
+                ServerEvent::PacketReceived(packet) => Some(packet.clone()),
             },
             SCEventType::Drone(drone_event) => match drone_event {
                 DroneEvent::PacketSent(packet) => Some(packet.clone()),
@@ -164,6 +170,7 @@ impl SCEventType {
                 ClientEvent::UnregisteredSenderError => "UnregisteredSenderError",
                 ClientEvent::UnregisteredRecipientError => "UnregisteredRecipientError",
                 ClientEvent::UnsupportedMessageTypeError => "UnsupportedMessageTypeError",
+                ClientEvent::CreatedFileLocal { from, to, file_path } => "Local File Created on Client",
             },
             SCEventType::Server(server_event) => match server_event {
                 ServerEvent::PacketSent(packet) => "PacketSent",
