@@ -96,6 +96,10 @@ impl Message {
     }
 
     pub fn from_u8(v: Vec<u8>) -> Self {
-        bincode::deserialize(&v).unwrap()
+        bincode::deserialize(&v).unwrap_or(Message {
+            origin_id: 0,
+            destination_id: 0,
+            message_data: MessageData::UnsupportedMessageTypeError,
+        })
     }
 }
