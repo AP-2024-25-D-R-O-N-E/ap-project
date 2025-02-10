@@ -700,7 +700,7 @@ impl ClientLuca {
 
         let res = send_channel.send(packet.clone());
 
-        if let Err(_) = res {
+        if res.is_err() {
             log::error!("Error in the send inside channel");
         } else {
             match self.scs.send(ClientEvent::PacketSent(packet.clone())) {
@@ -738,7 +738,7 @@ impl ClientLuca {
 
             let res = sender.send(packet.clone());
 
-            if let Err(_) = res {
+            if res.is_err() {
                 log::error!("Error in the send inside channel");
             } else {
                 match self.scs.send(ClientEvent::PacketSent(packet.clone())) {
@@ -927,7 +927,7 @@ impl ClientLuca {
 
         let r = send_channel.send(packet.clone());
 
-        if let Err(_) = r {
+        if r.is_err() {
             log::error!("The send inside channel gave an error")
         } else {
             match scs.send(ClientEvent::PacketSent(packet.clone())) {

@@ -47,6 +47,7 @@ use crate::{
 use super::{
     config_parsing::{parse_config, InitConfig},
     drone_vendor::DroneVendor,
+    util::DroneChannels,
 };
 
 pub struct NetworkInitializer {
@@ -600,14 +601,18 @@ pub fn spawn_drone_thread<T: Drone>(
 
 pub fn spawn_drone_thread_by_vendor(
     id: NodeId,
-    controller_send: Sender<DroneEvent>,
-    controller_recv: Receiver<DroneCommand>,
-    packet_recv: Receiver<Packet>,
-    packet_send: HashMap<u8, Sender<Packet>>,
     pdr: f32,
-    barrier_clone: Arc<Barrier>,
+    drone_channels: DroneChannels,
     vendor: DroneVendor,
+    barrier_clone: Arc<Barrier>,
 ) -> JoinHandle<()> {
+    let DroneChannels {
+        controller_send,
+        controller_recv,
+        packet_recv,
+        packet_send,
+    } = drone_channels;
+
     match vendor {
         DroneVendor::RustafarianDrone => spawn_drone_thread::<RustafarianDrone>(
             id,

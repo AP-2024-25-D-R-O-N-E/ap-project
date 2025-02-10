@@ -12,6 +12,7 @@ use wg_2024::{
 
 use crate::initializer::{
     drone_vendor::DroneVendor, network_initializer::spawn_drone_thread_by_vendor,
+    util::DroneChannels,
 };
 
 use super::{simulation_controller::SimulationController, ClientCommand, ServerCommand};
@@ -302,13 +303,15 @@ impl SimulationController {
         let barrier = Arc::new(Barrier::new(2));
         spawn_drone_thread_by_vendor(
             node_id,
-            drone_event_channel.0,
-            drone_command_channel.1,
-            drone_packet_channel.1,
-            drone_packet_senders,
             pdr,
-            barrier.clone(),
+            DroneChannels::new(
+                drone_event_channel.0,
+                drone_command_channel.1,
+                drone_packet_channel.1,
+                drone_packet_senders,
+            ),
             vendor,
+            barrier.clone(),
         );
         barrier.wait();
     }
