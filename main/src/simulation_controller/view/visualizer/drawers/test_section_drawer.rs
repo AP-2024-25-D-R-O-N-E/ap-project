@@ -115,15 +115,12 @@ pub fn send_msg_fragment_section(
             .on_hover_text("Invert the current path")
             .clicked()
         {
-            match parse_data::<u8>(state.test_section.msg_fragment_routing_path_string.clone()) {
-                Ok(parsed_path) => {
-                    let reversed_path: Vec<u8> = parsed_path.into_iter().rev().collect();
-                    let mut rv = format!("{:?}", reversed_path);
-                    rv.truncate(rv.len() - 1);
-                    rv.remove(0);
-                    state.test_section.msg_fragment_routing_path_string = rv;
-                }
-                Err(_) => (),
+            if let Ok(parsed_path) = parse_data::<u8>(state.test_section.msg_fragment_routing_path_string.clone()) {
+                let reversed_path: Vec<u8> = parsed_path.into_iter().rev().collect();
+                let mut rv = format!("{:?}", reversed_path);
+                rv.truncate(rv.len() - 1);
+                rv.remove(0);
+                state.test_section.msg_fragment_routing_path_string = rv;
             }
         }
     });
@@ -200,15 +197,12 @@ pub fn send_ack_nack_section(
             .on_hover_text("Invert the current path")
             .clicked()
         {
-            match parse_data::<u8>(state.test_section.ack_nack_routing_path_string.clone()) {
-                Ok(parsed_path) => {
-                    let reversed_path: Vec<u8> = parsed_path.into_iter().rev().collect();
-                    let mut rv = format!("{:?}", reversed_path);
-                    rv.truncate(rv.len() - 1);
-                    rv.remove(0);
-                    state.test_section.ack_nack_routing_path_string = rv;
-                }
-                Err(_) => (),
+            if let Ok(parsed_path) = parse_data::<u8>(state.test_section.ack_nack_routing_path_string.clone()) {
+                let reversed_path: Vec<u8> = parsed_path.into_iter().rev().collect();
+                let mut rv = format!("{:?}", reversed_path);
+                rv.truncate(rv.len() - 1);
+                rv.remove(0);
+                state.test_section.ack_nack_routing_path_string = rv;
             }
         }
     });

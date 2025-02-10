@@ -195,7 +195,7 @@ impl SimulationController {
             &self.packet_channels.get(&node_to_id),
         ) {
             (Some(c1), c2) => {
-                if let None = c2 {
+                if c2.is_none() {
                     log::warn!("Trying to remove a channel from unexisting node");
                 }
                 c1.send(DroneCommand::RemoveSender(node_to_id));
@@ -211,7 +211,7 @@ impl SimulationController {
                 &self.packet_channels.get(&node_to_id),
             ) {
                 (Some(c1), c2) => {
-                    if let None = c2 {
+                    if c2.is_none() {
                         log::warn!("Trying to remove a channel from unexisting node");
                     }
                     c1.send(ClientCommand::RemoveSender(node_to_id));
@@ -228,7 +228,7 @@ impl SimulationController {
                 &self.packet_channels.get(&node_to_id),
             ) {
                 (Some(c1), c2) => {
-                    if let None = c2 {
+                    if c2.is_none() {
                         log::warn!("Trying to remove a channel from unexisting node");
                     }
                     c1.send(ServerCommand::RemoveSender(node_to_id));

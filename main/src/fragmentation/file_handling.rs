@@ -117,6 +117,6 @@ pub fn raw_vec_to_chat_vec(
 pub fn chat_vec_to_raw_vec(chat_vec: Vec<ChatMessage>) -> Vec<RawChatMessage> {
     chat_vec
         .into_iter()
-        .map(|chat| RawChatMessage::from(chat))
+        .map(RawChatMessage::from)
         .collect()
 }

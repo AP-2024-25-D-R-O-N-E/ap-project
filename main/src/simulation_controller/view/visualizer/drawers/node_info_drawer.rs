@@ -417,7 +417,7 @@ fn draw_client_specific(
                         state
                             .chat_histories
                             .entry(curr_peer)
-                            .or_insert(vec![])
+                            .or_default()
                             .push(ChatMessage::TextMessage {
                                 from: curr_node_wg_id,
                                 to: curr_peer,
@@ -449,7 +449,7 @@ fn draw_client_specific(
         let selected_text =
             match get_client_node_state(&mut state.node_info_section, node_index).current_peer {
                 Some(id) => format!("Client {}", id),
-                None => format!("Select client"),
+                None => "Select client".to_string(),
             };
 
         egui::ComboBox::from_label("")
@@ -471,7 +471,7 @@ fn draw_client_specific(
                     &mut get_client_node_state(&mut state.node_info_section, node_index)
                         .current_peer,
                     None,
-                    format!("Select client"),
+                    "Select client".to_string(),
                 );
             });
         if ui.button("🔄").clicked() {
@@ -602,9 +602,9 @@ fn draw_client_no_grid_specific(
                                                             ))
                                                             {
                                                                 if let Some(path) = state.file_dialog.take_selected() {
-                                                                    let res = fs::copy(&*file_path, &path);
-                                                                    println!("saved image from {:?} to {:?} with res {:?}", &*file_path, path, res);
-                                                                    log::debug!("saved image from {:?} to {:?} with res {:?}", &*file_path, path, res);
+                                                                    let res = fs::copy(file_path, &path);
+                                                                    println!("saved image from {:?} to {:?} with res {:?}", file_path, path, res);
+                                                                    log::debug!("saved image from {:?} to {:?} with res {:?}", file_path, path, res);
                                                                 }
                                                             }
                                                         }

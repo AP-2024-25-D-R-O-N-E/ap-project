@@ -128,7 +128,7 @@ impl SCGui {
                 .state
                 .node_info_section
                 .states
-                .get_mut(&sender_node_index)
+                .get_mut(sender_node_index)
                 .unwrap()
             {
                 client_state.available_peers = ids.to_vec();
@@ -154,7 +154,7 @@ impl SCGui {
                 .state
                 .node_info_section
                 .states
-                .get_mut(&sender_node_index)
+                .get_mut(sender_node_index)
                 .unwrap()
             {
                 println!("{:?}", history);
@@ -176,7 +176,7 @@ impl SCGui {
                 .state
                 .node_info_section
                 .states
-                .get_mut(&sender_node_index)
+                .get_mut(sender_node_index)
                 .unwrap()
             {
                 let chat_msg = ChatMessage::TextMessage {
@@ -206,7 +206,7 @@ impl SCGui {
                 .state
                 .node_info_section
                 .states
-                .get_mut(&sender_node_index)
+                .get_mut(sender_node_index)
                 .unwrap()
             {
                 let chat_msg = ChatMessage::FileMessage {
