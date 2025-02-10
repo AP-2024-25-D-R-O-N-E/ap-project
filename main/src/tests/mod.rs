@@ -13,10 +13,9 @@ use std::sync::Once;
 static INIT: Once = Once::new();
 pub fn initialize() {
     INIT.call_once(|| {
-        SimpleLogger::new()
-            .without_timestamps()
-            .env()
-            .init()
-            .unwrap();
+        Builder::new()
+            .filter(None, LevelFilter::Off)
+            .filter(Some(module_path!()), LevelFilter::max())
+            .init();
     });
 }

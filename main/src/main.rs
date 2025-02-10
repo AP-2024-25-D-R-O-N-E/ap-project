@@ -1,8 +1,9 @@
 // #![allow(unused, dead_code)]
 // use 'use' for easier naming
 
+use env_logger::Builder;
 use initializer::network_initializer::NetworkInitializer;
-use simple_logger::SimpleLogger;
+use log::LevelFilter;
 use simulation_controller::visualizer::ui::run_gui;
 use std::{fs, sync::Arc};
 use tempfile::{tempdir, TempDir};
@@ -22,11 +23,13 @@ fn main() {
     // if args.len() < 2 {
     //     log::error!("Usage: {}", "cargo run -- simulation");
     // }
-    SimpleLogger::new()
-        .without_timestamps()
-        .env()
-        .init()
-        .unwrap();
+
+    Builder::new()
+        .filter(None, LevelFilter::Off)
+        .filter(Some(module_path!()), LevelFilter::max())
+        .init();
+
+    log::info!("App started");
 
     // temp dir for the entire simulation, behaves like a static variable
     let temp_dir: Arc<TempDir> = Arc::new(tempdir().unwrap());

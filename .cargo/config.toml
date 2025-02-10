@@ -2,5 +2,5 @@
 testout = "test -- --nocapture"
 
 [env]
-RUST_LOG = "Warn"
+RUST_LOG = "Trace"
 RUSTAFARIAN_LOG_LEVEL = "NONE"
