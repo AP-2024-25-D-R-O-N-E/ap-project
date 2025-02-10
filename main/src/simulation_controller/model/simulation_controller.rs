@@ -186,7 +186,7 @@ impl SimulationController {
                             _ => println!("{}", "Insert a valid number".italic().yellow()),
                         }
                     } else {
-                        log::error!("Please insert a valid number")
+                        log::error!("Please insert a valid number");
                     };
                 }
                 Err(err) => log::error!("Cannot read from stdin: {}", err),

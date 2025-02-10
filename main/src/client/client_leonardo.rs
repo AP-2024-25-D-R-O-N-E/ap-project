@@ -428,7 +428,7 @@ impl ClientLeonardo {
         if res.is_err() {
             log::error!("The send inside channel gave an error, this shouldn't be happening");
         } else if let Ok(()) = sim_contr_send.send(ClientEvent::PacketSent(packet.clone())) {
-            log::debug!("{} Packet sent: {}", "↳ client".purple(), packet)
+            log::debug!("{} Packet sent: {}", "↳ client".purple(), packet);
         } else {
             log::error!(
                 "{} Packet sent but couldn't be sent to the simulation controller",
@@ -511,9 +511,9 @@ impl ClientLeonardo {
                 s_id
             );
             if let Ok(()) = resend.send(p.clone()) {
-                log::debug!("{} Packet resent: {}", "↳ client".purple(), p)
+                log::debug!("{} Packet resent: {}", "↳ client".purple(), p);
             } else {
-                log::error!("{} Packet resent but couldn't be sent", "↳ client".purple())
+                log::error!("{} Packet resent but couldn't be sent", "↳ client".purple());
             }
             self.condv.notify_all();
         } else {
@@ -692,7 +692,7 @@ impl ClientLeonardo {
             .sim_contr_send
             .send(ClientEvent::PacketSent(packet.clone()))
         {
-            log::debug!("{} Packet sent: {}", "↳ client".purple(), packet)
+            log::debug!("{} Packet sent: {}", "↳ client".purple(), packet);
         } else {
             log::error!(
                 "{} Packet sent but couldn't be sent to the simulation controller",
@@ -707,7 +707,7 @@ impl ClientLeonardo {
 
     fn send_response(res: Vec<u8>, sim_send: Sender<ClientEvent>) {
         if let Ok(()) = sim_send.send(ClientEvent::ResponseClientsReceived(res)) {
-            log::debug!("{} Peers fetched", "↳ client".purple())
+            log::debug!("{} Peers fetched", "↳ client".purple());
         } else {
             log::error!(
                 "{} Couldn't send ResponseClientsReceived",
@@ -718,9 +718,9 @@ impl ClientLeonardo {
 
     fn client_ack(sim_send: Sender<ClientEvent>) {
         if let Ok(()) = sim_send.send(ClientEvent::AcknolewdgedAsClient) {
-            log::debug!("{} Acknowledged as client", "↳ client".purple())
+            log::debug!("{} Acknowledged as client", "↳ client".purple());
         } else {
-            log::error!("{} Couldn't send AcknolewdgedAsClient", "↳ client".purple())
+            log::error!("{} Couldn't send AcknolewdgedAsClient", "↳ client".purple());
         }
     }
 
@@ -734,7 +734,7 @@ impl ClientLeonardo {
             partner,
             history: raw_vec_to_chat_vec(history, temp_dir.clone()),
         }) {
-            log::debug!("{} History fetched", "↳ client".purple())
+            log::debug!("{} History fetched", "↳ client".purple());
         } else {
             log::error!(
                 "{} Couldn't send ResponseHistoryReceived",
@@ -745,7 +745,7 @@ impl ClientLeonardo {
 
     fn unregistered_sender_error(sim_send: Sender<ClientEvent>) {
         if let Ok(()) = sim_send.send(ClientEvent::UnregisteredSenderError) {
-            log::debug!("{} Unregistered sender error", "↳ client".purple())
+            log::debug!("{} Unregistered sender error", "↳ client".purple());
         } else {
             log::error!(
                 "{} Couldn't send UnregisteredSenderError",
@@ -756,7 +756,7 @@ impl ClientLeonardo {
 
     fn unregistered_recipient_error(sim_send: Sender<ClientEvent>) {
         if let Ok(()) = sim_send.send(ClientEvent::UnregisteredRecipientError) {
-            log::debug!("{} Unregistered recipient error", "↳ client".purple())
+            log::debug!("{} Unregistered recipient error", "↳ client".purple());
         } else {
             log::error!(
                 "{} Couldn't send UnregisteredRecipientError",
@@ -767,7 +767,7 @@ impl ClientLeonardo {
 
     fn unsupported_message_type_error(sim_send: Sender<ClientEvent>) {
         if let Ok(()) = sim_send.send(ClientEvent::UnsupportedMessageTypeError) {
-            log::debug!("{} Unsupported message type error", "↳ client".purple())
+            log::debug!("{} Unsupported message type error", "↳ client".purple());
         } else {
             log::error!(
                 "{} Couldn't send UnsupportedMessageTypeError",
@@ -783,9 +783,9 @@ impl ClientLeonardo {
         sim_send: Sender<ClientEvent>,
     ) {
         if let Ok(()) = sim_send.send(ClientEvent::TextMessage { from, to, text }) {
-            log::debug!("{} Text message received", "↳ client".purple())
+            log::debug!("{} Text message received", "↳ client".purple());
         } else {
-            log::error!("{} Couldn't send TextMessage", "↳ client".purple())
+            log::error!("{} Couldn't send TextMessage", "↳ client".purple());
         }
     }
 
@@ -803,9 +803,9 @@ impl ClientLeonardo {
             to,
             file_path: byte_vec_to_file(file_name, extension, file, temp_dir.clone()).unwrap(),
         }) {
-            log::debug!("{} File message received", "↳ client".purple())
+            log::debug!("{} File message received", "↳ client".purple());
         } else {
-            log::error!("{} Couldn't send FileMessage", "↳ client".purple())
+            log::error!("{} Couldn't send FileMessage", "↳ client".purple());
         }
     }
 
@@ -836,7 +836,7 @@ impl ClientLeonardo {
                 .sim_contr_send
                 .send(ClientEvent::PacketSent(packet.clone()))
             {
-                log::debug!("{} Packet sent: {}", "↳ client".purple(), packet)
+                log::debug!("{} Packet sent: {}", "↳ client".purple(), packet);
             } else {
                 log::error!(
                     "{} Packet sent but couldn't be sent to the simulation controller",
@@ -862,9 +862,9 @@ impl ClientLeonardo {
             MessageData::RequestClients(self.id),
         );
         if let Ok(()) = sender.send(m) {
-            log::debug!("{} Requesting clients", "↳ client".purple())
+            log::debug!("{} Requesting clients", "↳ client".purple());
         } else {
-            log::error!("{} Couldn't send RequestClients", "↳ client".purple())
+            log::error!("{} Couldn't send RequestClients", "↳ client".purple());
         }
     }
 
@@ -875,9 +875,9 @@ impl ClientLeonardo {
             MessageData::RegisterAsClient(self.id),
         );
         if let Ok(()) = sender.send(m) {
-            log::debug!("{} Registering as client", "↳ client".purple())
+            log::debug!("{} Registering as client", "↳ client".purple());
         } else {
-            log::error!("{} Couldn't send RegisterAsClient", "↳ client".purple())
+            log::error!("{} Couldn't send RegisterAsClient", "↳ client".purple());
         }
     }
 
@@ -888,9 +888,9 @@ impl ClientLeonardo {
             MessageData::UnregisterAsClient(self.id),
         );
         if let Ok(()) = sender.send(m) {
-            log::debug!("{} Unregistering as client", "↳ client".purple())
+            log::debug!("{} Unregistering as client", "↳ client".purple());
         } else {
-            log::error!("{} Couldn't send UnregisterAsClient", "↳ client".purple())
+            log::error!("{} Couldn't send UnregisterAsClient", "↳ client".purple());
         }
     }
 
