@@ -1,10 +1,9 @@
 use std::{
-    cell::RefCell,
     collections::{HashMap, HashSet, VecDeque},
     ffi::OsString,
     path::PathBuf,
     sync::{Arc, Condvar, Mutex, RwLock},
-    thread::{self, JoinHandle},
+    thread::{self},
 };
 
 use bincode::de::read;
@@ -42,9 +41,10 @@ use crate::{
     simulation_controller::structs::{ClientCommand, ClientEvent},
 };
 
-use super::ClientTrait;
-
-type LockRef<T> = Arc<RwLock<T>>;
+use super::{
+    utils::{ClientChannels, LockRef, SenderThreadChannels},
+    ClientTrait,
+};
 
 pub struct ClientLeonardo {
     id: NodeId,
@@ -121,10 +121,12 @@ impl ClientTrait for ClientLeonardo {
         thread::spawn(move || {
             Self::sender_thread(
                 id,
-                packet_send,
-                sim_contr_send,
-                fragment_receiver,
-                nacks_recv,
+                SenderThreadChannels::new(
+                    packet_send,
+                    sim_contr_send,
+                    nacks_recv,
+                    fragment_receiver,
+                ),
                 condv,
                 ack_buffer,
                 topology,
@@ -147,10 +149,8 @@ impl ClientTrait for ClientLeonardo {
                 chat_server_id,
                 fragment_buffer,
                 ready_for_handler,
-                thread_receiver,
-                fragment_sender,
-                sim_control_send,
                 temp_dir,
+                ClientChannels::new(thread_receiver, fragment_sender, sim_control_send),
             );
         });
 
@@ -239,10 +239,9 @@ impl ClientLeonardo {
 
     fn sender_thread(
         id: NodeId,
-        packet_sender: LockRef<HashMap<u8, Sender<Packet>>>,
-        sim_contr_send: Sender<ClientEvent>,
-        fragment_recv: Receiver<(NodeId, u64, Fragment)>,
-        nack_recv: Receiver<Packet>,
+
+        sender_thread_channels: SenderThreadChannels,
+
         condv: Arc<Condvar>,
         ack_packet_buffer: Arc<Mutex<HashMap<(u64, u64), Packet>>>,
         topology: LockRef<GraphMap<NodeId, f64, Undirected>>,
@@ -250,6 +249,12 @@ impl ClientLeonardo {
     ) {
         // temporary number
         const MAX_OUTPUT_BUFFER: usize = 1024;
+        let SenderThreadChannels {
+            packet_sender,
+            sim_contr_send,
+            nack_recv,
+            fragment_recv,
+        } = sender_thread_channels;
 
         loop {
             select_biased!(
@@ -315,12 +320,16 @@ impl ClientLeonardo {
         server_id: Arc<Mutex<NodeId>>,
         fragment_buffers: LockRef<HashMap<(NodeId, u64), Vec<Fragment>>>,
         ready: Receiver<(NodeId, u64)>,
-        command_recv: Receiver<Message>,
-        fragment_sender: Sender<(NodeId, u64, Fragment)>,
-        sim_send: Sender<ClientEvent>,
         temp_dir: Arc<TempDir>,
+        client_channels: ClientChannels,
     ) {
         let mut session_id = 1;
+
+        let ClientChannels {
+            command_recv,
+            fragment_sender,
+            sim_send,
+        } = client_channels;
 
         loop {
             select_biased!(
@@ -826,13 +835,21 @@ impl ClientLeonardo {
 
         // create file locally only if you're not the receiver
         if receiver != self.id {
+            let file_path = byte_vec_to_file(
+                file_name.clone(),
+                extension.clone(),
+                file.clone(),
+                self.temp_dir.clone(),
+            )
+            .unwrap();
 
-            let file_path = byte_vec_to_file(file_name.clone(), extension.clone(), file.clone(), self.temp_dir.clone()).unwrap();
-
-            let local_file = ClientEvent::CreatedFileLocal { from: self.id, to: receiver, file_path };
+            let local_file = ClientEvent::CreatedFileLocal {
+                from: self.id,
+                to: receiver,
+                file_path,
+            };
 
             self.sim_contr_send.send(local_file);
-
         }
 
         let m = Message::new(

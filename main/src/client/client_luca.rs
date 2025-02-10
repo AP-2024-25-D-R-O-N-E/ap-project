@@ -21,9 +21,12 @@ use wg_2024::{
 };
 
 use super::ClientTrait;
-use crate::fragmentation::{
-    file_handling::{byte_vec_to_file, file_to_byte_vec, raw_vec_to_chat_vec},
-    message::{MessageData, RawChatMessage},
+use crate::{
+    client::utils::SenderThreadChannels,
+    fragmentation::{
+        file_handling::{byte_vec_to_file, file_to_byte_vec, raw_vec_to_chat_vec},
+        message::{MessageData, RawChatMessage},
+    },
 };
 use crate::{
     fragmentation::{message::Message, Fragmenter},
@@ -96,10 +99,7 @@ impl ClientTrait for ClientLuca {
         threads.push(thread::spawn(move || {
             ClientLuca::sender_thread(
                 id,
-                packet_s,
-                scs,
-                fragment_r,
-                nack_r,
+                SenderThreadChannels::new(packet_s, scs, nack_r, fragment_r),
                 condv,
                 ack_packet_buffer,
                 topology,
@@ -212,10 +212,9 @@ impl ClientLuca {
 
     fn sender_thread(
         id: NodeId,
-        packet_s: LockRef<HashMap<u8, Sender<Packet>>>,
-        scs: Sender<ClientEvent>,
-        fragment_r: Receiver<(NodeId, u64, Fragment)>,
-        nack_r: Receiver<Packet>,
+
+        sender_thread_channels: SenderThreadChannels,
+
         condv: Arc<Condvar>,
         ack_packet_buffer: Arc<Mutex<HashMap<(u64, u64), Packet>>>,
         topology: LockRef<GraphMap<NodeId, (), Undirected>>,
@@ -226,10 +225,16 @@ impl ClientLuca {
         let mut routing_table: HashMap<NodeId, Vec<NodeId>> = HashMap::new();
 
         const MAX_OUTPUT_BUFFER: usize = 1024;
+        let SenderThreadChannels {
+            packet_sender,
+            sim_contr_send,
+            nack_recv,
+            fragment_recv,
+        } = sender_thread_channels;
 
         loop {
             select_biased!(
-                recv(nack_r) -> nack_res => {
+                recv(nack_recv) -> nack_res => {
                     if let Ok(mut packet) = nack_res {
                         // recalculate route if topology was modified
                         let mut topology_mod_lock = topology_modified.lock().unwrap();
@@ -245,7 +250,7 @@ impl ClientLuca {
 
                         let mut ack_buffer = condv
                         .wait_while(ack_packet_buffer.lock().unwrap(), |buff| {
-                            buff.len() + nack_r.len() >= MAX_OUTPUT_BUFFER
+                            buff.len() + nack_recv.len() >= MAX_OUTPUT_BUFFER
                         })
                         .unwrap();
 
@@ -253,11 +258,11 @@ impl ClientLuca {
                             ack_buffer.insert((packet.session_id, fragment.fragment_index), packet.clone());
                         }
 
-                        Self::send_msg_packet(id, packet_s.clone(), scs.clone(), packet);
+                        Self::send_msg_packet(id, packet_sender.clone(), sim_contr_send.clone(), packet);
 
                     }
                 },
-                recv(fragment_r) -> frag_res => {
+                recv(fragment_recv) -> frag_res => {
                     if let Ok((destination, session_id, fragment)) = frag_res {
                         // choose the route for the packet
                         if !routing_table.contains_key(&destination) {
@@ -278,13 +283,13 @@ impl ClientLuca {
                         // get the ack_buffer through mutex and on condition
                         let mut ack_buffer = condv
                         .wait_while(ack_packet_buffer.lock().unwrap(), |buff| {
-                            buff.len() + nack_r.len() >= MAX_OUTPUT_BUFFER
+                            buff.len() + nack_recv.len() >= MAX_OUTPUT_BUFFER
                         })
                         .unwrap();
 
                         ack_buffer.insert((session_id, fragment_index), packet.clone());
 
-                        Self::send_msg_packet(id, packet_s.clone(), scs.clone(), packet);
+                        Self::send_msg_packet(id, packet_sender.clone(), sim_contr_send.clone(), packet);
                     }
                 }
             );
@@ -673,13 +678,21 @@ impl ClientLuca {
 
         // create file locally only if you're not the receiver
         if receiver != self.id {
+            let file_path = byte_vec_to_file(
+                file_name.clone(),
+                extension.clone(),
+                file.clone(),
+                self.temp_dir.clone(),
+            )
+            .unwrap();
 
-            let file_path = byte_vec_to_file(file_name.clone(), extension.clone(), file.clone(), self.temp_dir.clone()).unwrap();
-
-            let local_file = ClientEvent::CreatedFileLocal { from: self.id, to: receiver, file_path };
+            let local_file = ClientEvent::CreatedFileLocal {
+                from: self.id,
+                to: receiver,
+                file_path,
+            };
 
             self.scs.send(local_file);
-
         }
 
         let msg = Message::new(

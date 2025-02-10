@@ -1,5 +1,6 @@
 pub mod client_leonardo;
 pub mod client_luca;
+pub mod utils;
 
 use std::{
     collections::HashMap,

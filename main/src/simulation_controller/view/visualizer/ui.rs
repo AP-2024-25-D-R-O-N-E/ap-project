@@ -236,7 +236,7 @@ impl SCGui {
                 .state
                 .node_info_section
                 .states
-                .get_mut(&sender_node_index)
+                .get_mut(sender_node_index)
                 .unwrap()
             {
                 let chat_msg = ChatMessage::FileMessage {
