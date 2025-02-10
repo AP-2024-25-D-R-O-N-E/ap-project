@@ -2,7 +2,7 @@ use egui::{Color32, FontId, Pos2, Rect, Rounding, Shadow, Shape, Stroke, Vec2};
 use egui_graphs::{DisplayNode, NodeProps};
 use petgraph::{stable_graph::IndexType, EdgeType};
 
-use crate::{initializer::node_vendor::{DroneVendor, Vendor}, simulation_controller::util};
+use crate::{initializer::node_vendor::Vendor, simulation_controller::util};
 
 fn get_text(ctx: &egui_graphs::DrawContext, text: String, pos: Pos2) -> Shape {
     ctx.ctx.fonts(|fonts| {

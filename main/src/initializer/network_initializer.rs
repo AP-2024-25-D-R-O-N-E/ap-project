@@ -162,11 +162,10 @@ impl NetworkInitializer {
 
             let barrier_clone: Arc<Barrier> = Arc::clone(&drone_barrier);
 
-            let vendor = self
+            let vendor = *self
                 .drone_vendors
                 .get(&drone_id)
-                .unwrap_or(&DroneVendor::Unknown)
-                .clone();
+                .unwrap_or(&DroneVendor::Unknown);
 
             self.handles.insert(
                 drone_id,
@@ -194,7 +193,7 @@ impl NetworkInitializer {
         // client initialization
 
         let client_barrier = Arc::new(Barrier::new(self.config.client.len() + 1));
-        for (index, client) in self.config.client.iter().enumerate() {
+        for client in self.config.client.iter() {
             let client_event_send = unbounded::<ClientEvent>();
             let client_command_rec = unbounded::<ClientCommand>();
 
@@ -220,11 +219,16 @@ impl NetworkInitializer {
 
             let barrier_clone = Arc::clone(&client_barrier);
 
+            let vendor = *self
+                .client_vendors
+                .get(&client_id)
+                .unwrap_or(&ClientVendor::Unknown);
+
             self.handles.insert(
                 client_id,
                 thread::spawn(move || {
                     let mut client = Self::create_client(
-                        index as u8,
+                        vendor,
                         command_receiver,
                         command_send,
                         packet_send,
@@ -273,10 +277,17 @@ impl NetworkInitializer {
             let temp_dir = Arc::clone(&self.temp_dir);
 
             let barrier_clone = Arc::clone(&server_barrier);
+
+            let vendor = *self
+                .server_vendors
+                .get(&server_id)
+                .unwrap_or(&ServerVendor::Unknown);
+
             self.handles.insert(
                 server_id,
                 thread::spawn(move || {
                     let mut server = Self::create_server(
+                        vendor,
                         command_receiver,
                         command_send,
                         packet_send,
@@ -315,10 +326,10 @@ impl NetworkInitializer {
         let mut node_map_function: HashMap<wg_2024::network::NodeId, petgraph::graph::NodeIndex> =
             HashMap::new();
         for drone in &config.drone {
-            let vendor = drone_vendors
+            let vendor = *drone_vendors
                 .get(&drone.id)
-                .unwrap_or(&DroneVendor::Unknown)
-                .clone();
+                .unwrap_or(&DroneVendor::Unknown);
+
             let n = graph.add_node(UiNodePayload {
                 node_type: UiNodeType::Drone(UiDroneNode::new(drone.pdr)),
                 vendor: Vendor::Drone(vendor),
@@ -328,10 +339,10 @@ impl NetworkInitializer {
         }
 
         for server in &config.server {
-            let vendor = server_vendors
+            let vendor = *server_vendors
                 .get(&server.id)
-                .unwrap_or(&ServerVendor::GinosServer)
-                .clone();
+                .unwrap_or(&ServerVendor::GinosServer);
+
             let n = graph.add_node(UiNodePayload {
                 node_type: UiNodeType::Server(UiServerNode {}),
                 vendor: Vendor::Server(vendor),
@@ -341,10 +352,9 @@ impl NetworkInitializer {
         }
 
         for client in &config.client {
-            let vendor = client_vendors
+            let vendor = *client_vendors
                 .get(&client.id)
-                .unwrap_or(&ClientVendor::Unknown)
-                .clone();
+                .unwrap_or(&ClientVendor::Unknown);
             let n = graph.add_node(UiNodePayload {
                 node_type: UiNodeType::Client(UiClientNode {}),
                 vendor: Vendor::Client(vendor),
@@ -386,6 +396,7 @@ impl NetworkInitializer {
     }
 
     fn create_server(
+        vendor: ServerVendor,
         command_receiver: Receiver<ServerCommand>,
         command_send: Sender<ServerEvent>,
         packet_send: HashMap<u8, Sender<Packet>>,
@@ -393,18 +404,28 @@ impl NetworkInitializer {
         server_id: u8,
         temp_dir: Arc<TempDir>,
     ) -> Box<dyn ServerTrait> {
-        Box::new(ChatServer::new(
-            server_id,
-            command_send,
-            command_receiver,
-            packet_recv,
-            packet_send,
-            temp_dir,
-        ))
+        match vendor {
+            ServerVendor::GinosServer => Box::new(ChatServer::new(
+                server_id,
+                command_send,
+                command_receiver,
+                packet_recv,
+                packet_send,
+                temp_dir,
+            )),
+            _ => Box::new(ChatServer::new(
+                server_id,
+                command_send,
+                command_receiver,
+                packet_recv,
+                packet_send,
+                temp_dir,
+            )),
+        }
     }
 
     fn create_client(
-        index: u8,
+        vendor: ClientVendor,
         command_receiver: Receiver<ClientCommand>,
         command_send: Sender<ClientEvent>,
         packet_send: HashMap<u8, Sender<Packet>>,
@@ -412,8 +433,16 @@ impl NetworkInitializer {
         client_id: u8,
         temp_dir: Arc<TempDir>,
     ) -> Box<dyn ClientTrait> {
-        match index {
-            0 => Box::new(ClientLuca::new(
+        match vendor {
+            ClientVendor::LeonardosClient => Box::new(ClientLeonardo::new(
+                client_id,
+                command_send,
+                command_receiver,
+                packet_recv,
+                packet_send,
+                temp_dir,
+            )),
+            ClientVendor::LucasClient => Box::new(ClientLuca::new(
                 client_id,
                 command_send,
                 command_receiver,
@@ -714,14 +743,15 @@ pub fn client_vendor_from_id(id: usize) -> ClientVendor {
     match id % 2 {
         0 => ClientVendor::LeonardosClient,
         1 => ClientVendor::LucasClient,
-        _ => ClientVendor::LeonardosClient,
+        _ => ClientVendor::Unknown,
     }
 }
 
+#[allow(clippy::modulo_one)]
 pub fn server_vendor_from_id(id: usize) -> ServerVendor {
     match id % 1 {
         0 => ServerVendor::GinosServer,
-        _ => ServerVendor::GinosServer,
+        _ => ServerVendor::Unknown,
     }
 }
 
