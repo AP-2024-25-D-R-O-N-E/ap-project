@@ -1,4 +1,4 @@
-use std::{fs::File, path::PathBuf};
+use std::path::PathBuf;
 
 use crossbeam::channel::Sender;
 use wg_2024::{
@@ -7,7 +7,7 @@ use wg_2024::{
     packet::{self, Packet},
 };
 
-use crate::fragmentation::message::{ChatMessage, RawChatMessage};
+use crate::fragmentation::message::ChatMessage;
 
 /// From client to controller
 #[derive(Debug, Clone)]
@@ -20,7 +20,12 @@ pub enum ClientEvent {
         text: String,
     },
 
-    // the file message is only temporary and will be modified later
+    CreatedFileLocal {
+        from: NodeId,
+        to: NodeId,
+        file_path: PathBuf,
+    },
+
     FileMessage {
         from: NodeId,
         to: NodeId,
@@ -50,9 +55,15 @@ pub enum ClientCommand {
     RegisterAsClient,
     UnregisterAsClient,
     OpenChatWith(NodeId),
-    SendTextMessageTo { receiver: NodeId, message: String },
+    SendTextMessageTo {
+        receiver: NodeId,
+        message: String,
+    },
     // the file message is only temporary and will be modified later
-    SendFileMessageTo { receiver: NodeId, file_path: PathBuf },
+    SendFileMessageTo {
+        receiver: NodeId,
+        file_path: PathBuf,
+    },
 }
 
 /// From server to controller
@@ -123,10 +134,15 @@ impl SCEventType {
                 ClientEvent::UnregisteredSenderError => None,
                 ClientEvent::UnregisteredRecipientError => None,
                 ClientEvent::UnsupportedMessageTypeError => None,
+                ClientEvent::CreatedFileLocal {
+                    from: _,
+                    to: _,
+                    file_path: _,
+                } => None,
             },
             SCEventType::Server(server_event) => match server_event {
                 ServerEvent::PacketSent(packet) => Some(packet.clone()),
-                ServerEvent::PacketReceived(packet) => None,
+                ServerEvent::PacketReceived(packet) => Some(packet.clone()),
             },
             SCEventType::Drone(drone_event) => match drone_event {
                 DroneEvent::PacketSent(packet) => Some(packet.clone()),
@@ -138,9 +154,9 @@ impl SCEventType {
 
     pub fn get_sender_type(&self) -> String {
         match self {
-            SCEventType::Client(client_event) => "Client",
-            SCEventType::Server(server_event) => "Server",
-            SCEventType::Drone(drone_event) => "Drone",
+            SCEventType::Client(_client_event) => "Client",
+            SCEventType::Server(_server_event) => "Server",
+            SCEventType::Drone(_drone_event) => "Drone",
         }
         .to_string()
     }
@@ -148,8 +164,8 @@ impl SCEventType {
     pub fn get_event_type(&self) -> String {
         match self {
             SCEventType::Client(client_event) => match client_event {
-                ClientEvent::PacketSent(packet) => "PacketSent",
-                ClientEvent::PacketReceived(packet) => "PacketReceived",
+                ClientEvent::PacketSent(_packet) => "PacketSent",
+                ClientEvent::PacketReceived(_packet) => "PacketReceived",
                 ClientEvent::TextMessage { .. } => "TextMessage",
                 ClientEvent::FileMessage { .. } => "FileMessage",
                 ClientEvent::ResponseClientsReceived(..) => "ResponseClientsReceived",
@@ -158,29 +174,35 @@ impl SCEventType {
                 ClientEvent::UnregisteredSenderError => "UnregisteredSenderError",
                 ClientEvent::UnregisteredRecipientError => "UnregisteredRecipientError",
                 ClientEvent::UnsupportedMessageTypeError => "UnsupportedMessageTypeError",
+                ClientEvent::CreatedFileLocal {
+                    from: _,
+                    to: _,
+                    file_path: _,
+                } => "Local File Created on Client",
             },
             SCEventType::Server(server_event) => match server_event {
-                ServerEvent::PacketSent(packet) => "PacketSent",
-                ServerEvent::PacketReceived(packet) => "PacketReceived",
+                ServerEvent::PacketSent(_packet) => "PacketSent",
+                ServerEvent::PacketReceived(_packet) => "PacketReceived",
             },
             SCEventType::Drone(drone_event) => match drone_event {
-                DroneEvent::PacketSent(packet) => "PacketSent",
-                DroneEvent::PacketDropped(packet) => "PacketDropped",
-                DroneEvent::ControllerShortcut(packet) => "ControllerShortcut",
+                DroneEvent::PacketSent(_packet) => "PacketSent",
+                DroneEvent::PacketDropped(_packet) => "PacketDropped",
+                DroneEvent::ControllerShortcut(_packet) => "ControllerShortcut",
             },
         }
         .to_string()
     }
 
+    #[allow(dead_code)]
     pub fn get_packet_type(&self) -> Option<String> {
         match self.get_packet() {
             Some(packet) => Some(
                 match packet.pack_type {
-                    packet::PacketType::MsgFragment(fragment) => "MsgFragment",
-                    packet::PacketType::Ack(ack) => "Ack",
-                    packet::PacketType::Nack(nack) => "Nack",
-                    packet::PacketType::FloodRequest(flood_request) => "FlooadRequest",
-                    packet::PacketType::FloodResponse(flood_response) => "FloodResponse",
+                    packet::PacketType::MsgFragment(_fragment) => "MsgFragment",
+                    packet::PacketType::Ack(_ack) => "Ack",
+                    packet::PacketType::Nack(_nack) => "Nack",
+                    packet::PacketType::FloodRequest(_flood_request) => "FlooadRequest",
+                    packet::PacketType::FloodResponse(_flood_response) => "FloodResponse",
                 }
                 .to_string(),
             ),
@@ -191,6 +213,7 @@ impl SCEventType {
 }
 
 impl SCEvent {
+    #[allow(dead_code)]
     pub fn get_sender_node_index(&self) -> Option<u8> {
         self.event_type.get_sender_node_index()
     }
@@ -199,17 +222,19 @@ impl SCEvent {
         self.event_type.get_packet()
     }
 
+    #[allow(dead_code)]
     pub fn get_sender_type(&self) -> String {
         self.event_type.get_sender_type()
     }
 
+    #[allow(dead_code)]
     pub fn get_event_type(&self) -> String {
         self.event_type.get_event_type()
     }
 }
 
 impl SCEvent {
-    /// Create a new SCEvent
+    /// Create a new `SCEvent`
     pub fn new(sender_id: NodeId, event_type: SCEventType) -> SCEvent {
         SCEvent {
             event_type,

@@ -13,6 +13,7 @@ use rustbusters_drone::RustBustersDrone;
 use rusteze_drone::RustezeDrone;
 use rusty_drones::RustyDrone;
 use skylink::SkyLinkDrone;
+use tempfile::TempDir;
 use LeDron_James::Drone as LeDron_JamesDrone;
 
 use std::{
@@ -33,10 +34,7 @@ use wg_2024::{
 use d_r_o_n_e_drone::MyDrone;
 
 use crate::{
-    client::{
-        client_leonardo::ClientLeonardo, client_luca::ClientLuca, client_test::Client,
-        client_test_2::Client2, ClientTrait,
-    },
+    client::{client_leonardo::ClientLeonardo, client_luca::ClientLuca, ClientTrait},
     server::{server_gino::ChatServer, ServerTrait},
     simulation_controller::{
         edge::UiEdgePayload,
@@ -48,7 +46,8 @@ use crate::{
 
 use super::{
     config_parsing::{parse_config, InitConfig},
-    drone_vendor::DroneVendor,
+    node_vendor::{ClientVendor, DroneVendor, ServerVendor, Vendor},
+    util::DroneChannels,
 };
 
 pub struct NetworkInitializer {
@@ -61,15 +60,35 @@ pub struct NetworkInitializer {
     pub server_event_channels: HashMap<NodeId, (Sender<ServerEvent>, Receiver<ServerEvent>)>,
     pub server_command_channels: HashMap<NodeId, (Sender<ServerCommand>, Receiver<ServerCommand>)>,
     pub topology: StableGraph<UiNodePayload, UiEdgePayload, Undirected>,
+    pub drone_vendors: HashMap<NodeId, DroneVendor>,
+    pub client_vendors: HashMap<NodeId, ClientVendor>,
+    pub server_vendors: HashMap<NodeId, ServerVendor>,
 
+    temp_dir: Arc<TempDir>,
     handles: HashMap<NodeId, JoinHandle<()>>,
 }
 
 impl NetworkInitializer {
-    pub fn new(config_path: String) -> NetworkInitializer {
+    pub fn new(config_path: String, temp_dir: Arc<TempDir>) -> NetworkInitializer {
         let config = parse_config(config_path);
+
+        let mut drone_vendors = HashMap::new();
+        for (index, drone) in config.drone.iter().enumerate() {
+            drone_vendors.insert(drone.id, drone_vendor_from_id(index));
+        }
+
+        let mut client_vendors = HashMap::new();
+        for (index, client) in config.client.iter().enumerate() {
+            client_vendors.insert(client.id, client_vendor_from_id(index));
+        }
+
+        let mut server_vendors = HashMap::new();
+        for (index, server) in config.server.iter().enumerate() {
+            server_vendors.insert(server.id, server_vendor_from_id(index));
+        }
+
         NetworkInitializer {
-            packet_channels: HashMap::new(), // packets
+            packet_channels: HashMap::new(),
             node_event_channels: HashMap::new(),
             drone_command_channels: HashMap::new(),
             client_event_channels: HashMap::new(),
@@ -77,25 +96,33 @@ impl NetworkInitializer {
             server_event_channels: HashMap::new(),
             server_command_channels: HashMap::new(),
             handles: HashMap::new(),
-            topology: NetworkInitializer::get_topology_from_config(&config),
+            topology: NetworkInitializer::get_topology_from_config(
+                &config,
+                &drone_vendors,
+                &client_vendors,
+                &server_vendors,
+            ),
             config,
+            temp_dir,
+            drone_vendors,
+            client_vendors,
+            server_vendors,
         }
     }
 
     pub fn init_network(mut self) -> Result<SimulationController, String> {
         //create 3 different version since we might want the simulation controller channels to depend on node type
-        for drone in self.config.drone.iter() {
+        for drone in &self.config.drone {
             //create unbounded channel for drones
-            self.packet_channels
-                .insert(drone.id, unbounded::<Packet>());
+            self.packet_channels.insert(drone.id, unbounded::<Packet>());
         }
 
-        for client in self.config.client.iter() {
+        for client in &self.config.client {
             self.packet_channels
                 .insert(client.id, unbounded::<Packet>());
         }
 
-        for server in self.config.server.iter() {
+        for server in &self.config.server {
             self.packet_channels
                 .insert(server.id, unbounded::<Packet>());
         }
@@ -134,11 +161,17 @@ impl NetworkInitializer {
             let pdr = drone.pdr;
 
             let barrier_clone: Arc<Barrier> = Arc::clone(&drone_barrier);
+
+            let vendor = *self
+                .drone_vendors
+                .get(&drone_id)
+                .unwrap_or(&DroneVendor::Unknown);
+
             self.handles.insert(
                 drone_id,
                 thread::spawn(move || {
                     let mut drone = Self::create_drone(
-                        index,
+                        vendor,
                         drone_id,
                         command_send,
                         command_receiver,
@@ -147,7 +180,7 @@ impl NetworkInitializer {
                         pdr,
                     );
 
-                    log::info!("{}", format!("Initialized drone {}", index).purple());
+                    log::info!("{}", format!("Initialized drone {index}").purple());
                     barrier_clone.wait();
                     // run function is where the logic of the drone runs.
                     drone.run();
@@ -160,7 +193,7 @@ impl NetworkInitializer {
         // client initialization
 
         let client_barrier = Arc::new(Barrier::new(self.config.client.len() + 1));
-        for (index, client) in self.config.client.iter().enumerate() {
+        for client in self.config.client.iter() {
             let client_event_send = unbounded::<ClientEvent>();
             let client_command_rec = unbounded::<ClientCommand>();
 
@@ -182,22 +215,30 @@ impl NetworkInitializer {
 
             let client_id: NodeId = client.id;
 
+            let temp_dir = Arc::clone(&self.temp_dir);
+
             let barrier_clone = Arc::clone(&client_barrier);
+
+            let vendor = *self
+                .client_vendors
+                .get(&client_id)
+                .unwrap_or(&ClientVendor::Unknown);
 
             self.handles.insert(
                 client_id,
                 thread::spawn(move || {
                     let mut client = Self::create_client(
-                        index as u8,
+                        vendor,
                         command_receiver,
                         command_send,
                         packet_send,
                         packet_recv,
                         client_id,
+                        temp_dir,
                     );
                     log::info!(
                         "{}, {:?}",
-                        format!("Initialized client {}", client_id).bold().purple(),
+                        format!("Initialized client {client_id}").bold().purple(),
                         client,
                     );
 
@@ -211,7 +252,7 @@ impl NetworkInitializer {
         log::info!("{}", "Clients initialized successfully!".bold().green());
 
         let server_barrier = Arc::new(Barrier::new(self.config.server.len() + 1));
-        for (index, server) in self.config.server.iter().enumerate() {
+        for server in &self.config.server {
             let server_event_send = unbounded::<ServerEvent>();
             let server_command_rec = unbounded::<ServerCommand>();
 
@@ -233,21 +274,30 @@ impl NetworkInitializer {
 
             let server_id: NodeId = server.id;
 
+            let temp_dir = Arc::clone(&self.temp_dir);
+
             let barrier_clone = Arc::clone(&server_barrier);
+
+            let vendor = *self
+                .server_vendors
+                .get(&server_id)
+                .unwrap_or(&ServerVendor::Unknown);
+
             self.handles.insert(
                 server_id,
                 thread::spawn(move || {
                     let mut server = Self::create_server(
-                        index as u8,
+                        vendor,
                         command_receiver,
                         command_send,
                         packet_send,
                         packet_recv,
                         server_id,
+                        temp_dir,
                     );
                     log::info!(
                         "{}, {:?}",
-                        format!("Initialized server {}", server_id).bold().purple(),
+                        format!("Initialized server {server_id}").bold().purple(),
                         server,
                     );
 
@@ -264,43 +314,50 @@ impl NetworkInitializer {
         // create simulation controller and give all the join handles to it + the channels
     }
 
-    //just for testing purposes
-    pub fn get_send_channel(&self, drone_id: NodeId) -> &Sender<Packet> {
-        &self.packet_channels.get(&drone_id).unwrap().0
-    }
-
-    pub fn get_drone_command_channel(&self, drone_id: NodeId) -> &Sender<DroneCommand> {
-        &self.drone_command_channels[&drone_id].0
-    }
-
     /// Constructs graph from config file.
     pub fn get_topology_from_config(
         config: &InitConfig,
+        drone_vendors: &HashMap<NodeId, DroneVendor>,
+        client_vendors: &HashMap<NodeId, ClientVendor>,
+        server_vendors: &HashMap<NodeId, ServerVendor>,
     ) -> StableGraph<UiNodePayload, UiEdgePayload, Undirected> {
         let mut graph = StableUnGraph::<UiNodePayload, UiEdgePayload>::default();
 
         let mut node_map_function: HashMap<wg_2024::network::NodeId, petgraph::graph::NodeIndex> =
             HashMap::new();
         for drone in &config.drone {
+            let vendor = *drone_vendors
+                .get(&drone.id)
+                .unwrap_or(&DroneVendor::Unknown);
+
             let n = graph.add_node(UiNodePayload {
                 node_type: UiNodeType::Drone(UiDroneNode::new(drone.pdr)),
-                vendor: DroneVendor::Unknown,
+                vendor: Vendor::Drone(vendor),
                 wg_id: drone.id,
             });
             node_map_function.insert(drone.id, n);
         }
+
         for server in &config.server {
+            let vendor = *server_vendors
+                .get(&server.id)
+                .unwrap_or(&ServerVendor::GinosServer);
+
             let n = graph.add_node(UiNodePayload {
                 node_type: UiNodeType::Server(UiServerNode {}),
-                vendor: DroneVendor::Unknown,
+                vendor: Vendor::Server(vendor),
                 wg_id: server.id,
             });
             node_map_function.insert(server.id, n);
         }
+
         for client in &config.client {
+            let vendor = *client_vendors
+                .get(&client.id)
+                .unwrap_or(&ClientVendor::Unknown);
             let n = graph.add_node(UiNodePayload {
                 node_type: UiNodeType::Client(UiClientNode {}),
-                vendor: DroneVendor::Unknown,
+                vendor: Vendor::Client(vendor),
                 wg_id: client.id,
             });
             node_map_function.insert(client.id, n);
@@ -339,37 +396,59 @@ impl NetworkInitializer {
     }
 
     fn create_server(
-        index: u8,
+        vendor: ServerVendor,
         command_receiver: Receiver<ServerCommand>,
         command_send: Sender<ServerEvent>,
         packet_send: HashMap<u8, Sender<Packet>>,
         packet_recv: Receiver<Packet>,
         server_id: u8,
+        temp_dir: Arc<TempDir>,
     ) -> Box<dyn ServerTrait> {
-        Box::new(ChatServer::new(
-            server_id,
-            command_send,
-            command_receiver,
-            packet_recv,
-            packet_send,
-        ))
+        match vendor {
+            ServerVendor::GinosServer => Box::new(ChatServer::new(
+                server_id,
+                command_send,
+                command_receiver,
+                packet_recv,
+                packet_send,
+                temp_dir,
+            )),
+            _ => Box::new(ChatServer::new(
+                server_id,
+                command_send,
+                command_receiver,
+                packet_recv,
+                packet_send,
+                temp_dir,
+            )),
+        }
     }
 
     fn create_client(
-        index: u8,
+        vendor: ClientVendor,
         command_receiver: Receiver<ClientCommand>,
         command_send: Sender<ClientEvent>,
         packet_send: HashMap<u8, Sender<Packet>>,
         packet_recv: Receiver<Packet>,
         client_id: u8,
+        temp_dir: Arc<TempDir>,
     ) -> Box<dyn ClientTrait> {
-        match index {
-            0 => Box::new(ClientLuca::new(
+        match vendor {
+            ClientVendor::LeonardosClient => Box::new(ClientLeonardo::new(
                 client_id,
                 command_send,
                 command_receiver,
                 packet_recv,
                 packet_send,
+                temp_dir,
+            )),
+            ClientVendor::LucasClient => Box::new(ClientLuca::new(
+                client_id,
+                command_send,
+                command_receiver,
+                packet_recv,
+                packet_send,
+                temp_dir,
             )),
             _ => Box::new(ClientLeonardo::new(
                 client_id,
@@ -377,12 +456,13 @@ impl NetworkInitializer {
                 command_receiver,
                 packet_recv,
                 packet_send,
+                temp_dir,
             )),
         }
     }
 
-    fn create_drone(
-        drone_index: usize, // index determines which implementation of drone to use
+    pub fn create_drone(
+        drone_vendor: DroneVendor,
         id: NodeId,
         controller_send: Sender<DroneEvent>,
         controller_recv: Receiver<DroneCommand>,
@@ -390,9 +470,8 @@ impl NetworkInitializer {
         packet_send: HashMap<NodeId, Sender<Packet>>,
         pdr: f32,
     ) -> Box<dyn Drone> {
-        let final_index = drone_index % 10;
-        match final_index {
-            0 => Box::new(RustafarianDrone::new(
+        match drone_vendor {
+            DroneVendor::RustafarianDrone => Box::new(RustafarianDrone::new(
                 id,
                 controller_send,
                 controller_recv,
@@ -400,7 +479,7 @@ impl NetworkInitializer {
                 packet_send,
                 pdr,
             )),
-            1 => Box::new(LockheedRustin::new(
+            DroneVendor::LockheedRustin => Box::new(LockheedRustin::new(
                 id,
                 controller_send,
                 controller_recv,
@@ -408,7 +487,7 @@ impl NetworkInitializer {
                 packet_send,
                 pdr,
             )),
-            2 => Box::new(RustyDrone::new(
+            DroneVendor::RustyDrone => Box::new(RustyDrone::new(
                 id,
                 controller_send,
                 controller_recv,
@@ -416,7 +495,7 @@ impl NetworkInitializer {
                 packet_send,
                 pdr,
             )),
-            3 => Box::new(RustBustersDrone::new(
+            DroneVendor::RustBustersDrone => Box::new(RustBustersDrone::new(
                 id,
                 controller_send,
                 controller_recv,
@@ -424,7 +503,7 @@ impl NetworkInitializer {
                 packet_send,
                 pdr,
             )),
-            4 => Box::new(CppEnjoyersDrone::new(
+            DroneVendor::CppEnjoyersDrone => Box::new(CppEnjoyersDrone::new(
                 id,
                 controller_send,
                 controller_recv,
@@ -432,7 +511,7 @@ impl NetworkInitializer {
                 packet_send,
                 pdr,
             )),
-            5 => Box::new(RustezeDrone::new(
+            DroneVendor::RustezeDrone => Box::new(RustezeDrone::new(
                 id,
                 controller_send,
                 controller_recv,
@@ -440,7 +519,7 @@ impl NetworkInitializer {
                 packet_send,
                 pdr,
             )),
-            6 => Box::new(GetDroned::new(
+            DroneVendor::GetDroned => Box::new(GetDroned::new(
                 id,
                 controller_send,
                 controller_recv,
@@ -448,7 +527,7 @@ impl NetworkInitializer {
                 packet_send,
                 pdr,
             )),
-            7 => Box::new(RustRoveri::new(
+            DroneVendor::RustRoveri => Box::new(RustRoveri::new(
                 id,
                 controller_send,
                 controller_recv,
@@ -456,7 +535,7 @@ impl NetworkInitializer {
                 packet_send,
                 pdr,
             )),
-            8 => Box::new(SkyLinkDrone::new(
+            DroneVendor::LeDronJamesDrone => Box::new(LeDron_JamesDrone::new(
                 id,
                 controller_send,
                 controller_recv,
@@ -464,7 +543,7 @@ impl NetworkInitializer {
                 packet_send,
                 pdr,
             )),
-            9 => Box::new(LeDron_JamesDrone::new(
+            DroneVendor::SkyLinkDrone => Box::new(SkyLinkDrone::new(
                 id,
                 controller_send,
                 controller_recv,
@@ -472,7 +551,15 @@ impl NetworkInitializer {
                 packet_send,
                 pdr,
             )),
-            _ => Box::new(MyDrone::new(
+            DroneVendor::MyDrone => Box::new(MyDrone::new(
+                id,
+                controller_send,
+                controller_recv,
+                packet_recv,
+                packet_send,
+                pdr,
+            )),
+            DroneVendor::Unknown => Box::new(MyDrone::new(
                 id,
                 controller_send,
                 controller_recv,
@@ -484,130 +571,20 @@ impl NetworkInitializer {
     }
 }
 
-pub fn create_drone_from_vendor(
-    drone_vendor: DroneVendor,
-    id: NodeId,
-    controller_send: Sender<DroneEvent>,
-    controller_recv: Receiver<DroneCommand>,
-    packet_recv: Receiver<Packet>,
-    packet_send: HashMap<NodeId, Sender<Packet>>,
-    pdr: f32,
-) -> Box<dyn Drone> {
-    match drone_vendor {
-        DroneVendor::RustafarianDrone => Box::new(RustafarianDrone::new(
-            id,
-            controller_send,
-            controller_recv,
-            packet_recv,
-            packet_send,
-            pdr,
-        )),
-        DroneVendor::LockheedRustin => Box::new(LockheedRustin::new(
-            id,
-            controller_send,
-            controller_recv,
-            packet_recv,
-            packet_send,
-            pdr,
-        )),
-        DroneVendor::RustyDrone => Box::new(RustyDrone::new(
-            id,
-            controller_send,
-            controller_recv,
-            packet_recv,
-            packet_send,
-            pdr,
-        )),
-        DroneVendor::RustBustersDrone => Box::new(RustBustersDrone::new(
-            id,
-            controller_send,
-            controller_recv,
-            packet_recv,
-            packet_send,
-            pdr,
-        )),
-        DroneVendor::CppEnjoyersDrone => Box::new(CppEnjoyersDrone::new(
-            id,
-            controller_send,
-            controller_recv,
-            packet_recv,
-            packet_send,
-            pdr,
-        )),
-        DroneVendor::RustezeDrone => Box::new(RustezeDrone::new(
-            id,
-            controller_send,
-            controller_recv,
-            packet_recv,
-            packet_send,
-            pdr,
-        )),
-        DroneVendor::GetDroned => Box::new(GetDroned::new(
-            id,
-            controller_send,
-            controller_recv,
-            packet_recv,
-            packet_send,
-            pdr,
-        )),
-        DroneVendor::RustRoveri => Box::new(RustRoveri::new(
-            id,
-            controller_send,
-            controller_recv,
-            packet_recv,
-            packet_send,
-            pdr,
-        )),
-        _ => Box::new(MyDrone::new(
-            id,
-            controller_send,
-            controller_recv,
-            packet_recv,
-            packet_send,
-            pdr,
-        )),
-    }
-}
-
-pub fn spawn_drone_thread<T: Drone>(
-    id: u8,
-    controller_send: Sender<DroneEvent>,
-    controller_recv: Receiver<DroneCommand>,
-    packet_recv: Receiver<Packet>,
-    packet_send: HashMap<u8, Sender<Packet>>,
-    pdr: f32,
-    barrier_clone: Arc<Barrier>,
-) -> JoinHandle<()> {
-    thread::spawn(move || {
-        let mut drone = T::new(
-            id,
-            controller_send,
-            controller_recv,
-            packet_recv,
-            packet_send,
-            pdr,
-        );
-
-        log::info!(
-            "{}",
-            format!("Initialized drone Rustafarian {}", id).purple()
-        );
-        barrier_clone.wait();
-        // run function is where the logic of the drone runs.
-        drone.run();
-    })
-}
-
 pub fn spawn_drone_thread_by_vendor(
     id: NodeId,
-    controller_send: Sender<DroneEvent>,
-    controller_recv: Receiver<DroneCommand>,
-    packet_recv: Receiver<Packet>,
-    packet_send: HashMap<u8, Sender<Packet>>,
     pdr: f32,
-    barrier_clone: Arc<Barrier>,
+    drone_channels: DroneChannels,
     vendor: DroneVendor,
+    barrier_clone: Arc<Barrier>,
 ) -> JoinHandle<()> {
+    let DroneChannels {
+        controller_send,
+        controller_recv,
+        packet_recv,
+        packet_send,
+    } = drone_channels;
+
     match vendor {
         DroneVendor::RustafarianDrone => spawn_drone_thread::<RustafarianDrone>(
             id,
@@ -681,6 +658,24 @@ pub fn spawn_drone_thread_by_vendor(
             pdr,
             barrier_clone,
         ),
+        DroneVendor::LeDronJamesDrone => spawn_drone_thread::<LeDron_JamesDrone>(
+            id,
+            controller_send,
+            controller_recv,
+            packet_recv,
+            packet_send,
+            pdr,
+            barrier_clone,
+        ),
+        DroneVendor::SkyLinkDrone => spawn_drone_thread::<SkyLinkDrone>(
+            id,
+            controller_send,
+            controller_recv,
+            packet_recv,
+            packet_send,
+            pdr,
+            barrier_clone,
+        ),
         DroneVendor::MyDrone => spawn_drone_thread::<MyDrone>(
             id,
             controller_send,
@@ -699,6 +694,64 @@ pub fn spawn_drone_thread_by_vendor(
             pdr,
             barrier_clone,
         ),
+    }
+}
+
+pub fn spawn_drone_thread<T: Drone>(
+    id: u8,
+    controller_send: Sender<DroneEvent>,
+    controller_recv: Receiver<DroneCommand>,
+    packet_recv: Receiver<Packet>,
+    packet_send: HashMap<u8, Sender<Packet>>,
+    pdr: f32,
+    barrier_clone: Arc<Barrier>,
+) -> JoinHandle<()> {
+    thread::spawn(move || {
+        let mut drone = T::new(
+            id,
+            controller_send,
+            controller_recv,
+            packet_recv,
+            packet_send,
+            pdr,
+        );
+
+        log::info!("{}", format!("Initialized drone Rustafarian {id}").purple());
+        barrier_clone.wait();
+        // run function is where the logic of the drone runs.
+        drone.run();
+    })
+}
+
+pub fn drone_vendor_from_id(id: usize) -> DroneVendor {
+    match id % 10 {
+        0 => DroneVendor::RustafarianDrone,
+        1 => DroneVendor::LockheedRustin,
+        2 => DroneVendor::RustyDrone,
+        3 => DroneVendor::RustBustersDrone,
+        4 => DroneVendor::CppEnjoyersDrone,
+        5 => DroneVendor::RustezeDrone,
+        6 => DroneVendor::GetDroned,
+        7 => DroneVendor::RustRoveri,
+        8 => DroneVendor::LeDronJamesDrone,
+        9 => DroneVendor::SkyLinkDrone,
+        _ => DroneVendor::MyDrone,
+    }
+}
+
+pub fn client_vendor_from_id(id: usize) -> ClientVendor {
+    match id % 2 {
+        0 => ClientVendor::LeonardosClient,
+        1 => ClientVendor::LucasClient,
+        _ => ClientVendor::Unknown,
+    }
+}
+
+#[allow(clippy::modulo_one)]
+pub fn server_vendor_from_id(id: usize) -> ServerVendor {
+    match id % 1 {
+        0 => ServerVendor::GinosServer,
+        _ => ServerVendor::Unknown,
     }
 }
 

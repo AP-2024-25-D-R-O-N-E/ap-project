@@ -1,13 +1,8 @@
-use egui::{Layout, Response, Ui, Widget};
+use egui::Ui;
 
-use crate::simulation_controller::{
-    node::{UiDroneNode, UiNodePayload},
-    serialization_ref_structs::IntoSerializable,
-    state::{DisplayOptions, State},
-    util,
-};
+use crate::simulation_controller::state::State;
 
-use super::{display_status_flag, get_result_flag_widget, get_status_flag_widget, toggle_compact};
+use super::{get_result_flag_widget, toggle_compact};
 
 //Emojis 🧪📋🛠️❌📂
 pub fn draw_toolbar_section(ui: &mut Ui, state: &mut State) {
@@ -92,6 +87,14 @@ pub fn draw_toolbar_section(ui: &mut Ui, state: &mut State) {
 
         toggle_compact::toggle_ui_compact(ui, &mut state.toolbar_section.handle_shortcuts);
         ui.label("Handle shortcuts");
+
+        toggle_compact::toggle_ui_compact(ui, &mut state.toolbar_section.loggin_enabled);
+        ui.label("Enable logging");
+
+        toggle_compact::toggle_ui_compact(ui, &mut state.toolbar_section.auto_flood);
+        ui.label("Auto flood").on_hover_text(
+            "Issues flood request on each edge node every time a new drone is spawned",
+        );
 
         ui.separator();
 

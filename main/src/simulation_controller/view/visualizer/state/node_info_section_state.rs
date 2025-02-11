@@ -1,5 +1,8 @@
 use petgraph::{graph::NodeIndex, prelude::StableGraph, Undirected};
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet},
+    path::PathBuf,
+};
 use wg_2024::network::NodeId;
 
 use crate::{
@@ -29,10 +32,10 @@ impl NodeInfoSectionState {
         for node_index in graph.node_indices() {
             let node_payload = graph.node_weight(node_index).unwrap();
             match &node_payload.node_type {
-                Server(ui_server_node) => {
+                Server(_) => {
                     states.insert(node_index, NodeState::Server(ServerState {}));
                 }
-                Client(ui_client_node) => {
+                Client(_) => {
                     states.insert(node_index, NodeState::Client(ClientState::default()));
                 }
                 Drone(ui_drone_node) => {
@@ -70,6 +73,8 @@ pub struct ClientState {
     pub current_peer: Option<NodeId>,
     pub last_peer: Option<NodeId>,
     pub chat_histories: HashMap<NodeId, Vec<ChatMessage>>,
+    pub selected_file_path: Option<PathBuf>,
+    pub unread_messages: HashSet<NodeId>,
 }
 
 #[derive(Debug, Clone)]

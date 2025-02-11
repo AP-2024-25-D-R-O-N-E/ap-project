@@ -1,6 +1,4 @@
-use crate::simulation_controller::{ClientEvent, SCEvent, SCEventType, ServerEvent};
-use petgraph::graph::NodeIndex;
-use wg_2024::{controller::DroneEvent, packet::Packet};
+use crate::simulation_controller::{SCEvent, SCEventType};
 
 #[derive(Default)]
 pub struct EventsState {
@@ -21,9 +19,9 @@ impl EventsState {
                 .clone()
                 .into_iter()
                 .filter(|e| match &e.event_type {
-                    SCEventType::Client(client_event) => display_options.clients,
-                    SCEventType::Server(server_event) => display_options.servers,
-                    SCEventType::Drone(drone_event) => display_options.drones,
+                    SCEventType::Client(_) => display_options.clients,
+                    SCEventType::Server(_) => display_options.servers,
+                    SCEventType::Drone(_) => display_options.drones,
                 })
                 .collect(),
         }
@@ -36,7 +34,6 @@ impl EventsState {
         self.events.push(event);
     }
 }
-
 
 #[derive(Clone, Copy)]
 pub struct DisplayOptions {
@@ -53,24 +50,32 @@ impl DisplayOptions {
         servers: true,
         specific_index: None,
     };
+
+    #[allow(dead_code)]
     pub const DRONES_ONLY: DisplayOptions = DisplayOptions {
         drones: true,
         clients: false,
         servers: false,
         specific_index: None,
     };
+
+    #[allow(dead_code)]
     pub const CLIENTS_ONLY: DisplayOptions = DisplayOptions {
         drones: false,
         clients: true,
         servers: false,
         specific_index: None,
     };
+
+    #[allow(dead_code)]
     pub const SERVERS_ONLY: DisplayOptions = DisplayOptions {
         drones: false,
         clients: false,
         servers: true,
         specific_index: None,
     };
+
+    #[allow(dead_code)]
     pub fn from_index(node_index: wg_2024::network::NodeId) -> DisplayOptions {
         DisplayOptions {
             drones: true,

@@ -1,5 +1,4 @@
-// use egui::epaint::*;
-use egui::{epaint::PathStroke, Color32, Pos2, Shape, Stroke};
+use egui::{Pos2, Shape, Stroke};
 use egui_graphs::{DefaultEdgeShape, DisplayEdge, DisplayNode, DrawContext, EdgeProps, Node};
 use petgraph::{stable_graph::IndexType, EdgeType};
 
@@ -60,7 +59,7 @@ impl<N: Clone, Ty: EdgeType, Ix: IndexType, D: DisplayNode<N, UiEdgePayload, Ty,
     }
 
     fn update(&mut self, props: &egui_graphs::EdgeProps<UiEdgePayload>) {
-        self.payload = props.payload.clone()
+        self.payload = props.payload.clone();
     }
 
     fn is_inside(

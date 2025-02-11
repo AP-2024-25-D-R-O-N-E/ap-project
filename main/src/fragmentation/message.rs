@@ -1,4 +1,4 @@
-use std::{ffi::OsString, mem, path::PathBuf};
+use std::{ffi::OsString, path::PathBuf};
 
 use serde::{Deserialize, Serialize};
 use wg_2024::network::NodeId;
@@ -86,17 +86,20 @@ pub enum ChatMessage {
     FileMessage {
         from: NodeId,
         to: NodeId,
-        file_path: PathBuf
+        file_path: PathBuf,
     },
 }
 
 impl Message {
-    pub fn into_u8(&self) -> Vec<u8> {
+    pub fn as_u8(&self) -> Vec<u8> {
         bincode::serialize(&self).unwrap()
     }
 
     pub fn from_u8(v: Vec<u8>) -> Self {
-        bincode::deserialize(&v).unwrap()
+        bincode::deserialize(&v).unwrap_or(Message {
+            origin_id: 0,
+            destination_id: 0,
+            message_data: MessageData::UnsupportedMessageTypeError,
+        })
     }
 }
-

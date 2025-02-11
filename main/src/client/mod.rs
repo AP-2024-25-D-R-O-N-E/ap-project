@@ -1,22 +1,14 @@
 pub mod client_leonardo;
 pub mod client_luca;
-pub mod client_test;
-pub mod client_test_2;
+pub mod utils;
 
-use std::{collections::HashMap, fmt::Debug};
+use std::{collections::HashMap, fmt::Debug, sync::Arc};
 
-use client_luca::ClientLuca;
-use colored::Colorize;
-use crossbeam::channel::{select_biased, Receiver, Sender};
-use wg_2024::{
-    network::NodeId,
-    packet::{Ack, FloodRequest, FloodResponse, Fragment, Nack, Packet, PacketType},
-};
+use crossbeam::channel::{Receiver, Sender};
+use tempfile::TempDir;
+use wg_2024::{network::NodeId, packet::Packet};
 
-use crate::{
-    fragmentation::{message::Message, Fragmenter},
-    simulation_controller::structs::{ClientCommand, ClientEvent},
-};
+use crate::simulation_controller::structs::{ClientCommand, ClientEvent};
 
 // since we're doing the communication stuff, both clients will need to implement ClientTrait
 pub trait ClientTrait {
@@ -26,6 +18,7 @@ pub trait ClientTrait {
         sim_contr_recv: Receiver<ClientCommand>,
         packet_recv: Receiver<Packet>,
         packet_send: HashMap<NodeId, Sender<Packet>>,
+        temp_dir: Arc<TempDir>,
     ) -> Self
     where
         Self: Sized;

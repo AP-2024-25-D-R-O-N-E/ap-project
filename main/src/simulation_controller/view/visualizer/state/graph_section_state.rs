@@ -12,7 +12,7 @@ use petgraph::{
 use wg_2024::network::NodeId;
 
 use crate::{
-    initializer::drone_vendor::DroneVendor,
+    initializer::node_vendor::{DroneVendor, Vendor},
     simulation_controller::{
         edge::{CustomEdgeShape, UiEdgePayload},
         node::{CustomNodeShape, UiClientNode, UiDroneNode, UiNodePayload, UiServerNode},
@@ -39,7 +39,6 @@ pub struct GraphSectionState {
 
 impl GraphSectionState {
     pub fn new(graph: StableGraph<UiNodePayload, UiEdgePayload, Undirected>) -> GraphSectionState {
-        let graph_section = GraphSectionState::default();
         let (event_publisher, event_consumer) = unbounded();
         let ui_graph = Graph::from(&graph);
         let well_formedness_flag = is_well_formed(&ui_graph.g);
@@ -53,10 +52,12 @@ impl GraphSectionState {
         }
     }
 
+    #[allow(unused)]
     pub fn wg_id(&self, index: NodeIndex) -> Option<NodeId> {
         self.g.node(index).map(|node| node.payload().wg_id)
     }
 
+    #[allow(unused)]
     pub fn graph_id(&self, index: NodeId) -> Option<NodeIndex> {
         self.node_id_map.get(&index).copied()
     }
@@ -93,47 +94,47 @@ fn generate_graph() -> StableGraph<UiNodePayload, UiEdgePayload, Undirected> {
 
     let a = graph.add_node(UiNodePayload {
         node_type: UiNodeType::Client(UiClientNode {}),
-        vendor: DroneVendor::MyDrone,
+        vendor: Vendor::Drone(DroneVendor::MyDrone),
         wg_id: 0,
     });
     let b = graph.add_node(UiNodePayload {
         node_type: UiNodeType::Drone(UiDroneNode::default()),
-        vendor: DroneVendor::MyDrone,
+        vendor: Vendor::Drone(DroneVendor::MyDrone),
         wg_id: 1,
     });
     let c = graph.add_node(UiNodePayload {
         node_type: UiNodeType::Drone(UiDroneNode::default()),
-        vendor: DroneVendor::MyDrone,
+        vendor: Vendor::Drone(DroneVendor::MyDrone),
         wg_id: 2,
     });
     let d = graph.add_node(UiNodePayload {
         node_type: UiNodeType::Server(UiServerNode {}),
-        vendor: DroneVendor::MyDrone,
+        vendor: Vendor::Drone(DroneVendor::MyDrone),
         wg_id: 3,
     });
     let e = graph.add_node(UiNodePayload {
         node_type: UiNodeType::Drone(UiDroneNode::default()),
-        vendor: DroneVendor::MyDrone,
+        vendor: Vendor::Drone(DroneVendor::MyDrone),
         wg_id: 4,
     });
     let f = graph.add_node(UiNodePayload {
         node_type: UiNodeType::Drone(UiDroneNode::default()),
-        vendor: DroneVendor::MyDrone,
+        vendor: Vendor::Drone(DroneVendor::MyDrone),
         wg_id: 5,
     });
     let g = graph.add_node(UiNodePayload {
         node_type: UiNodeType::Drone(UiDroneNode::default()),
-        vendor: DroneVendor::MyDrone,
+        vendor: Vendor::Drone(DroneVendor::MyDrone),
         wg_id: 6,
     });
     let h = graph.add_node(UiNodePayload {
         node_type: UiNodeType::Server(UiServerNode {}),
-        vendor: DroneVendor::MyDrone,
+        vendor: Vendor::Drone(DroneVendor::MyDrone),
         wg_id: 7,
     });
     let i = graph.add_node(UiNodePayload {
         node_type: UiNodeType::Server(UiServerNode {}),
-        vendor: DroneVendor::MyDrone,
+        vendor: Vendor::Drone(DroneVendor::MyDrone),
         wg_id: 8,
     });
 

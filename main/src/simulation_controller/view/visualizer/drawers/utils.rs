@@ -1,18 +1,21 @@
-use egui::{Label, RichText, Ui, Widget};
+use egui::{Label, RichText, Ui};
 
 use crate::simulation_controller::util::{colors, StatusFlag};
 
 pub fn display_status_flag(status_flag: &StatusFlag, ui: &mut Ui) {
-    if let Some(status) = &status_flag { match status {
-        Ok(s) => {
-            ui.label(RichText::new(s).color(colors::MUTED_GREEN));
+    if let Some(status) = &status_flag {
+        match status {
+            Ok(s) => {
+                ui.label(RichText::new(s).color(colors::MUTED_GREEN));
+            }
+            Err(s) => {
+                ui.label(RichText::new(s).color(colors::MUTED_RED));
+            }
         }
-        Err(s) => {
-            ui.label(RichText::new(s).color(colors::MUTED_RED));
-        }
-    } }
+    }
 }
 
+#[allow(unused)]
 pub fn get_status_flag_widget(status_flag: &StatusFlag) -> Label {
     match status_flag {
         Some(Ok(s)) => Label::new(RichText::new(s).color(colors::MUTED_GREEN)),
@@ -27,4 +30,3 @@ pub fn get_result_flag_widget<T: ToString, U: ToString>(status_flag: &Result<T, 
         Err(s) => Label::new(RichText::new(s.to_string()).color(colors::MUTED_RED)),
     }
 }
-

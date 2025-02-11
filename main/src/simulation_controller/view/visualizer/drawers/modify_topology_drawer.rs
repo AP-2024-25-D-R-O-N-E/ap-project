@@ -1,24 +1,17 @@
-use super::super::util::graph::*;
-use egui::{CollapsingHeader, Context, RichText, ScrollArea, Ui, Window};
-use egui_extras::{Size, StripBuilder};
-use petgraph::graph::{EdgeIndex, NodeIndex};
+use super::super::util::graph::{
+    add_edge_between, check_edge_addition, check_edge_removal, remove_edges_between,
+};
+use egui::{CollapsingHeader, RichText, Ui};
 use wg_2024::network::NodeId;
 
 use crate::{
-    initializer::drone_vendor::DroneVendor,
+    initializer::node_vendor::DroneVendor,
     simulation_controller::{
-        node::{UiDroneNode, UiNodePayload, UiNodeType},
-        state::{DisplayOptions, NodeInfoSectionState, State},
-        util::{
-            self, add_drone, check_drone_addition, check_node_removal, colors, parse_string,
-            remove_node,
-        },
+        node::UiNodeType,
+        state::{DroneState, NodeState, State},
+        util::{add_drone, check_drone_addition, colors, parse_string},
         SimulationController,
     },
-};
-
-use crate::simulation_controller::util::{
-    get_drone_node_from_state, get_payload_from_state, get_payload_mut_from_state,
 };
 
 pub fn draw_modify_topology_section(
@@ -108,24 +101,26 @@ pub fn draw_modify_topology_section(
                 });
 
             if ui.button("Spawn").clicked() && can_insert_drone(state) {
-                for (index, node_content) in state.graph_section.g.nodes_iter() {
-                    let payload = node_content.payload();
-                    match &payload.node_type {
-                        UiNodeType::Server(ui_server_node) => {
-                            simulation_controller.send_server_start_flood(payload.wg_id)
+                insert_drone(state, simulation_controller);
+                if state.toolbar_section.auto_flood {
+                    for (_, node_content) in state.graph_section.g.nodes_iter() {
+                        let payload = node_content.payload();
+                        match &payload.node_type {
+                            UiNodeType::Server(_) => {
+                                simulation_controller.send_server_start_flood(payload.wg_id);
+                            }
+                            UiNodeType::Client(_) => {
+                                simulation_controller.send_client_start_flood(payload.wg_id);
+                            }
+                            UiNodeType::Drone(_) => (),
                         }
-                        UiNodeType::Client(ui_client_node) => {
-                            simulation_controller.send_client_start_flood(payload.wg_id)
-                        }
-                        UiNodeType::Drone(ui_drone_node) => (),
                     }
                 }
-                insert_drone(state, simulation_controller)
             }
 
             if let Some(status) = &state.modify_topology_section.status_flag {
                 match status {
-                    Ok(s) => {
+                    Ok(_) => {
                         ui.label(
                             RichText::new("Drone spawned with success").color(colors::MUTED_GREEN),
                         );
@@ -145,16 +140,16 @@ pub fn draw_modify_topology_section(
                 .spacing([40.0, 4.0])
                 .striped(true)
                 .show(ui, |ui| {
-                    add_remove_sender_section(ui, state, simulation_controller)
+                    add_remove_sender_section(ui, state, simulation_controller);
                 });
         });
 }
 
 fn can_insert_drone(state: &mut State) -> bool {
-    match parse_string::<NodeId>(state.modify_topology_section.neighbors.clone()) {
+    match parse_string::<NodeId>(&state.modify_topology_section.neighbors) {
         Ok(wg_neighbor_ids) => {
             match check_drone_addition(&mut state.graph_section, &wg_neighbor_ids) {
-                Ok(_) => {
+                Ok(()) => {
                     state.modify_topology_section.status_flag =
                         Some(Ok("Drone inserted".to_string()));
                     true
@@ -173,21 +168,32 @@ fn can_insert_drone(state: &mut State) -> bool {
 }
 
 fn insert_drone(state: &mut State, simulation_controller: &mut SimulationController) {
-    let neighbors =
-        parse_string::<NodeId>(state.modify_topology_section.neighbors.clone()).unwrap();
+    let neighbors = parse_string::<NodeId>(&state.modify_topology_section.neighbors).unwrap();
+
+    let wg_id = state.modify_topology_section.id;
+    let pdr = state.modify_topology_section.pdr;
     add_drone(
         &mut state.graph_section,
         &neighbors,
-        state.modify_topology_section.id,
-        state.modify_topology_section.pdr,
+        wg_id,
+        pdr,
         state.modify_topology_section.drone_vendor,
         simulation_controller,
     );
 
     let mut first_free_id = state.modify_topology_section.id + 1;
-    while (state.graph_section.node_id_map.contains_key(&first_free_id)) {
+    while state.graph_section.node_id_map.contains_key(&first_free_id) {
         first_free_id += 1;
     }
+
+    let node_index = *state.graph_section.node_id_map.get(&wg_id).unwrap();
+    state.node_info_section.states.insert(
+        node_index,
+        NodeState::Drone(DroneState {
+            last_committed_pdr: pdr,
+            crash_status_flag: Some(Ok("Running".to_string())),
+        }),
+    );
 
     state.modify_topology_section.id = first_free_id;
 }
@@ -232,12 +238,12 @@ pub fn add_remove_sender_section(
         let node1 = state.graph_section.g.selected_nodes()[0];
         let node2 = state.graph_section.g.selected_nodes()[1];
 
-        if (check_edge_removal(
+        if check_edge_removal(
             &mut state.graph_section.g,
             &mut state.test_section.channel_modifier_status_flag,
             node1,
             node2,
-        )) {
+        ) {
             remove_edges_between(
                 &mut state.graph_section.g,
                 &mut state.test_section.channel_modifier_status_flag,

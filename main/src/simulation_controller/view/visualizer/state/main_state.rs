@@ -1,4 +1,4 @@
-use egui_graphs::Graph;
+use egui_file_dialog::FileDialog;
 use std::collections::HashMap;
 
 use crate::simulation_controller::{node::UiNodeType, SimulationController};
@@ -18,15 +18,16 @@ pub struct State {
     pub node_info_section: NodeInfoSectionState,
     pub console_section: ConsoleSectionState,
     pub modify_topology_section: ModifyTopologyState,
+    pub file_dialog: FileDialog,
 }
 
 impl State {
     pub fn from(sc: &SimulationController) -> State {
         for node in sc.topology.node_weights() {
             match &node.node_type {
-                UiNodeType::Server(ui_server_node) => sc.send_server_start_flood(node.wg_id),
-                UiNodeType::Client(ui_client_node) => sc.send_client_start_flood(node.wg_id),
-                UiNodeType::Drone(ui_drone_node) => (),
+                UiNodeType::Server(_) => sc.send_server_start_flood(node.wg_id),
+                UiNodeType::Client(_) => sc.send_client_start_flood(node.wg_id),
+                UiNodeType::Drone(_) => (),
             }
         }
 
@@ -35,11 +36,12 @@ impl State {
             debug_section: DebugSectionState::default(),
             settings_section: SettingsSectionState::default(),
             graph_section: GraphSectionState::new(sc.topology.clone()),
-            events: Default::default(),
-            toolbar_section: Default::default(),
+            events: EventsState::default(),
+            toolbar_section: ToolbarSectionState::default(),
             node_info_section: NodeInfoSectionState::from(&sc.topology),
-            console_section: Default::default(),
+            console_section: ConsoleSectionState::default(),
             modify_topology_section: ModifyTopologyState::from(&sc.topology),
+            file_dialog: FileDialog::default(),
         }
     }
 }
@@ -63,15 +65,16 @@ impl Default for State {
         modify_topology_section.id = max + 1;
 
         Self {
-            test_section: Default::default(),
-            debug_section: Default::default(),
-            settings_section: Default::default(),
+            test_section: TestSectionState::default(),
+            debug_section: DebugSectionState::default(),
+            settings_section: SettingsSectionState::default(),
             graph_section,
-            events: Default::default(),
-            toolbar_section: Default::default(),
-            node_info_section: Default::default(),
-            console_section: Default::default(),
+            events: EventsState::default(),
+            toolbar_section: ToolbarSectionState::default(),
+            node_info_section: NodeInfoSectionState::default(),
+            console_section: ConsoleSectionState::default(),
             modify_topology_section,
+            file_dialog: FileDialog::default(),
         }
     }
 }

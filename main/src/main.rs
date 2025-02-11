@@ -1,9 +1,12 @@
-#![allow(unused, dead_code)]
+// #![allow(unused, dead_code)]
 // use 'use' for easier naming
 
+use env_logger::Builder;
 use initializer::network_initializer::NetworkInitializer;
-use simple_logger::SimpleLogger;
+use log::LevelFilter;
 use simulation_controller::visualizer::ui::run_gui;
+use std::{fs, sync::Arc};
+use tempfile::{tempdir, TempDir};
 
 mod client;
 mod fragmentation;
@@ -20,16 +23,27 @@ fn main() {
     // if args.len() < 2 {
     //     log::error!("Usage: {}", "cargo run -- simulation");
     // }
-    SimpleLogger::new()
-        .without_timestamps()
-        .env()
-        .init()
-        .unwrap();
 
-    let mut simulation_controller =
-        NetworkInitializer::new("main/src/topology_configs/config.toml".to_string()).init_network();
+    Builder::new()
+        .filter(None, LevelFilter::Off)
+        .filter(Some(module_path!()), LevelFilter::max())
+        .init();
+
+    log::info!("App started");
+
+    // temp dir for the entire simulation, behaves like a static variable
+    let temp_dir: Arc<TempDir> = Arc::new(tempdir().unwrap());
+
+    let simulation_controller = NetworkInitializer::new(
+        "main/src/topology_configs/butterfly_3_clients.toml".to_string(),
+        temp_dir.clone(),
+    )
+    .init_network();
     match simulation_controller {
         Ok(sc) => run_gui("Simulation controller".to_string(), sc),
         Err(err) => log::error!("Error in network initialization: {}", err),
     }
+
+    // temp_dir drop isn't properly cleaning up the directory so we do it manually
+    fs::remove_dir_all(temp_dir.path()).unwrap();
 }

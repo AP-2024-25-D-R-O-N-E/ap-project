@@ -1,5 +1,4 @@
 use crate::fragmentation::message::{Message, MessageData};
-use bincode;
 use std::collections::VecDeque;
 use wg_2024::packet::{Fragment, FRAGMENT_DSIZE};
 
@@ -16,7 +15,7 @@ fn disassemble() {
         },
     );
 
-    let mut fragments_u8 = msg.into_u8();
+    let mut fragments_u8 = msg.as_u8();
 
     //reversing so popping gets the first element
     fragments_u8.reverse();
@@ -46,9 +45,9 @@ fn disassemble() {
             data,
         });
     }
-    println!("{:?}", send_fragments);
+    println!("{send_fragments:?}");
     let message = assemble(send_fragments.into());
-    println!("{:?}", message);
+    println!("{message:?}");
 }
 
 fn assemble(mut fragments: Vec<Fragment>) -> Message {
@@ -62,13 +61,3 @@ fn assemble(mut fragments: Vec<Fragment>) -> Message {
 
     Message::from_u8(message_data)
 }
-
-// fn assemble(mut message_fragments: Vec<Fragment>) -> Message {
-//     message_fragments.sort_by(|a, b| a.fragment_index.cmp(&b.fragment_index));
-//     let mut data = Vec::new();
-//     for fragment in message_fragments {
-//         data.extend(fragment.data);
-//     }
-//     let message: Message = bincode::deserialize(&data).unwrap();
-//     message
-// }

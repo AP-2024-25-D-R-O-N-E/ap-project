@@ -1,11 +1,8 @@
-use egui::{
-    epaint::TextShape, text::Fonts, Color32, FontFamily, FontId, Pos2, Rect, Rounding, Shadow,
-    Shape, Stroke, Vec2,
-};
+use egui::{Color32, FontId, Pos2, Rect, Rounding, Shadow, Shape, Stroke, Vec2};
 use egui_graphs::{DisplayNode, NodeProps};
 use petgraph::{stable_graph::IndexType, EdgeType};
 
-use crate::{initializer::drone_vendor::DroneVendor, simulation_controller::util};
+use crate::{initializer::node_vendor::Vendor, simulation_controller::util};
 
 fn get_text(ctx: &egui_graphs::DrawContext, text: String, pos: Pos2) -> Shape {
     ctx.ctx.fonts(|fonts| {
@@ -23,15 +20,15 @@ fn get_text(ctx: &egui_graphs::DrawContext, text: String, pos: Pos2) -> Shape {
 #[derive(Clone)]
 pub struct UiNodePayload {
     pub node_type: UiNodeType,
-    pub vendor: DroneVendor,
+    pub vendor: Vendor,
     pub wg_id: wg_2024::network::NodeId,
 }
 impl UiNodePayload {
     pub fn get_type(&self) -> String {
         match &self.node_type {
-            UiNodeType::Server(ui_server_node) => "Server",
-            UiNodeType::Client(ui_client_node) => "Client",
-            UiNodeType::Drone(ui_drone_node) => "Drone",
+            UiNodeType::Server(_) => "Server",
+            UiNodeType::Client(_) => "Client",
+            UiNodeType::Drone(_) => "Drone",
         }
         .to_string()
     }
@@ -232,8 +229,6 @@ impl DrawShape for CustomNodeShape {
                 ]
             }
         }
-
-        // we need to offset label by half its size to place it in the center of the rect
     }
 }
 
@@ -241,17 +236,14 @@ impl<E: Clone, Ty: EdgeType, Ix: IndexType> DisplayNode<UiNodePayload, E, Ty, Ix
     for CustomNodeShape
 {
     fn is_inside(&self, pos: Pos2) -> bool {
-        match &self.payload.node_type {
-            UiNodeType::Drone(drone_node) => {
-                self.loc.distance(pos) <= drone_node.radius / self.zoom
-            }
-            _ => {
-                let rect = Rect::from_center_size(
-                    self.loc,
-                    Vec2::new(self.size_x / self.zoom, self.size_y / self.zoom),
-                );
-                rect.contains(pos)
-            }
+        if let UiNodeType::Drone(drone_node) = &self.payload.node_type {
+            self.loc.distance(pos) <= drone_node.radius / self.zoom
+        } else {
+            let rect = Rect::from_center_size(
+                self.loc,
+                Vec2::new(self.size_x / self.zoom, self.size_y / self.zoom),
+            );
+            rect.contains(pos)
         }
     }
 
@@ -270,34 +262,3 @@ impl<E: Clone, Ty: EdgeType, Ix: IndexType> DisplayNode<UiNodePayload, E, Ty, Ix
         self.payload = state.payload.clone();
     }
 }
-
-// fn find_intersection(center: Pos2, size_x: f32, size_y: f32, direction: Vec2) -> Pos2 {
-//     if (direction.x.abs() * size_y) > (direction.y.abs() * size_x) {
-//         // intersects left or right side
-//         let x = if direction.x > 0.0 {
-//             center.x + size_x / 2.0
-//         } else {
-//             center.x - size_x / 2.0
-//         };
-//         let y = center.y + direction.y / direction.x * (x - center.x);
-//         Pos2::new(x, y)
-//     } else {
-//         // intersects top or bottom side
-//         let y = if direction.y > 0.0 {
-//             center.y + size_y / 2.0
-//         } else {
-//             center.y - size_y / 2.0
-//         };
-//         let x = center.x + direction.x / direction.y * (y - center.y);
-//         Pos2::new(x, y)
-//     }
-// }
-//
-// fn rect_to_points(rect: Rect) -> Vec<Pos2> {
-//     let top_left = rect.min;
-//     let bottom_right = rect.max;
-//     let top_right = Pos2::new(bottom_right.x, top_left.y);
-//     let bottom_left = Pos2::new(top_left.x, bottom_right.y);
-//
-//     vec![top_left, top_right, bottom_right, bottom_left]
-// }

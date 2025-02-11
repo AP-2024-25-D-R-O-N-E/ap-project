@@ -3,8 +3,8 @@ use proc_macro2::{Ident, Span};
 use quote::{format_ident, quote};
 use syn::{parse_macro_input, Data, DeriveInput, Fields};
 
-#[proc_macro_derive(IntoSerializable)]
-pub fn into_serializable_derive(input: TokenStream) -> TokenStream {
+#[proc_macro_derive(AsSerializable)]
+pub fn as_serializable_derive(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
 
     let mut struct_name = input.ident.to_string();
@@ -20,13 +20,13 @@ pub fn into_serializable_derive(input: TokenStream) -> TokenStream {
 
                 let into_serializable_fields = fields.iter().map(|field| {
                     let field_name = &field.ident;
-                    quote! { #field_name: self.#field_name.into_serializable() }
+                    quote! { #field_name: self.#field_name.as_serializable() }
                 });
 
                 let output = quote! {
-                    impl IntoSerializable for #struct_name_ident {
+                    impl AsSerializable for #struct_name_ident {
                         type Output = #ref_struct_name_ident;
-                        fn into_serializable(&self) -> Self::Output {
+                        fn as_serializable(&self) -> Self::Output {
                             Self::Output {
                                 #(#into_serializable_fields,)*
                             }
@@ -66,7 +66,7 @@ pub fn into_serializable_derive(input: TokenStream) -> TokenStream {
 
                         let named_fields_into = fields_named.named.iter().map(|field| {
                             let ident = field.ident.clone().unwrap();
-                            let rv = quote! { #ident : #ident.into_serializable() };
+                            let rv = quote! { #ident : #ident.as_serializable() };
                             rv
                         });
                         let expanded_fields_names_into = quote! {  #(#named_fields_into),*  };
@@ -83,7 +83,7 @@ pub fn into_serializable_derive(input: TokenStream) -> TokenStream {
                                 quote! {#entry}
                             });
                         let unnamed_fields_into = unnamed_fields.clone().map(|field| {
-                            quote! { #field.into_serializable()}
+                            quote! { #field.as_serializable()}
                         });
 
                         let expanded_fields = quote! {  #(#unnamed_fields),*  };
@@ -96,56 +96,13 @@ pub fn into_serializable_derive(input: TokenStream) -> TokenStream {
                         enum_fields.push(rv);
                     }
                 };
-
-                // let ref_fields_into_serializable = match &variant.fields {
-                //     Fields::Named(fields) => {
-                //         let named_fields = fields.named.iter().map(|field| {
-                //             let field_name = field.ident.clone().unwrap();
-                //             let field_type = field.ty.clone();
-                //
-                //             let mut field_name_string = field_name.to_string();
-                //             let mut field_type_string = quote!(#field_type).to_string();
-                //             field_name_string.truncate(field_name_string.len() - 3);
-                //             field_type_string.truncate(field_type_string.len() - 3);
-                //
-                //             let field_name_ref =
-                //                 Ident::new(field_name_string.as_str(), Span::call_site());
-                //             let field_type_ref =
-                //                 Ident::new(field_type_string.as_str(), Span::call_site());
-                //
-                //             quote! { #field_name_ref: #field_type_ref }
-                //         });
-                //         quote! { { #(#named_fields),* } }
-                //     }
-                //     Fields::Unnamed(fields) => {
-                //
-                //         let unnamed_fields = fields.unnamed.iter().enumerate().map(|(index,_)| {
-                //             let entry = format_ident!("par{}", index);
-                //             quote! {#entry.into_serializable()}
-                //         });
-                //         let rv = quote! { ::( #(#unnamed_fields),* ) };
-                //         rv
-                //     }
-                //     Fields::Unit => quote! {},
-                // };
-                //
-                // let rv =    quote! { #enum_name_ref_ident #variant_ident #ref_fields =>  #enum_name_ident  #variant_ident #ref_fields_into_serializable };
-
-                // eprintln!(
-                //     "Enum line: {}",
-                //     rv
-                // );
             }
-
-            // for line in enum_fields.iter() {
-            //     eprintln!("{}", line);
-            // }
 
             let output = quote! {
 
-                impl IntoSerializable for #enum_name_ref_ident {
+                impl AsSerializable for #enum_name_ref_ident {
                     type Output = #enum_name_ident;
-                    fn into_serializable(&self) -> Self::Output {
+                    fn as_serializable(&self) -> Self::Output {
                         match self {
                             #(#enum_fields),*
                         }

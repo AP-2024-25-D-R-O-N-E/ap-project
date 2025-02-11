@@ -1,19 +1,22 @@
-use std::{collections::VecDeque, thread::sleep, time::Duration};
+use std::{collections::VecDeque, sync::Arc, thread::sleep, time::Duration};
 
 use crate::{
-    fragmentation::message::{self, Message, MessageData},
+    fragmentation::message::{Message, MessageData},
     initializer::network_initializer::NetworkInitializer,
     simulation_controller::{ServerCommand, SimulationController},
 };
 use colored::Colorize;
-use simple_logger::SimpleLogger;
+use tempfile::{tempdir, TempDir};
 use wg_2024::{network::SourceRoutingHeader, packet::*};
 
 #[test]
 fn server_functionality() {
     super::initialize();
-    let mut network_initializer =
-        NetworkInitializer::new("src/topology_configs/config_no_pdr.toml".to_string());
+    let temp_dir: Arc<TempDir> = Arc::new(tempdir().unwrap());
+    let network_initializer = NetworkInitializer::new(
+        "src/topology_configs/config_no_pdr.toml".to_string(),
+        temp_dir,
+    );
 
     let sc = network_initializer.init_network().unwrap();
     sleep(Duration::from_millis(100));
@@ -64,7 +67,7 @@ fn register_client1(sc: &SimulationController) {
 
     let fragments = disassemble(message);
 
-    for fragment in fragments.iter() {
+    for fragment in &fragments {
         let packet = Packet {
             pack_type: PacketType::MsgFragment(fragment.clone()),
             routing_header: SourceRoutingHeader {
@@ -83,7 +86,7 @@ fn register_client2(sc: &SimulationController) {
 
     let fragments = disassemble(message);
 
-    for fragment in fragments.iter() {
+    for fragment in &fragments {
         let packet = Packet {
             pack_type: PacketType::MsgFragment(fragment.clone()),
             routing_header: SourceRoutingHeader {
@@ -102,7 +105,7 @@ fn unregister_client1(sc: &SimulationController) {
 
     let fragments = disassemble(message);
 
-    for fragment in fragments.iter() {
+    for fragment in &fragments {
         let packet = Packet {
             pack_type: PacketType::MsgFragment(fragment.clone()),
             routing_header: SourceRoutingHeader {
@@ -121,7 +124,7 @@ fn request_clients(sc: &SimulationController) {
 
     let fragments = disassemble(message);
 
-    for fragment in fragments.iter() {
+    for fragment in &fragments {
         let packet = Packet {
             pack_type: PacketType::MsgFragment(fragment.clone()),
             routing_header: SourceRoutingHeader {
@@ -148,7 +151,7 @@ fn text_message(sc: &SimulationController, text: String) {
 
     let fragments = disassemble(message);
 
-    for fragment in fragments.iter() {
+    for fragment in &fragments {
         let packet = Packet {
             pack_type: PacketType::MsgFragment(fragment.clone()),
             routing_header: SourceRoutingHeader {
@@ -174,7 +177,7 @@ fn chat_history(sc: &SimulationController) {
 
     let fragments = disassemble(message);
 
-    for fragment in fragments.iter() {
+    for fragment in &fragments {
         let packet = Packet {
             pack_type: PacketType::MsgFragment(fragment.clone()),
             routing_header: SourceRoutingHeader {
@@ -188,24 +191,8 @@ fn chat_history(sc: &SimulationController) {
     }
 }
 
-fn assemble(mut fragments: Vec<Fragment>) -> Message {
-    // sort fragments by index before assembling
-    fragments.sort_by(|a, b| a.fragment_index.cmp(&b.fragment_index));
-
-    let mut message_data: Vec<u8> = Vec::new();
-    for fragment in fragments {
-        if fragment.length < 128 {
-            message_data.extend(&fragment.data[0..fragment.length as usize]);
-        } else {
-            message_data.extend(&fragment.data);
-        }
-    }
-
-    Message::from_u8(message_data)
-}
-
 fn disassemble(msg: Message) -> std::collections::VecDeque<Fragment> {
-    let mut message_data = msg.into_u8();
+    let mut message_data = msg.as_u8();
 
     message_data.reverse();
 

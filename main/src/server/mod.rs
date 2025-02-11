@@ -1,21 +1,13 @@
 pub mod server_gino;
+pub mod utils;
 
-use std::{
-    collections::HashMap,
-    fmt::{write, Debug},
-};
+use std::{collections::HashMap, fmt::Debug, sync::Arc};
 
-use colored::Colorize;
-use crossbeam::channel::{select_biased, Receiver, Sender};
-use wg_2024::{
-    network::NodeId,
-    packet::{Ack, FloodRequest, FloodResponse, Fragment, Nack, Packet, PacketType},
-};
+use crossbeam::channel::{Receiver, Sender};
+use tempfile::TempDir;
+use wg_2024::{network::NodeId, packet::Packet};
 
-use crate::{
-    fragmentation::{message::Message, Fragmenter},
-    simulation_controller::structs::{ServerCommand, ServerEvent},
-};
+use crate::simulation_controller::structs::{ServerCommand, ServerEvent};
 
 pub trait ServerTrait {
     fn new(
@@ -24,6 +16,7 @@ pub trait ServerTrait {
         sim_contr_recv: Receiver<ServerCommand>,
         packet_recv: Receiver<Packet>,
         packet_send: HashMap<NodeId, Sender<Packet>>,
+        temp_dir: Arc<TempDir>,
     ) -> Self
     where
         Self: Sized;

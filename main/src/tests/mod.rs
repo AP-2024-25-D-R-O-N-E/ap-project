@@ -1,31 +1,23 @@
 pub mod assembler_test;
 pub mod client_test;
 pub mod crash_test;
-pub mod send_ack;
-pub mod send_flood_request;
-pub mod send_msg;
-pub mod simulation;
 
 pub mod message_serialization_test;
 pub mod server_features;
 
-use log::*;
-use simple_logger::SimpleLogger;
 use std::sync::Once;
+
+use env_logger::Builder;
+use log::LevelFilter;
 
 // This makes the logger availvable for each test that requires it, while ensuring
 // SimpleLogger::new() is called only once
 static INIT: Once = Once::new();
 pub fn initialize() {
     INIT.call_once(|| {
-        SimpleLogger::new()
-            .without_timestamps()
-            .env()
-            .init()
-            .unwrap();
+        Builder::new()
+            .filter(None, LevelFilter::Off)
+            .filter(Some(module_path!()), LevelFilter::max())
+            .init();
     });
 }
-
-pub use send_ack::*;
-pub use send_flood_request::*;
-pub use send_msg::*;

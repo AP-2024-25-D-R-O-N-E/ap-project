@@ -1,24 +1,16 @@
 use std::time::Instant;
+use std::vec;
 
-use super::state::{events_state, NodeState};
-use crate::simulation_controller::serialization_ref_structs::IntoSerializable;
-use crate::simulation_controller::{
-    ClientEvent, SCEvent, SCEventType, ServerEvent, SimulationController,
-};
+use super::state::NodeState;
+use crate::fragmentation::message::ChatMessage;
+use crate::simulation_controller::{ClientEvent, SCEvent, SCEventType, SimulationController};
 
-use super::state::EventsState;
 use eframe::{run_native, App, CreationContext, NativeOptions};
-use egui::text::LayoutJob;
 use egui::{Context, ScrollArea, Window};
 
-use egui_extras::syntax_highlighting::CodeTheme;
 use egui_graphs::events::Event;
 
 use petgraph::graph::NodeIndex;
-use syntect::easy::HighlightLines;
-use syntect::highlighting::ThemeSet;
-use syntect::parsing::{SyntaxReference, SyntaxSet};
-use syntect::util::as_24_bit_terminal_escaped;
 use wg_2024::controller::DroneEvent;
 
 use super::drawers::{
@@ -94,11 +86,10 @@ impl SCGui {
                             .set_selected(true);
 
                         for node in self.state.graph_section.g.selected_nodes() {
-                            print!("{:?} ", node);
+                            print!("{node:?} ");
                             self.state.node_info_section.open_window(*node);
                         }
                         self.state.node_info_section.open_window(node_index);
-                        println!();
                     }
                     _ => {}
                 }
@@ -126,10 +117,15 @@ impl SCGui {
                 .state
                 .node_info_section
                 .states
-                .get_mut(&sender_node_index)
+                .get_mut(sender_node_index)
                 .unwrap()
             {
-                client_state.available_peers = ids.to_vec();
+                client_state.available_peers = ids.clone();
+                for peers in &client_state.available_peers {
+                    if !client_state.chat_histories.contains_key(peers) {
+                        client_state.chat_histories.insert(*peers, vec![]);
+                    }
+                }
             }
         }
     }
@@ -149,20 +145,121 @@ impl SCGui {
                 .state
                 .node_info_section
                 .states
-                .get_mut(&sender_node_index)
+                .get_mut(sender_node_index)
                 .unwrap()
             {
-                println!("{:?}", history);
                 client_state
                     .chat_histories
-                    .insert(*partner, history.to_vec());
+                    .insert(*partner, history.clone());
+
+                if *partner != client_state.current_peer.unwrap() {
+                    client_state.unread_messages.insert(*partner);
+                }
+            }
+        } else if let SCEventType::Client(ClientEvent::TextMessage { from, to, text }) =
+            &event.event_type
+        {
+            let sender_node_index = self
+                .state
+                .graph_section
+                .node_id_map
+                .get(&event.sender_id)
+                .unwrap();
+
+            if let NodeState::Client(client_state) = self
+                .state
+                .node_info_section
+                .states
+                .get_mut(sender_node_index)
+                .unwrap()
+            {
+                let chat_msg = ChatMessage::TextMessage {
+                    from: *from,
+                    to: *to,
+                    text: text.to_string(),
+                };
+
+                if let Some(chat_history) = client_state.chat_histories.get_mut(from) {
+                    chat_history.push(chat_msg.clone());
+
+                    if let Some(curr_peer) = client_state.current_peer {
+                        if curr_peer != *from {
+                            client_state.unread_messages.insert(*from);
+                        }
+                    } else {
+                        client_state.unread_messages.insert(*from);
+                    }
+                }
+            }
+        } else if let SCEventType::Client(ClientEvent::FileMessage {
+            from,
+            to,
+            file_path,
+        }) = &event.event_type
+        {
+            let sender_node_index = self
+                .state
+                .graph_section
+                .node_id_map
+                .get(&event.sender_id)
+                .unwrap();
+
+            if let NodeState::Client(client_state) = self
+                .state
+                .node_info_section
+                .states
+                .get_mut(sender_node_index)
+                .unwrap()
+            {
+                let chat_msg = ChatMessage::FileMessage {
+                    from: *from,
+                    to: *to,
+                    file_path: file_path.clone(),
+                };
+
+                if let Some(chat_history) = client_state.chat_histories.get_mut(from) {
+                    chat_history.push(chat_msg.clone());
+                    if *from != client_state.current_peer.unwrap() {
+                        client_state.unread_messages.insert(*from);
+                    }
+                }
+            }
+        } else if let SCEventType::Client(ClientEvent::CreatedFileLocal {
+            from,
+            to,
+            file_path,
+        }) = &event.event_type
+        {
+            let sender_node_index = self
+                .state
+                .graph_section
+                .node_id_map
+                .get(&event.sender_id)
+                .unwrap();
+
+            if let NodeState::Client(client_state) = self
+                .state
+                .node_info_section
+                .states
+                .get_mut(sender_node_index)
+                .unwrap()
+            {
+                let chat_msg = ChatMessage::FileMessage {
+                    from: *from,
+                    to: *to,
+                    file_path: file_path.clone(),
+                };
+
+                if let Some(chat_history) = client_state.chat_histories.get_mut(to) {
+                    chat_history.push(chat_msg.clone());
+                }
             }
         }
     }
 
     fn handle_sc_events(&mut self) {
         let mut events = vec![];
-        for (node_id, channel) in self.simulation_controller.node_event_channels.iter() {
+        for (node_id, channel) in &self.simulation_controller.node_event_channels {
             let curr_events: Vec<SCEvent> = channel
                 .try_iter()
                 .map(|e| SCEvent::new(*node_id, e.into()))
@@ -171,7 +268,7 @@ impl SCGui {
             events.extend_from_slice(&curr_events);
         }
 
-        for (node_id, channel) in self.simulation_controller.client_event_channels.iter() {
+        for (node_id, channel) in &self.simulation_controller.client_event_channels {
             let curr_events: Vec<SCEvent> = channel
                 .try_iter()
                 .map(|e| SCEvent::new(*node_id, e.into()))
@@ -180,7 +277,7 @@ impl SCGui {
             events.extend_from_slice(&curr_events);
         }
 
-        for (node_id, channel) in self.simulation_controller.server_event_channels.iter() {
+        for (node_id, channel) in &self.simulation_controller.server_event_channels {
             let curr_events: Vec<SCEvent> = channel
                 .try_iter()
                 .map(|e| SCEvent::new(*node_id, e.into()))
@@ -298,6 +395,7 @@ impl App for SCGui {
 
         // self.sync();
         // self.update_simulation();
+        self.state.file_dialog.update(ctx);
         draw_infos_for_selected_nodes(ctx, &mut self.state, &self.simulation_controller);
         self.handle_graph_events();
         self.handle_sc_events();

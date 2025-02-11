@@ -1,5 +1,5 @@
-pub mod message;
 pub mod file_handling;
+pub mod message;
 
 use message::Message;
 

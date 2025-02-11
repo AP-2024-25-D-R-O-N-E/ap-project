@@ -1,14 +1,13 @@
 use colored::Colorize;
 use crossbeam::channel::{select_biased, unbounded, Receiver, Sender};
-use egui_graphs::{Edge, Node};
-use petgraph::{
-    algo,
-    prelude::{GraphMap, StableGraph},
-    Undirected,
-};
-use std::{collections::{HashMap, HashSet, VecDeque}, path::PathBuf};
+use petgraph::{algo, prelude::GraphMap, Undirected};
 use std::sync::{Arc, Condvar, Mutex, RwLock};
 use std::thread::{self, JoinHandle};
+use std::{
+    collections::{HashMap, HashSet, VecDeque},
+    path::PathBuf,
+};
+use tempfile::TempDir;
 use wg_2024::{
     network::{NodeId, SourceRoutingHeader},
     packet::{
@@ -17,25 +16,35 @@ use wg_2024::{
 };
 
 use super::ClientTrait;
-use crate::fragmentation::{file_handling::{byte_vec_to_file, file_to_byte_vec, raw_vec_to_chat_vec}, message::{MessageData, RawChatMessage}};
+use crate::{
+    client::utils::SenderThreadChannels,
+    fragmentation::{
+        file_handling::{byte_vec_to_file, file_to_byte_vec, raw_vec_to_chat_vec},
+        message::MessageData,
+    },
+};
 use crate::{
     fragmentation::{message::Message, Fragmenter},
     simulation_controller::structs::{ClientCommand, ClientEvent},
 };
+
+type LockRef<T> = Arc<RwLock<T>>;
 
 pub struct ClientLuca {
     id: NodeId,
     scs: Sender<ClientEvent>,
     scr: Receiver<ClientCommand>,
     packet_r: Receiver<Packet>,
-    packet_s: Arc<RwLock<HashMap<NodeId, Sender<Packet>>>>,
+    packet_s: LockRef<HashMap<NodeId, Sender<Packet>>>,
     flood_id: u64, //current flood index
-    topology: Arc<RwLock<GraphMap<NodeId, (), Undirected>>>,
-    fragment_buffer: Arc<RwLock<HashMap<(NodeId, u64), Vec<Fragment>>>>, //stores the fragments that need to be assembled
+    topology: LockRef<GraphMap<NodeId, (), Undirected>>,
+    fragment_buffer: LockRef<HashMap<(NodeId, u64), Vec<Fragment>>>, //stores the fragments that need to be assembled
     ack_packet_buffer: Arc<Mutex<HashMap<(u64, u64), Packet>>>, //stores packets waiting for an ack
     topology_modified: Arc<Mutex<bool>>, // checks if the topology has been modified
-    edge_nodes: Arc<RwLock<HashSet<NodeId>>>, // edge_nodes can't be used in a route
+    edge_nodes: LockRef<HashSet<NodeId>>, // edge_nodes can't be used in a route
     server_id: NodeId,                   // stores the server_id (it's only one)
+    condv: Arc<Condvar>,
+    temp_dir: Arc<TempDir>,
 }
 
 impl ClientTrait for ClientLuca {
@@ -45,6 +54,7 @@ impl ClientTrait for ClientLuca {
         scr: Receiver<ClientCommand>,
         packet_r: Receiver<Packet>,
         packet_s: HashMap<NodeId, Sender<Packet>>,
+        temp_dir: Arc<TempDir>,
     ) -> Self
     where
         Self: Sized,
@@ -61,7 +71,9 @@ impl ClientTrait for ClientLuca {
             ack_packet_buffer: Arc::new(Mutex::new(HashMap::new())),
             topology_modified: Arc::new(Mutex::new(false)),
             edge_nodes: Arc::new(RwLock::new(HashSet::new())),
-            server_id: 0, //initialized to 0, but we always know its real value thanks to the initial flooding
+            server_id: 0,
+            condv: Arc::new(Condvar::new()), //initialized to 0, but we always know its real value thanks to the initial flooding
+            temp_dir,
         }
     }
 
@@ -72,7 +84,7 @@ impl ClientTrait for ClientLuca {
         let scs = self.scs.clone();
         let (nack_s, nack_r) = unbounded::<Packet>();
         let (fragment_s, fragment_r) = unbounded::<(NodeId, u64, Fragment)>();
-        let condv = Condvar::new();
+        let condv = self.condv.clone();
         let ack_packet_buffer = self.ack_packet_buffer.clone();
         let topology = self.topology.clone();
         let id = self.id;
@@ -82,10 +94,7 @@ impl ClientTrait for ClientLuca {
         threads.push(thread::spawn(move || {
             ClientLuca::sender_thread(
                 id,
-                packet_s,
-                scs,
-                fragment_r,
-                nack_r,
+                SenderThreadChannels::new(packet_s, scs, nack_r, fragment_r),
                 condv,
                 ack_packet_buffer,
                 topology,
@@ -93,8 +102,6 @@ impl ClientTrait for ClientLuca {
                 edge_nodes,
             );
         }));
-
-        let id = self.id;
 
         self.receiver_thread(nack_s, fragment_s);
     }
@@ -117,7 +124,7 @@ impl Fragmenter for ClientLuca {
     }
 
     fn disassemble(msg: Message) -> VecDeque<Fragment> {
-        let mut message_data = msg.into_u8();
+        let mut message_data = msg.as_u8();
 
         message_data.reverse();
 
@@ -127,9 +134,9 @@ impl Fragmenter for ClientLuca {
         for i in 0..frag_numbers {
             let mut fragment_data: [u8; 128] = [0; 128];
             let mut lenght: u8 = 0;
-            for index in 0..128 {
+            for item in &mut fragment_data {
                 if let Some(byte) = message_data.pop() {
-                    fragment_data[index] = byte;
+                    *item = byte;
                     lenght += 1;
                 } else {
                     break;
@@ -172,16 +179,22 @@ impl ClientLuca {
                         if let Some(message) = msg{
                             let fragments = Self::disassemble(message);
                             for frag in fragments{
-                                fragment_s.send((self.server_id, session_id, frag.clone()));
-                                session_id += 1;
+                                match fragment_s.send((self.server_id, session_id, frag.clone())) {
+                                    Ok(()) => log::debug!("{} {} fragment sent: {:?}", "↳ client".green(), self.id, frag),
+                                    Err(err) => log::error!("{} {} error. Couldn't send fragment. {}", "↳ client".green(), self.id, err),
+                                }
                             }
+                            session_id += 1;
                         }
                     }
                 },
                 recv(self.packet_r) -> res => {
-                    if let Ok(mut packet) = res {
+                    if let Ok(packet) = res {
 
-                        self.scs.send(ClientEvent::PacketReceived(packet.clone()));
+                        match self.scs.send(ClientEvent::PacketReceived(packet.clone())){ //sends the packet to the simulation controller
+                            Ok(()) => log::debug!("{} {} packet sent: {:?}", "↳ client".green(), self.id, packet),
+                            Err(err) => log::error!("{} {} error. Couldn't send event. {}", "↳ client".green(), self.id, err),
+                        }
 
                         match packet.pack_type {
                             PacketType::MsgFragment(_) => self.manage_msg_fragment(packet),
@@ -192,30 +205,35 @@ impl ClientLuca {
                         }
                     }
                 }
-            )
+            );
         }
     }
 
     fn sender_thread(
         id: NodeId,
-        packet_s: Arc<RwLock<HashMap<u8, Sender<Packet>>>>,
-        scs: Sender<ClientEvent>,
-        fragment_r: Receiver<(NodeId, u64, Fragment)>,
-        nack_r: Receiver<Packet>,
-        condv: Condvar,
+
+        sender_thread_channels: SenderThreadChannels,
+
+        condv: Arc<Condvar>,
         ack_packet_buffer: Arc<Mutex<HashMap<(u64, u64), Packet>>>,
-        topology: Arc<RwLock<GraphMap<NodeId, (), Undirected>>>,
+        topology: LockRef<GraphMap<NodeId, (), Undirected>>,
         topology_modified: Arc<Mutex<bool>>,
-        edge_nodes: Arc<RwLock<HashSet<NodeId>>>,
+        edge_nodes: LockRef<HashSet<NodeId>>,
     ) {
         // records the routing table for the client (updated when an update to the topology is made)
         let mut routing_table: HashMap<NodeId, Vec<NodeId>> = HashMap::new();
 
-        const MAX_OUTPUT_BUFFER: usize = 10;
+        const MAX_OUTPUT_BUFFER: usize = 1024;
+        let SenderThreadChannels {
+            packet_sender,
+            sim_contr_send,
+            nack_recv,
+            fragment_recv,
+        } = sender_thread_channels;
 
         loop {
             select_biased!(
-                recv(nack_r) -> nack_res => {
+                recv(nack_recv) -> nack_res => {
                     if let Ok(mut packet) = nack_res {
                         // recalculate route if topology was modified
                         let mut topology_mod_lock = topology_modified.lock().unwrap();
@@ -231,7 +249,7 @@ impl ClientLuca {
 
                         let mut ack_buffer = condv
                         .wait_while(ack_packet_buffer.lock().unwrap(), |buff| {
-                            buff.len() + nack_r.len() >= MAX_OUTPUT_BUFFER
+                            buff.len() + nack_recv.len() >= MAX_OUTPUT_BUFFER
                         })
                         .unwrap();
 
@@ -239,21 +257,21 @@ impl ClientLuca {
                             ack_buffer.insert((packet.session_id, fragment.fragment_index), packet.clone());
                         }
 
-                        Self::send_msg_packet(id, packet_s.clone(), scs.clone(), packet);
+                        Self::send_msg_packet(id, packet_sender.clone(), sim_contr_send.clone(), packet);
 
                     }
                 },
-                recv(fragment_r) -> frag_res => {
+                recv(fragment_recv) -> frag_res => {
                     if let Ok((destination, session_id, fragment)) = frag_res {
                         // choose the route for the packet
-                        if routing_table.get(&destination).is_none() {
+                        if !routing_table.contains_key(&destination) {
                             // if the routing table doesn't have the next hop, then we need to update the routing table
                             Self::find_route(id, destination, &mut routing_table, topology.clone(), edge_nodes.clone());
                         }
 
                         let fragment_index = fragment.fragment_index;
 
-                        let mut packet = Packet {
+                        let packet = Packet {
                             routing_header: SourceRoutingHeader {
                                 hops: routing_table.get(&destination).unwrap().clone(),
                                 hop_index: 1
@@ -264,13 +282,13 @@ impl ClientLuca {
                         // get the ack_buffer through mutex and on condition
                         let mut ack_buffer = condv
                         .wait_while(ack_packet_buffer.lock().unwrap(), |buff| {
-                            buff.len() + nack_r.len() >= MAX_OUTPUT_BUFFER
+                            buff.len() + nack_recv.len() >= MAX_OUTPUT_BUFFER
                         })
                         .unwrap();
 
                         ack_buffer.insert((session_id, fragment_index), packet.clone());
 
-                        Self::send_msg_packet(id, packet_s.clone(), scs.clone(), packet);
+                        Self::send_msg_packet(id, packet_sender.clone(), sim_contr_send.clone(), packet);
                     }
                 }
             );
@@ -280,7 +298,7 @@ impl ClientLuca {
 
 //Thread: receiver
 impl ClientLuca {
-    fn manage_flood_request(&self, mut packet: Packet) {
+    fn manage_flood_request(&self, packet: Packet) {
         log::debug!(
             "{} {} received a flood request: {:?}",
             "↳ client".green(),
@@ -390,7 +408,9 @@ impl ClientLuca {
 
             let total_frags = fragment.total_n_fragments;
 
-            if let std::collections::hash_map::Entry::Vacant(e) = fragment_buffer_lock.entry((packet_source, packet_msg_id)) {
+            if let std::collections::hash_map::Entry::Vacant(e) =
+                fragment_buffer_lock.entry((packet_source, packet_msg_id))
+            {
                 e.insert(vec![fragment]);
                 // if the total frags is 1, assemble and pass the message to the manage_assemble_msg
                 if total_frags == 1 {
@@ -403,7 +423,7 @@ impl ClientLuca {
                     self.manage_assemble_msg(message);
                 }
             } else {
-                let mut frag_buffer = fragment_buffer_lock
+                let frag_buffer = fragment_buffer_lock
                     .get_mut(&(packet_source, packet_msg_id))
                     .unwrap();
 
@@ -431,7 +451,22 @@ impl ClientLuca {
             MessageData::RequestHistory { .. } => {}
             MessageData::TextMessage { from, to, text } => {
                 let event = ClientEvent::TextMessage { from, to, text };
-                self.scs.send(event);
+                match self.scs.send(event.clone()) {
+                    Ok(()) => {
+                        log::debug!(
+                            "{} {} text message received: {:?}",
+                            "↳ client".green(),
+                            self.id,
+                            event
+                        );
+                    }
+                    Err(err) => log::error!(
+                        "{} {} sc channel error. This shouldn't be happening {}",
+                        "↳ client".green(),
+                        self.id,
+                        err
+                    ),
+                }
             }
             MessageData::FileMessage {
                 from,
@@ -443,33 +478,134 @@ impl ClientLuca {
                 let event = ClientEvent::FileMessage {
                     from,
                     to,
-                    file_path: byte_vec_to_file(file_name, extension, file).unwrap(), // check this for errors maybe
+                    file_path: byte_vec_to_file(file_name, extension, file, self.temp_dir.clone())
+                        .unwrap(), // check this for errors maybe
                 };
-                self.scs.send(event);
+                match self.scs.send(event.clone()) {
+                    Ok(()) => {
+                        log::debug!(
+                            "{} {} file message received: {:?}",
+                            "↳ client".green(),
+                            self.id,
+                            event
+                        );
+                    }
+                    Err(err) => log::error!(
+                        "{} {} sc channel error. This shouldn't be happening {}",
+                        "↳ client".green(),
+                        self.id,
+                        err
+                    ),
+                }
             }
             MessageData::ResponseClients(clients) => {
                 let event = ClientEvent::ResponseClientsReceived(clients);
-                self.scs.send(event);
+                match self.scs.send(event.clone()) {
+                    Ok(()) => {
+                        log::debug!(
+                            "{} {} peers fetched: {:?}",
+                            "↳ client".green(),
+                            self.id,
+                            event
+                        );
+                    }
+                    Err(err) => log::error!(
+                        "{} {} sc channel error. This shouldn't be happening {}",
+                        "↳ client".green(),
+                        self.id,
+                        err
+                    ),
+                }
             }
             MessageData::AcknolewdgedAsClient => {
                 let event = ClientEvent::AcknolewdgedAsClient;
-                self.scs.send(event);
+                match self.scs.send(event) {
+                    Ok(()) => {
+                        log::debug!("{} {} acknolewdged as client", "↳ client".green(), self.id);
+                    }
+                    Err(err) => log::error!(
+                        "{} {} sc channel error. This shouldn't be happening {}",
+                        "↳ client".green(),
+                        self.id,
+                        err
+                    ),
+                }
             }
             MessageData::ResponseHistory { partner, history } => {
-                let event = ClientEvent::ResponseHistoryReceived { partner, history: raw_vec_to_chat_vec(history) };
-                self.scs.send(event);
+                let event = ClientEvent::ResponseHistoryReceived {
+                    partner,
+                    history: raw_vec_to_chat_vec(history, self.temp_dir.clone()),
+                };
+                match self.scs.send(event.clone()) {
+                    Ok(()) => {
+                        log::debug!(
+                            "{} {} history fetched: {:?}",
+                            "↳ client".green(),
+                            self.id,
+                            event
+                        );
+                    }
+                    Err(err) => log::error!(
+                        "{} {} sc channel error. This shouldn't be happening {}",
+                        "↳ client".green(),
+                        self.id,
+                        err
+                    ),
+                }
             }
             MessageData::UnregisteredSenderError => {
                 let event = ClientEvent::UnregisteredSenderError;
-                self.scs.send(event);
+                match self.scs.send(event) {
+                    Ok(()) => {
+                        log::debug!(
+                            "{} {} unregistered sender error",
+                            "↳ client".green(),
+                            self.id
+                        );
+                    }
+                    Err(err) => log::error!(
+                        "{} {} sc channel error. This shouldn't be happening {}",
+                        "↳ client".green(),
+                        self.id,
+                        err
+                    ),
+                }
             }
             MessageData::UnregisteredRecipientError => {
                 let event = ClientEvent::UnregisteredRecipientError;
-                self.scs.send(event);
+                match self.scs.send(event) {
+                    Ok(()) => {
+                        log::debug!(
+                            "{} {} unregistered recipient error",
+                            "↳ client".green(),
+                            self.id
+                        );
+                    }
+                    Err(err) => log::error!(
+                        "{} {} sc channel error. This shouldn't be happening {}",
+                        "↳ client".green(),
+                        self.id,
+                        err
+                    ),
+                }
             }
             MessageData::UnsupportedMessageTypeError => {
                 let event = ClientEvent::UnsupportedMessageTypeError;
-                self.scs.send(event);
+                match self.scs.send(event) {
+                    Ok(()) => {
+                        log::debug!(
+                            "{} {} unsupported message type error",
+                            "↳ client".green(),
+                            self.id
+                        );
+                    }
+                    Err(err) => log::error!(
+                        "{} {} sc channel error. This shouldn't be happening {}",
+                        "↳ client".green(),
+                        self.id,
+                        err
+                    ),
+                }
             }
         }
     }
@@ -493,6 +629,7 @@ impl ClientLuca {
                 self.id,
                 packet
             );
+            self.condv.notify_all();
         }
     }
 
@@ -531,7 +668,20 @@ impl ClientLuca {
             if ret {
                 return;
             }
-            nack_s.send(packet);
+            match nack_s.send(packet.clone()) {
+                Ok(()) => log::debug!(
+                    "{} {} packet sent to the nack channel: {:?}",
+                    "↳ client".green(),
+                    self.id,
+                    packet
+                ),
+                Err(err) => log::error!(
+                    "{} {} nack channel error. This shouldn't be happening {}",
+                    "↳ client".green(),
+                    self.id,
+                    err
+                ),
+            }
         } else {
             log::error!("Error: the packet was not found in the ack buffer");
         }
@@ -550,15 +700,28 @@ impl ClientLuca {
 
         let res = send_channel.send(packet.clone());
 
-        if let Err(mut packet) = res {
+        if res.is_err() {
             log::error!("Error in the send inside channel");
         } else {
-            self.scs.send(ClientEvent::PacketSent(packet));
+            match self.scs.send(ClientEvent::PacketSent(packet.clone())) {
+                Ok(()) => log::debug!(
+                    "{} {} packet sent: {:?}",
+                    "↳ client".green(),
+                    self.id,
+                    packet
+                ),
+                Err(err) => log::error!(
+                    "{} {} error. Couldn't send event. {}",
+                    "↳ client".green(),
+                    self.id,
+                    err
+                ),
+            }
         }
     }
 
     fn initiate_flood(&mut self) -> Option<Message> {
-        for (id, sender) in self.packet_s.read().unwrap().iter() {
+        for (_, sender) in self.packet_s.read().unwrap().iter() {
             let packet = Packet {
                 pack_type: PacketType::FloodRequest(FloodRequest {
                     path_trace: vec![(self.id, NodeType::Client)],
@@ -575,17 +738,29 @@ impl ClientLuca {
 
             let res = sender.send(packet.clone());
 
-            if let Err(mut packet) = res {
+            if res.is_err() {
                 log::error!("Error in the send inside channel");
             } else {
-                self.scs.send(ClientEvent::PacketSent(packet));
+                match self.scs.send(ClientEvent::PacketSent(packet.clone())) {
+                    Ok(()) => log::debug!(
+                        "{} {} packet sent: {:?}",
+                        "↳ client".green(),
+                        self.id,
+                        packet
+                    ),
+                    Err(err) => log::error!(
+                        "{} {} sc channel error. This shouldn't be happening. {}",
+                        "↳ client".green(),
+                        self.id,
+                        err
+                    ),
+                }
             }
         }
         None
     }
 
     fn add_sender(&mut self, id: NodeId, sender: Sender<Packet>) -> Option<Message> {
-        println!("{} {}", " -> added sender ".green(), id);
         self.packet_s.write().unwrap().insert(id, sender);
         None
     }
@@ -648,8 +823,39 @@ impl ClientLuca {
     }
 
     fn send_file_msg(&self, receiver: NodeId, file_path: PathBuf) -> Option<Message> {
-
         let (file, file_name, extension) = file_to_byte_vec(file_path).unwrap();
+
+        // create file locally only if you're not the receiver
+        if receiver != self.id {
+            let file_path = byte_vec_to_file(
+                file_name.clone(),
+                extension.clone(),
+                file.clone(),
+                self.temp_dir.clone(),
+            )
+            .unwrap();
+
+            let local_file = ClientEvent::CreatedFileLocal {
+                from: self.id,
+                to: receiver,
+                file_path: file_path.clone(),
+            };
+
+            match self.scs.send(local_file) {
+                Ok(()) => log::debug!(
+                    "{} {} created local file: {:?}",
+                    "↳ client".green(),
+                    self.id,
+                    file_path
+                ),
+                Err(err) => log::error!(
+                    "{} {} sc channel error. This shouldn't be happening. {}",
+                    "↳ client".green(),
+                    self.id,
+                    err
+                ),
+            }
+        }
 
         let msg = Message::new(
             self.id,
@@ -664,7 +870,6 @@ impl ClientLuca {
         );
         Some(msg)
     }
-
 }
 
 //Thread: Sender
@@ -673,8 +878,8 @@ impl ClientLuca {
         id: NodeId,
         destination: NodeId,
         routing_table: &mut HashMap<NodeId, Vec<NodeId>>,
-        topology: Arc<RwLock<GraphMap<NodeId, (), Undirected>>>,
-        edge_nodes: Arc<RwLock<HashSet<NodeId>>>,
+        topology: LockRef<GraphMap<NodeId, (), Undirected>>,
+        edge_nodes: LockRef<HashSet<NodeId>>,
     ) {
         let topology_lock = topology.read().unwrap();
 
@@ -682,7 +887,7 @@ impl ClientLuca {
             &*topology_lock,
             id,
             |finish| finish == destination,
-            |(a, b, _)| {
+            |(a, b, ())| {
                 if destination == a || destination == b {
                     return 1;
                 }
@@ -705,7 +910,7 @@ impl ClientLuca {
 
     fn send_msg_packet(
         id: NodeId,
-        packet_s: Arc<RwLock<HashMap<u8, Sender<Packet>>>>,
+        packet_s: LockRef<HashMap<u8, Sender<Packet>>>,
         scs: Sender<ClientEvent>,
         packet: Packet,
     ) {
@@ -721,10 +926,18 @@ impl ClientLuca {
 
         let r = send_channel.send(packet.clone());
 
-        if let Err(mut packet) = r {
-            log::error!("The send inside channel gave an error")
+        if r.is_err() {
+            log::error!("The send inside channel gave an error");
         } else {
-            scs.send(ClientEvent::PacketSent(packet));
+            match scs.send(ClientEvent::PacketSent(packet.clone())) {
+                Ok(()) => log::debug!("{} {} packet sent: {:?}", "↳ client".green(), id, packet),
+                Err(err) => log::error!(
+                    "{} {} sc channel error. This shouldn't be happening. {}",
+                    "↳ client".green(),
+                    id,
+                    err
+                ),
+            }
         }
     }
 }

@@ -1,20 +1,16 @@
-use egui_graphs::{Edge, Graph, Node};
-use petgraph::{
-    csr::DefaultIx,
-    graph::{EdgeIndex, NodeIndex},
-    prelude::StableGraph,
-    Undirected,
-};
-use std::collections::{HashMap, HashSet, VecDeque};
+use petgraph::graph::{EdgeIndex, NodeIndex};
+use std::collections::{HashSet, VecDeque};
 use wg_2024::network::NodeId;
 
 use crate::{
-    initializer::drone_vendor::DroneVendor,
+    initializer::node_vendor::{DroneVendor, Vendor},
     simulation_controller::{
-        edge::{CustomEdgeShape, UiEdgePayload},
-        node::{CustomNodeShape, UiDroneNode, UiNodePayload, UiNodeType},
+        edge::UiEdgePayload,
+        node::{UiDroneNode, UiNodePayload, UiNodeType},
         state::{GraphSectionState, State},
-        util::*,
+        util::{
+            DefaultModelGraph, ModelEdgePayload, ModelGraph, ModelNodePayload, StatusFlag, UiGraph,
+        },
         SimulationController,
     },
 };
@@ -44,6 +40,7 @@ pub fn get_drone_node(graph: &mut UiGraph, node_index: NodeIndex) -> &mut UiDron
     drone_node
 }
 
+#[allow(dead_code)]
 pub fn get_drone_node_opt(graph: &mut UiGraph, node_index: NodeIndex) -> Option<&mut UiDroneNode> {
     if let UiNodeType::Drone(drone_node) =
         &mut get_payload_mut(graph, node_index).unwrap().node_type
@@ -218,20 +215,10 @@ pub fn check_edge_addition(
             crate::simulation_controller::node::UiNodeType::Drone(_),
         ) => check_drone_client(graph, status_flag, node1),
         (
-            crate::simulation_controller::node::UiNodeType::Server(_),
-            crate::simulation_controller::node::UiNodeType::Client(_),
-        )
-        | (
-            crate::simulation_controller::node::UiNodeType::Client(_),
-            crate::simulation_controller::node::UiNodeType::Server(_),
-        )
-        | (
-            crate::simulation_controller::node::UiNodeType::Client(_),
-            crate::simulation_controller::node::UiNodeType::Client(_),
-        )
-        | (
-            crate::simulation_controller::node::UiNodeType::Server(_),
-            crate::simulation_controller::node::UiNodeType::Server(_),
+            crate::simulation_controller::node::UiNodeType::Server(_)
+            | crate::simulation_controller::node::UiNodeType::Client(_),
+            crate::simulation_controller::node::UiNodeType::Client(_)
+            | crate::simulation_controller::node::UiNodeType::Server(_),
         ) => check_non_drone(status_flag),
         _ => true,
     }
@@ -247,7 +234,7 @@ pub fn check_drone_addition(
 
     for node in neighbors_wg_ids {
         match graph_section_state.node_id_map.get(node) {
-            Some(index) => (),
+            Some(_) => (),
             None => {
                 return Err("One or more node ids are not valid".to_string());
             }
@@ -263,7 +250,7 @@ pub fn check_drone_addition(
     // Helper function to validate client connection
     fn check_drone_client(graph: &mut UiGraph, client: NodeIndex) -> Result<(), String> {
         let neighbors: Vec<NodeIndex> = get_neigbors_with_disabled_edges(&graph.g, client);
-        println!("Neighbors: {:?}", neighbors);
+        // println!("Neighbors: {neighbors:?}");
         if neighbors.len() >= 2 {
             Err("Client nodes can have at most 2 neighbors".to_string())
         } else {
@@ -283,10 +270,8 @@ pub fn check_drone_addition(
         };
 
         match node_payload.node_type {
-            UiNodeType::Server(ui_server_node) => (),
-            UiNodeType::Client(ui_client_node) => {
-                check_drone_client(&mut graph_section_state.g, node)?
-            }
+            UiNodeType::Server(_) => (),
+            UiNodeType::Client(_) => check_drone_client(&mut graph_section_state.g, node)?,
             UiNodeType::Drone(ui_drone_node) => {
                 if ui_drone_node.crashed {
                     return Err(format!(
@@ -303,7 +288,7 @@ pub fn check_drone_addition(
 
 pub fn add_drone(
     graph_section_state: &mut GraphSectionState,
-    neighbors_wg_ids: &Vec<NodeId>,
+    neighbors_wg_ids: &[NodeId],
     wg_id: NodeId,
     pdr: f32,
     drone_vendor: DroneVendor,
@@ -311,14 +296,13 @@ pub fn add_drone(
 ) {
     let new_node_graph_index = graph_section_state.g.add_node(UiNodePayload {
         node_type: UiNodeType::Drone(UiDroneNode::new(pdr)),
-        vendor: drone_vendor,
+        vendor: Vendor::Drone(drone_vendor),
         wg_id,
     });
 
     let neighbors_graph_ids: Vec<NodeIndex> = neighbors_wg_ids
-        .clone()
-        .into_iter()
-        .map(|node| *graph_section_state.node_id_map.get(&node).unwrap())
+        .iter()
+        .map(|node| *graph_section_state.node_id_map.get(node).unwrap())
         .collect();
 
     for node in neighbors_graph_ids {
@@ -351,7 +335,7 @@ pub fn add_edge_between(
 }
 
 pub fn check_node_removal(graph: &mut UiGraph, node: NodeIndex) -> Result<(), String> {
-    if is_connected_without_node_set(&graph.g, HashSet::from([node])) {
+    if is_connected_without_node_set(&graph.g, &HashSet::from([node])) {
         for neighbor in get_neigbors_with_disabled_edges(&graph.g, node) {
             if let UiNodeType::Server(_) = graph.node(neighbor).unwrap().payload().node_type {
                 if get_neigbors_with_disabled_edges(&graph.g, neighbor).len() < 3 {
@@ -371,7 +355,6 @@ pub fn check_node_removal(graph: &mut UiGraph, node: NodeIndex) -> Result<(), St
 
 pub fn remove_node(
     graph: &mut UiGraph,
-    status_flag: &mut StatusFlag,
     node: NodeIndex,
     simulation_controller: &SimulationController,
 ) {
@@ -399,8 +382,9 @@ pub fn remove_node(
     simulation_controller.send_crash_command(curr_node_wg_id);
 }
 
+#[allow(dead_code)]
 pub fn bfs_with_disabled_edges<N>(
-    graph: ModelGraph<N, ModelEdgePayload>,
+    graph: &ModelGraph<N, ModelEdgePayload>,
     start: NodeIndex,
 ) -> usize
 where
@@ -409,17 +393,17 @@ where
     let mut visited = HashSet::new();
     queue.push_back(start);
 
-    while (!queue.is_empty()) {
+    while !queue.is_empty() {
         let curr_node = queue.pop_front().unwrap();
 
-        if (visited.contains(&curr_node)) {
+        if visited.contains(&curr_node) {
             continue;
         }
 
         for neighbor in graph.neighbors_undirected(curr_node) {
             let mut has_active_edge = false;
             for edge in graph.edges_connecting(curr_node, neighbor) {
-                if (edge.weight().payload().is_active) {
+                if edge.weight().payload().is_active {
                     has_active_edge = true;
                     break;
                 }
@@ -452,10 +436,10 @@ where
     };
     queue.push_back(first_node);
 
-    while (!queue.is_empty()) {
+    while !queue.is_empty() {
         let curr_node = queue.pop_front().unwrap();
 
-        if (visited.contains(&curr_node)) {
+        if visited.contains(&curr_node) {
             continue;
         }
 
@@ -488,7 +472,7 @@ where
 
 pub fn is_connected_without_node_set<E>(
     graph: &ModelGraph<ModelNodePayload, E>,
-    excluded_nodes: HashSet<NodeIndex>,
+    excluded_nodes: &HashSet<NodeIndex>,
 ) -> bool
 where
 {
@@ -503,15 +487,15 @@ where
     }
 
     match first_node {
-        Some(first_node_unwrapped) => (),
+        Some(_) => (),
         None => return true,
     }
     queue.push_back(first_node.unwrap());
 
-    while (!queue.is_empty()) {
+    while !queue.is_empty() {
         let curr_node = queue.pop_front().unwrap();
 
-        if (visited.contains(&curr_node)) {
+        if visited.contains(&curr_node) {
             continue;
         }
 
@@ -534,13 +518,12 @@ where
         }
     }
 
-    let total_excluded_count = crashed_drones.union(&excluded_nodes).count();
-    println!("Visited count: {}", visited.len());
-    println!("Graph node count: {}", graph.node_count());
-    println!("Total crashed drones: {:?}", crashed_drones);
-    println!("Total excluded count: {:?}", total_excluded_count);
-
-    println!("{:?}", visited);
+    let total_excluded_count = crashed_drones.union(excluded_nodes).count();
+    // println!("Visited count: {}", visited.len());
+    // println!("Graph node count: {}", graph.node_count());
+    // println!("Total crashed drones: {crashed_drones:?}");
+    // println!("Total excluded count: {total_excluded_count:?}");
+    // println!("{visited:?}");
 
     visited.len() == graph.node_count() - total_excluded_count
 }
@@ -576,7 +559,7 @@ pub fn is_well_formed(graph: &DefaultModelGraph) -> Result<String, String> {
     for node in graph.node_indices() {
         let node_payload = graph.node_weight(node).unwrap().payload();
         match &node_payload.node_type {
-            UiNodeType::Server(ui_server_node) => {
+            UiNodeType::Server(_) => {
                 let neighbors: Vec<NodeIndex> = get_neigbors_with_disabled_edges(graph, node);
                 if neighbors.len() < 2 {
                     Err(format!(
@@ -587,7 +570,7 @@ pub fn is_well_formed(graph: &DefaultModelGraph) -> Result<String, String> {
                     Ok(())
                 }
             }
-            UiNodeType::Client(ui_client_node) => {
+            UiNodeType::Client(_) => {
                 let neighbors: Vec<NodeIndex> = get_neigbors_with_disabled_edges(graph, node);
                 if neighbors.len() > 2 {
                     Err(format!(
@@ -599,7 +582,7 @@ pub fn is_well_formed(graph: &DefaultModelGraph) -> Result<String, String> {
                 }
             }
             UiNodeType::Drone(_) => Ok(()),
-        }?
+        }?;
     }
 
     Ok("Well formed".to_string())
@@ -629,11 +612,7 @@ pub fn is_client<E>(graph: &ModelGraph<ModelNodePayload, E>, node: NodeIndex) ->
 
 pub fn is_server<E>(graph: &ModelGraph<ModelNodePayload, E>, node: NodeIndex) -> bool {
     match &graph.node_weight(node) {
-        Some(node) => match &node.payload().node_type {
-            UiNodeType::Server(_) => true,
-            UiNodeType::Client(_) => false,
-            UiNodeType::Drone(_) => false,
-        },
+        Some(node) => matches!(&node.payload().node_type, UiNodeType::Server(_)),
         None => false,
     }
 }

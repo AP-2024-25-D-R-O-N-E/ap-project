@@ -3,17 +3,15 @@ use egui::{Color32, Response, Ui};
 use egui_extras::TableRow;
 use wg_2024::{
     controller,
-    packet::{self, NackType, Packet, PacketType},
+    packet::{NackType, Packet, PacketType},
 };
 
-use crate::simulation_controller::{
-    serialization_ref_structs::IntoSerializable, state::State, SCEvent, SCEventType,
-};
+use crate::simulation_controller::{SCEvent, SCEventType};
 
-use super::{draw_all_events_as_json, draw_event_as_json};
+use super::draw_event_as_json;
 
 impl SCEvent {
-    pub fn draw(&self, row: &mut TableRow, state: &mut State) {
+    pub fn draw(&self, row: &mut TableRow) {
         row.col(|ui| {
             ui.label(format!(
                 "{} {}",
@@ -45,24 +43,21 @@ impl SCEvent {
     fn draw_additional_infos(&self, ui: &mut Ui) -> Response {
         match &self.event_type {
             SCEventType::Client(client_event) => match client_event {
-                ClientEvent::PacketSent(packet) => {
+                ClientEvent::PacketSent(_) => {
                     ui.label(egui::RichText::new("Packet sent").color(colors::MUTED_GREEN))
                 }
-                ClientEvent::PacketReceived(packet) => {
+                ClientEvent::PacketReceived(_) => {
                     ui.label(egui::RichText::new("Packet received").color(colors::MUTED_GREEN))
                 }
-                ClientEvent::TextMessage { from, to, text } => ui.label(
-                    egui::RichText::new(format!("Recieved text message from {}\n{}", from, text))
+                ClientEvent::TextMessage { from, text, .. } => ui.label(
+                    egui::RichText::new(format!("Recieved text message from {from}\n{text}"))
                         .color(colors::METALLIC_BLUE),
                 ),
                 ClientEvent::FileMessage {
-                    from,
-                    to,
-                    file_path,
+                    from, file_path, ..
                 } => ui.label(
                     egui::RichText::new(format!(
-                        "Recieved file message from {}\nFile path: {:?}",
-                        from, file_path
+                        "Recieved file message from {from}\nFile path: {file_path:?}"
                     ))
                     .color(colors::METALLIC_BLUE),
                 ),
@@ -72,7 +67,7 @@ impl SCEvent {
                             egui::RichText::new("Fetched available clients:".to_string())
                                 .color(colors::MUTED_GREEN),
                         );
-                        ui.label(egui::RichText::new(format!("{:?}", vec)));
+                        ui.label(egui::RichText::new(format!("{vec:?}")));
                     })
                     .response
                 }
@@ -82,10 +77,10 @@ impl SCEvent {
                 ClientEvent::ResponseHistoryReceived { partner, history } => {
                     ui.horizontal(|ui| {
                         ui.label(
-                            egui::RichText::new(format!("Fetched history from: {}", partner))
+                            egui::RichText::new(format!("Fetched history from: {partner}"))
                                 .color(colors::MUTED_GREEN),
                         );
-                        ui.label(egui::RichText::new(format!("{:?}", history)));
+                        ui.label(egui::RichText::new(format!("{history:?}")));
                     })
                     .response
                 }
@@ -96,6 +91,14 @@ impl SCEvent {
                 ),
                 ClientEvent::UnsupportedMessageTypeError => ui.label(
                     egui::RichText::new("UnsupportedMessageTypeError").color(colors::MUTED_RED),
+                ),
+                ClientEvent::CreatedFileLocal {
+                    from, file_path, ..
+                } => ui.label(
+                    egui::RichText::new(format!(
+                        "Client {from} created local file\nFile path: {file_path:?}"
+                    ))
+                    .color(colors::METALLIC_BLUE),
                 ),
             },
 
@@ -117,7 +120,7 @@ impl SCEvent {
             },
             SCEventType::Drone(drone_event) => {
                 ui.horizontal(|ui| {
-                    let (packet, response) = match drone_event {
+                    let (packet, _) = match drone_event {
                         controller::DroneEvent::PacketSent(packet) => (
                             packet,
                             ui.label(egui::RichText::new("Packet sent").color(colors::MUTED_GREEN)),
@@ -144,20 +147,11 @@ impl SCEvent {
 }
 
 fn display_packet_infos(ui: &mut Ui, packet: &Packet) -> Response {
-    let pack_type_string = match &packet.pack_type {
-        PacketType::MsgFragment(fragment) => "MsgFragment",
-        PacketType::Ack(ack) => "Ack",
-        PacketType::Nack(nack) => "Nack",
-        PacketType::FloodRequest(flood_request) => "FloodRequest",
-        PacketType::FloodResponse(flood_response) => "FloodResponse",
-    }
-    .to_string();
-
     match &packet.pack_type {
-        PacketType::MsgFragment(fragment) => {
+        PacketType::MsgFragment(_) => {
             ui.label(egui::RichText::new("MsgFragment").color(Color32::DARK_GRAY))
         }
-        PacketType::Ack(ack) => ui.label(egui::RichText::new("Ack").color(Color32::DARK_GRAY)),
+        PacketType::Ack(_) => ui.label(egui::RichText::new("Ack").color(Color32::DARK_GRAY)),
         PacketType::Nack(nack) => {
             ui.horizontal(|ui| {
                 ui.label(egui::RichText::new("Nack").color(Color32::DARK_GRAY));

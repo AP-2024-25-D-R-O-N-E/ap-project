@@ -1,31 +1,18 @@
 use super::utils::display_status_flag;
-use egui::{CollapsingHeader, Color32, RichText, Ui};
-use egui_graphs::{Edge, Node};
-use petgraph::{
-    algo::{self, connected_components, dijkstra::dijkstra},
-    csr::DefaultIx,
-    graph::{EdgeIndex, NodeIndex},
-    prelude::StableGraph,
-    visit::{IntoEdges, Visitable},
-    Undirected,
-};
-use std::{
-    collections::{HashSet, VecDeque},
-    hash::Hash,
-    str::FromStr,
-};
+use egui::{CollapsingHeader, Ui};
+use petgraph::algo::{self};
+use std::str::FromStr;
 use wg_2024::{
-    network::{NodeId, SourceRoutingHeader},
+    network::SourceRoutingHeader,
     packet::{FloodRequest, NodeType, Packet, PacketType},
 };
 
-use super::super::util::graph::*;
+use super::super::util::graph::{is_client, is_server};
 
 use crate::simulation_controller::{
-    edge::{CustomEdgeShape, UiEdgePayload},
-    node::{CustomNodeShape, UiNodePayload, UiNodeType},
+    node::UiNodeType,
     state::{AckType, State},
-    util::*,
+    util::StatusFlag,
     SimulationController,
 };
 
@@ -42,7 +29,7 @@ pub fn draw_section_testing(
                 .spacing([40.0, 4.0])
                 .striped(true)
                 .show(ui, |ui| {
-                    send_msg_fragment_section(ui, state, simulation_controller)
+                    send_msg_fragment_section(ui, state, simulation_controller);
                 });
         });
 
@@ -54,7 +41,7 @@ pub fn draw_section_testing(
                 .spacing([40.0, 4.0])
                 .striped(true)
                 .show(ui, |ui| {
-                    send_ack_nack_section(ui, state, simulation_controller)
+                    send_ack_nack_section(ui, state, simulation_controller);
                 });
         });
 
@@ -66,7 +53,7 @@ pub fn draw_section_testing(
                 .spacing([40.0, 4.0])
                 .striped(true)
                 .show(ui, |ui| {
-                    send_flood_req_section(ui, state, simulation_controller)
+                    send_flood_req_section(ui, state, simulation_controller);
                 });
         });
 }
@@ -115,15 +102,14 @@ pub fn send_msg_fragment_section(
             .on_hover_text("Invert the current path")
             .clicked()
         {
-            match parse_data::<u8>(state.test_section.msg_fragment_routing_path_string.clone()) {
-                Ok(parsed_path) => {
-                    let reversed_path: Vec<u8> = parsed_path.into_iter().rev().collect();
-                    let mut rv = format!("{:?}", reversed_path);
-                    rv.truncate(rv.len() - 1);
-                    rv.remove(0);
-                    state.test_section.msg_fragment_routing_path_string = rv;
-                }
-                Err(_) => (),
+            if let Ok(parsed_path) =
+                parse_data::<u8>(state.test_section.msg_fragment_routing_path_string.clone())
+            {
+                let reversed_path: Vec<u8> = parsed_path.into_iter().rev().collect();
+                let mut rv = format!("{reversed_path:?}");
+                rv.truncate(rv.len() - 1);
+                rv.remove(0);
+                state.test_section.msg_fragment_routing_path_string = rv;
             }
         }
     });
@@ -137,16 +123,15 @@ pub fn send_msg_fragment_section(
             parse_data(state.test_section.msg_fragment_routing_path_string.clone()),
             parse_data(state.test_section.msg_frag_data_string.clone()),
         ) {
-            (Ok(mut parsed_path_vec), Ok(mut parsed_data_vec)) => {
+            (Ok(parsed_path_vec), Ok(mut parsed_data_vec)) => {
                 if parsed_data_vec.len() > 128 {
                     state.test_section.packet_sender_status_flag =
                         Some(Err("Data should be at most 128 chars long".to_string()));
                     return;
                 } else {
                     parsed_data_vec.resize(128, 0);
-                    let mut parsed_data: [u8; 128] = [0; 128];
                     if let Ok(v) = parsed_data_vec.try_into() {
-                        parsed_data = v;
+                        let parsed_data: [u8; 128] = v;
                         let mut packet = simulation_controller.default_msg_fragment.clone();
                         packet.routing_header.hops = parsed_path_vec;
                         if let PacketType::MsgFragment(fragment) = &mut packet.pack_type {
@@ -154,7 +139,7 @@ pub fn send_msg_fragment_section(
                         }
                         simulation_controller.send_msg_fragment(packet);
                         state.test_section.packet_sender_status_flag =
-                            Some(Ok("Msg fragment sent".to_string()))
+                            Some(Ok("Msg fragment sent".to_string()));
                     }
                 }
             }
@@ -200,15 +185,14 @@ pub fn send_ack_nack_section(
             .on_hover_text("Invert the current path")
             .clicked()
         {
-            match parse_data::<u8>(state.test_section.ack_nack_routing_path_string.clone()) {
-                Ok(parsed_path) => {
-                    let reversed_path: Vec<u8> = parsed_path.into_iter().rev().collect();
-                    let mut rv = format!("{:?}", reversed_path);
-                    rv.truncate(rv.len() - 1);
-                    rv.remove(0);
-                    state.test_section.ack_nack_routing_path_string = rv;
-                }
-                Err(_) => (),
+            if let Ok(parsed_path) =
+                parse_data::<u8>(state.test_section.ack_nack_routing_path_string.clone())
+            {
+                let reversed_path: Vec<u8> = parsed_path.into_iter().rev().collect();
+                let mut rv = format!("{reversed_path:?}");
+                rv.truncate(rv.len() - 1);
+                rv.remove(0);
+                state.test_section.ack_nack_routing_path_string = rv;
             }
         }
     });
@@ -289,14 +273,14 @@ pub fn send_flood_req_section(
                             .payload()
                             .node_type
                         {
-                            UiNodeType::Server(ui_server_node) => {
-                                flood_req.path_trace = vec![(curr_node_wg_id, NodeType::Server)]
+                            UiNodeType::Server(_) => {
+                                flood_req.path_trace = vec![(curr_node_wg_id, NodeType::Server)];
                             }
-                            UiNodeType::Client(ui_client_node) => {
-                                flood_req.path_trace = vec![(curr_node_wg_id, NodeType::Client)]
+                            UiNodeType::Client(_) => {
+                                flood_req.path_trace = vec![(curr_node_wg_id, NodeType::Client)];
                             }
-                            UiNodeType::Drone(ui_drone_node) => {
-                                flood_req.path_trace = vec![(curr_node_wg_id, NodeType::Drone)]
+                            UiNodeType::Drone(_) => {
+                                flood_req.path_trace = vec![(curr_node_wg_id, NodeType::Drone)];
                             }
                         }
 
@@ -312,12 +296,12 @@ pub fn send_flood_req_section(
                 } else {
                     state.test_section.flood_req_sender_status_flag = Some(Err(
                         "The initiator id should be a client or a server".to_string(),
-                    ))
+                    ));
                 }
             }
             None => {
                 state.test_section.flood_req_sender_status_flag =
-                    Some(Err("Invalid node id".to_string()))
+                    Some(Err("Invalid node id".to_string()));
             }
         }
     }
@@ -343,12 +327,12 @@ where
     }
 
     let mut ok = true;
-    let mut parsed_data_vec: Vec<T> = path
+    let parsed_data_vec: Vec<T> = path
         .split(',')
         .filter_map(|s| {
             let rv = s.trim().parse::<T>().ok();
             if rv.is_none() {
-                ok = false
+                ok = false;
             }
 
             rv
@@ -369,13 +353,13 @@ fn get_path_between_selected_nodes(state: &mut State) -> Result<String, String> 
         let end_node = state.graph_section.g.selected_nodes()[1];
         let g = &*state.graph_section.g.g();
 
-        let path = algo::astar(g, start_node, |n| n == end_node, |e| 1, |_| 0);
+        let path = algo::astar(g, start_node, |n| n == end_node, |_| 1, |_| 0);
         match path {
             Some((_, path)) => {
                 let mut new_path = String::new();
                 for n in path {
                     let actual_node_index = state.graph_section.g.node(n).unwrap().payload().wg_id;
-                    new_path.push_str(format!("{}, ", actual_node_index).as_str());
+                    new_path.push_str(format!("{actual_node_index}, ").as_str());
                 }
                 if !new_path.is_empty() {
                     new_path.truncate(new_path.len() - 2);
