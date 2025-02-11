@@ -11,7 +11,7 @@ use wg_2024::{
 };
 
 use crate::initializer::{
-    node_vendor::DroneVendor, network_initializer::spawn_drone_thread_by_vendor,
+    network_initializer::spawn_drone_thread_by_vendor, node_vendor::DroneVendor,
     util::DroneChannels,
 };
 
