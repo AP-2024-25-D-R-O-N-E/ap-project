@@ -5,8 +5,10 @@ pub mod crash_test;
 pub mod message_serialization_test;
 pub mod server_features;
 
-use simple_logger::SimpleLogger;
 use std::sync::Once;
+
+use env_logger::Builder;
+use log::LevelFilter;
 
 // This makes the logger availvable for each test that requires it, while ensuring
 // SimpleLogger::new() is called only once
