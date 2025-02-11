@@ -243,10 +243,15 @@ impl ClientLeonardo {
         loop {
             select_biased!(
                 recv(nack_recv) -> nack_res => {
-                    if let Ok(packet) = nack_res {
+                    if let Ok(mut packet) = nack_res {
                         // recalculate route if topology was modified
 
-                        let _ = *packet.routing_header.hops.last().unwrap();
+                        packet.routing_header.hops = Self::find_route(
+                            id,
+                            packet.routing_header.hops.last().unwrap().clone(),
+                            edge_nodes.clone(),
+                            topology.clone()
+                        );
 
                         //condv limits the size of ack_buffer by freezing the thread until condition is reached
                         let mut ack_buff = condv.wait_while(ack_packet_buffer.lock().unwrap(), |buff| {
